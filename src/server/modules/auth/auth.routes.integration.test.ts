@@ -1,0 +1,174 @@
+/**
+ * Full HTTP integration tests against the real Express app + a real Postgres database.
+ *
+ * Requires DATABASE_URL (see vitest.config.ts) to point at a reachable Postgres instance
+ * with the Module 1 schema already migrated (`npm run prisma:migrate`). Run via:
+ *   docker compose up -d postgres
+ *   DATABASE_URL=postgresql://business_os:business_os_dev_password@localhost:5432/business_os_test npx prisma migrate deploy
+ *   npx vitest run src/server/modules/auth/auth.routes.integration.test.ts
+ *
+ * Not run as part of the default `npm test` unit suite — see package.json's `test:integration` script.
+ */
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import request from 'supertest';
+import { createApp } from '../../app.js';
+import { prisma } from '../../db/prisma.js';
+
+const app = createApp();
+
+async function resetDatabase() {
+  await prisma.auditLog.deleteMany();
+  await prisma.refreshToken.deleteMany();
+  await prisma.invite.deleteMany();
+  await prisma.passwordResetToken.deleteMany();
+  await prisma.employeeProfile.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.tenant.deleteMany();
+}
+
+function uniqueDomain(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+}
+
+async function signupTenant(overrides: Partial<Record<string, string>> = {}) {
+  const domain = uniqueDomain('acme');
+  const res = await request(app)
+    .post('/api/v1/auth/signup')
+    .send({
+      tenantName: 'Acme Inc',
+      tenantDomain: domain,
+      email: overrides.email ?? `admin-${domain}@acme.com`,
+      password: 'CorrectPassword123',
+      firstName: 'Ada',
+      lastName: 'Admin',
+      ...overrides,
+    });
+  return { res, domain };
+}
+
+beforeAll(async () => {
+  await prisma.$connect();
+});
+
+afterAll(async () => {
+  await prisma.$disconnect();
+});
+
+beforeEach(async () => {
+  await resetDatabase();
+});
+
+describe('Auth flow — signup, login, me, refresh, logout', () => {
+  it('signs up a new tenant + admin, returns an access token, and sets a refresh cookie', async () => {
+    const { res } = await signupTenant();
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.accessToken).toBeTruthy();
+    expect(res.body.data.user.role).toBe('ADMIN');
+    expect(res.headers['set-cookie']?.[0]).toMatch(/refresh_token=/);
+  });
+
+  it('rejects signup with a duplicate domain', async () => {
+    const { domain } = await signupTenant();
+    const { res: second } = await signupTenant({ tenantDomain: domain, email: `other-${Date.now()}@acme.com` });
+    expect(second.status).toBe(409);
+  });
+
+  it('logs in with the created account and fetches /me', async () => {
+    const domain = uniqueDomain('acme');
+    const email = `admin-${domain}@acme.com`;
+    await signupTenant({ tenantDomain: domain, email });
+
+    const loginRes = await request(app).post('/api/v1/auth/login').send({ email, password: 'CorrectPassword123' });
+    expect(loginRes.status).toBe(200);
+    expect(loginRes.body.data.accessToken).toBeTruthy();
+
+    const meRes = await request(app)
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${loginRes.body.data.accessToken}`);
+    expect(meRes.status).toBe(200);
+    expect(meRes.body.data.user.email).toBe(email);
+    expect(meRes.body.data.tenant.domain).toBe(domain);
+  });
+
+  it('rejects login with the wrong password', async () => {
+    const domain = uniqueDomain('acme');
+    const email = `admin-${domain}@acme.com`;
+    await signupTenant({ tenantDomain: domain, email });
+
+    const res = await request(app).post('/api/v1/auth/login').send({ email, password: 'WrongPassword!' });
+    expect(res.status).toBe(401);
+  });
+
+  it('rotates the refresh token on /refresh and the old cookie no longer works', async () => {
+    const { res: signupRes } = await signupTenant();
+    const cookie = signupRes.headers['set-cookie'][0];
+
+    const refreshRes = await request(app).post('/api/v1/auth/refresh').set('Cookie', cookie);
+    expect(refreshRes.status).toBe(200);
+    expect(refreshRes.body.data.accessToken).toBeTruthy();
+
+    // Reusing the original (now-rotated) cookie must be treated as theft and rejected.
+    const reuseRes = await request(app).post('/api/v1/auth/refresh').set('Cookie', cookie);
+    expect(reuseRes.status).toBe(401);
+  });
+
+  it('logs out and revokes the refresh token so it can no longer be used', async () => {
+    const { res: signupRes } = await signupTenant();
+    const cookie = signupRes.headers['set-cookie'][0];
+    const accessToken = signupRes.body.data.accessToken;
+
+    const logoutRes = await request(app)
+      .post('/api/v1/auth/logout')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('Cookie', cookie);
+    expect(logoutRes.status).toBe(204);
+
+    const refreshAfterLogout = await request(app).post('/api/v1/auth/refresh').set('Cookie', cookie);
+    expect(refreshAfterLogout.status).toBe(401);
+  });
+});
+
+describe('RBAC — role/permission denial', () => {
+  it('denies a non-SUPER_ADMIN from listing all tenants', async () => {
+    const { res: signupRes } = await signupTenant();
+    const res = await request(app)
+      .get('/api/v1/tenants')
+      .set('Authorization', `Bearer ${signupRes.body.data.accessToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('denies an unauthenticated request to a protected route', async () => {
+    const res = await request(app).get('/api/v1/employees/me');
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('Tenant isolation', () => {
+  it('a user from tenant A cannot read a tenant B user via GET /users/:id', async () => {
+    const { res: tenantARes } = await signupTenant();
+    const { res: tenantBRes } = await signupTenant();
+
+    const tenantBUserId = tenantBRes.body.data.user.id;
+
+    const res = await request(app)
+      .get(`/api/v1/users/${tenantBUserId}`)
+      .set('Authorization', `Bearer ${tenantARes.body.data.accessToken}`);
+
+    // getById scopes strictly by the caller's tenantId, so a cross-tenant id looks not-found.
+    expect(res.status).toBe(404);
+  });
+
+  it('a user from tenant A only sees tenant A users when listing', async () => {
+    const { res: tenantARes } = await signupTenant();
+    await signupTenant();
+
+    const res = await request(app)
+      .get('/api/v1/users')
+      .set('Authorization', `Bearer ${tenantARes.body.data.accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].id).toBe(tenantARes.body.data.user.id);
+  });
+});

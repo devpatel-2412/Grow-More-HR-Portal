@@ -1,0 +1,159 @@
+import type { UserRole } from '@prisma/client';
+
+/**
+ * Flat permission catalogue, `resource:action` shaped. Every future module adds its own
+ * entries here and to ROLE_PERMISSIONS — this file is the single source of truth for
+ * "who can do what", so requirePermission() never needs to change when roles gain or lose
+ * capabilities.
+ */
+export const PERMISSIONS = {
+  TENANT_CREATE: 'tenant:create',
+  TENANT_READ: 'tenant:read',
+  TENANT_UPDATE: 'tenant:update',
+  TENANT_LIST_ALL: 'tenant:list:all',
+
+  USER_INVITE: 'user:invite',
+  USER_READ_TENANT: 'user:read:tenant',
+  USER_ROLE_UPDATE: 'user:role:update',
+  USER_STATUS_UPDATE: 'user:status:update',
+
+  EMPLOYEE_CREATE: 'employee:create',
+  EMPLOYEE_READ_TENANT: 'employee:read:tenant',
+  EMPLOYEE_UPDATE: 'employee:update',
+
+  ATTENDANCE_READ_TENANT: 'attendance:read:tenant',
+  ATTENDANCE_REGULARIZATION_APPROVE: 'attendance:regularization:approve',
+
+  LEAVE_READ_TENANT: 'leave:read:tenant',
+  LEAVE_APPROVE_HR: 'leave:approve:hr',
+
+  PROJECT_MANAGE: 'project:manage',
+  TASK_MANAGE: 'task:manage',
+
+  WORK_REPORT_READ_TENANT: 'workreport:read:tenant',
+  WORK_REPORT_REVIEW: 'workreport:review',
+  TIME_LOG_READ_TENANT: 'timelog:read:tenant',
+
+  PAYROLL_MANAGE: 'payroll:manage',
+  PAYROLL_READ_TENANT: 'payroll:read:tenant',
+
+  RECRUITMENT_MANAGE: 'recruitment:manage',
+  RECRUITMENT_READ: 'recruitment:read',
+
+  CRM_MANAGE: 'crm:manage',
+  CRM_READ: 'crm:read',
+
+  FINANCE_MANAGE: 'finance:manage',
+  FINANCE_READ: 'finance:read',
+
+  TICKET_MANAGE: 'ticket:manage',
+  TICKET_READ_TENANT: 'ticket:read:tenant',
+  KB_MANAGE: 'kb:manage',
+  DOCUMENT_MANAGE: 'document:manage',
+  ASSET_MANAGE: 'asset:manage',
+  VISITOR_MANAGE: 'visitor:manage',
+  ROOM_BOOKING_MANAGE: 'roombooking:manage',
+
+  TEMPLATE_MANAGE: 'template:manage',
+  ANNOUNCEMENT_MANAGE: 'announcement:manage',
+
+  AUDIT_READ: 'audit:read',
+} as const;
+
+export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
+
+const ALL_PERMISSIONS = Object.values(PERMISSIONS) as Permission[];
+
+/**
+ * Default role → permission matrix. SUPER_ADMIN gets every permission unconditionally.
+ * This static map is deliberately swappable: a later per-tenant custom-role table can
+ * replace the lookup inside requirePermission() without changing any call site.
+ */
+export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+  SUPER_ADMIN: ALL_PERMISSIONS,
+  ADMIN: [
+    PERMISSIONS.TENANT_READ,
+    PERMISSIONS.TENANT_UPDATE,
+    PERMISSIONS.USER_INVITE,
+    PERMISSIONS.USER_READ_TENANT,
+    PERMISSIONS.USER_ROLE_UPDATE,
+    PERMISSIONS.USER_STATUS_UPDATE,
+    PERMISSIONS.EMPLOYEE_CREATE,
+    PERMISSIONS.EMPLOYEE_READ_TENANT,
+    PERMISSIONS.EMPLOYEE_UPDATE,
+    PERMISSIONS.ATTENDANCE_READ_TENANT,
+    PERMISSIONS.ATTENDANCE_REGULARIZATION_APPROVE,
+    PERMISSIONS.LEAVE_READ_TENANT,
+    PERMISSIONS.LEAVE_APPROVE_HR,
+    PERMISSIONS.PROJECT_MANAGE,
+    PERMISSIONS.TASK_MANAGE,
+    PERMISSIONS.WORK_REPORT_READ_TENANT,
+    PERMISSIONS.WORK_REPORT_REVIEW,
+    PERMISSIONS.TIME_LOG_READ_TENANT,
+    PERMISSIONS.PAYROLL_MANAGE,
+    PERMISSIONS.PAYROLL_READ_TENANT,
+    PERMISSIONS.RECRUITMENT_MANAGE,
+    PERMISSIONS.RECRUITMENT_READ,
+    PERMISSIONS.CRM_MANAGE,
+    PERMISSIONS.CRM_READ,
+    PERMISSIONS.FINANCE_MANAGE,
+    PERMISSIONS.FINANCE_READ,
+    PERMISSIONS.TICKET_MANAGE,
+    PERMISSIONS.TICKET_READ_TENANT,
+    PERMISSIONS.KB_MANAGE,
+    PERMISSIONS.DOCUMENT_MANAGE,
+    PERMISSIONS.ASSET_MANAGE,
+    PERMISSIONS.VISITOR_MANAGE,
+    PERMISSIONS.ROOM_BOOKING_MANAGE,
+    PERMISSIONS.TEMPLATE_MANAGE,
+    PERMISSIONS.ANNOUNCEMENT_MANAGE,
+    PERMISSIONS.AUDIT_READ,
+  ],
+  HR_MANAGER: [
+    PERMISSIONS.USER_INVITE,
+    PERMISSIONS.USER_READ_TENANT,
+    PERMISSIONS.EMPLOYEE_CREATE,
+    PERMISSIONS.EMPLOYEE_READ_TENANT,
+    PERMISSIONS.EMPLOYEE_UPDATE,
+    PERMISSIONS.ATTENDANCE_READ_TENANT,
+    PERMISSIONS.ATTENDANCE_REGULARIZATION_APPROVE,
+    PERMISSIONS.LEAVE_READ_TENANT,
+    PERMISSIONS.LEAVE_APPROVE_HR,
+    PERMISSIONS.WORK_REPORT_READ_TENANT,
+    PERMISSIONS.WORK_REPORT_REVIEW,
+    PERMISSIONS.TIME_LOG_READ_TENANT,
+    PERMISSIONS.PAYROLL_MANAGE,
+    PERMISSIONS.PAYROLL_READ_TENANT,
+    PERMISSIONS.RECRUITMENT_MANAGE,
+    PERMISSIONS.RECRUITMENT_READ,
+    PERMISSIONS.TICKET_MANAGE,
+    PERMISSIONS.TICKET_READ_TENANT,
+    PERMISSIONS.KB_MANAGE,
+    PERMISSIONS.DOCUMENT_MANAGE,
+    PERMISSIONS.ASSET_MANAGE,
+    PERMISSIONS.VISITOR_MANAGE,
+    PERMISSIONS.ROOM_BOOKING_MANAGE,
+    PERMISSIONS.TEMPLATE_MANAGE,
+    PERMISSIONS.ANNOUNCEMENT_MANAGE,
+  ],
+  PROJECT_MANAGER: [
+    PERMISSIONS.EMPLOYEE_READ_TENANT,
+    PERMISSIONS.ATTENDANCE_READ_TENANT,
+    PERMISSIONS.ATTENDANCE_REGULARIZATION_APPROVE,
+    PERMISSIONS.PROJECT_MANAGE,
+    PERMISSIONS.TASK_MANAGE,
+    PERMISSIONS.WORK_REPORT_READ_TENANT,
+    PERMISSIONS.WORK_REPORT_REVIEW,
+    PERMISSIONS.TIME_LOG_READ_TENANT,
+    PERMISSIONS.RECRUITMENT_READ,
+    PERMISSIONS.CRM_MANAGE,
+    PERMISSIONS.CRM_READ,
+    PERMISSIONS.TICKET_READ_TENANT,
+  ],
+  EMPLOYEE: [],
+  CLIENT: [],
+};
+
+export function roleHasPermission(role: UserRole, permission: Permission): boolean {
+  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+}

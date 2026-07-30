@@ -1,0 +1,79 @@
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useSearchParams, useNavigate, Navigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { UserCheck } from 'lucide-react';
+import { acceptInviteSchema, type AcceptInviteFormValues } from '../schemas/user.schemas';
+import { useAcceptInvite } from '../hooks/useAcceptInvite';
+import { ApiError } from '../../../shared/lib/api-client';
+import { Button } from '../../../shared/components/ui/button';
+import { Input } from '../../../shared/components/ui/input';
+import { Label } from '../../../shared/components/ui/label';
+import { Card, CardHeader, CardTitle, CardDescription } from '../../../shared/components/ui/card';
+import { InlineFormError } from '../../../shared/components/feedback/ErrorState';
+import { AuthLayout } from '../../../shared/components/layout/AuthLayout';
+
+export function AcceptInvitePage() {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+  const navigate = useNavigate();
+  const acceptMutation = useAcceptInvite();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setError,
+  } = useForm<AcceptInviteFormValues>({ resolver: zodResolver(acceptInviteSchema), defaultValues: { token: token ?? '' } });
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  async function onSubmit(values: AcceptInviteFormValues) {
+    try {
+      await acceptMutation.mutateAsync(values);
+      toast.success('Account activated. Please log in.');
+      navigate('/login', { replace: true });
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'This invite link is invalid or has expired.';
+      setError('root', { message });
+    }
+  }
+
+  return (
+    <AuthLayout>
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500 to-pink-500 shadow-lg shadow-indigo-500/20">
+            <UserCheck className="h-6 w-6 text-white" aria-hidden="true" />
+          </div>
+          <CardTitle className="text-2xl">Join your team</CardTitle>
+          <CardDescription>Set your name and password to activate your account</CardDescription>
+        </CardHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+          <InlineFormError message={errors.root?.message} />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="firstName">First name</Label>
+              <Input id="firstName" autoComplete="given-name" {...register('firstName')} />
+              {errors.firstName && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.firstName.message}</p>}
+            </div>
+            <div>
+              <Label htmlFor="lastName">Last name</Label>
+              <Input id="lastName" autoComplete="family-name" {...register('lastName')} />
+              {errors.lastName && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.lastName.message}</p>}
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="password">Password</Label>
+            <Input id="password" type="password" autoComplete="new-password" {...register('password')} />
+            {errors.password && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.password.message}</p>}
+          </div>
+          <Button type="submit" className="w-full" loading={acceptMutation.isPending}>
+            Activate account
+          </Button>
+        </form>
+      </Card>
+    </AuthLayout>
+  );
+}
