@@ -8,6 +8,7 @@ import type {
   updateFinanceDocumentSchema,
   recordPaymentSchema,
   listFinanceDocumentsQuerySchema,
+  profitAndLossQuerySchema,
 } from './finance.validators.js';
 
 const employeeRepository = new EmployeeRepository();
@@ -58,4 +59,9 @@ export async function listFinanceDocuments(req: Request, res: Response): Promise
 
 export async function getFinanceSummary(req: Request, res: Response): Promise<void> {
   sendOk(res, await financeService.summary(req.user!.tenantId));
+}
+
+export async function getProfitAndLoss(req: Request, res: Response): Promise<void> {
+  const query = req.query as unknown as z.infer<typeof profitAndLossQuerySchema>;
+  sendOk(res, await financeService.profitAndLoss(req.user!.tenantId, query.from, query.to));
 }

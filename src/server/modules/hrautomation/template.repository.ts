@@ -18,10 +18,16 @@ export class TemplateRepository {
     return prisma.canvaTemplate.delete({ where: { id } });
   }
 
-  async findMany(tenantId: string, filter: { type?: TemplateType }, skip: number, take: number) {
+  async findMany(
+    tenantId: string,
+    filter: { type?: TemplateType },
+    orderBy: Record<string, 'asc' | 'desc'>,
+    skip: number,
+    take: number,
+  ) {
     const where: Prisma.CanvaTemplateWhereInput = { tenantId, type: filter.type };
     const [rows, total] = await Promise.all([
-      prisma.canvaTemplate.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      prisma.canvaTemplate.findMany({ where, orderBy, skip, take }),
       prisma.canvaTemplate.count({ where }),
     ]);
     return { rows, total };
@@ -33,14 +39,27 @@ export class GeneratedDocumentRepository {
     return prisma.generatedDocument.create({ data });
   }
 
-  async findMany(tenantId: string, filter: { employeeId?: string; templateId?: string }, skip: number, take: number) {
+  findById(id: string) {
+    return prisma.generatedDocument.findUnique({
+      where: { id },
+      include: { template: true, employee: { include: { user: true } }, generatedBy: true },
+    });
+  }
+
+  async findMany(
+    tenantId: string,
+    filter: { employeeId?: string; templateId?: string },
+    orderBy: Record<string, 'asc' | 'desc'>,
+    skip: number,
+    take: number,
+  ) {
     const where: Prisma.GeneratedDocumentWhereInput = {
       tenantId,
       employeeId: filter.employeeId,
       templateId: filter.templateId,
     };
     const [rows, total] = await Promise.all([
-      prisma.generatedDocument.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      prisma.generatedDocument.findMany({ where, orderBy, skip, take }),
       prisma.generatedDocument.count({ where }),
     ]);
     return { rows, total };

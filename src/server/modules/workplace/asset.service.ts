@@ -2,10 +2,12 @@ import { AssetRepository } from './asset.repository.js';
 import { EmployeeRepository } from '../employees/employee.repository.js';
 import { ConflictError, NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
 import type { AssetStatus } from '@prisma/client';
 import type { z } from 'zod';
 import type { createAssetSchema, listAssetsQuerySchema } from './asset.validators.js';
+
+const ASSET_SORTABLE_FIELDS = ['name', 'type', 'status', 'assignedAt', 'purchaseDate', 'createdAt'] as const;
 
 export interface RequestMeta {
   actorUserId?: string;
@@ -97,9 +99,11 @@ export class AssetService {
       employeeId = own?.id ?? '__none__';
     }
 
+    const orderBy = toPrismaOrderBy(query.sort, ASSET_SORTABLE_FIELDS, { field: 'createdAt', direction: 'desc' });
     const { rows, total } = await this.repository.findMany(
       tenantId,
       { status: query.status, type: query.type, employeeId },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );

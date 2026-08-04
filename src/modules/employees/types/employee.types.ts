@@ -13,4 +13,6 @@ export interface EmployeeListItem {
   dateOfBirth: string | null;
   status: EmployeeStatus;
   managerId: string | null;
+  branchId: string | null;
+  teamId: string | null;
 }

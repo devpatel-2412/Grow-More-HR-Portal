@@ -2,10 +2,13 @@ import { TicketRepository, TicketCommentRepository } from './ticket.repository.j
 import { EmployeeRepository } from '../employees/employee.repository.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { notificationService } from '../notifications/notification.service.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
 import type { TicketStatus } from '@prisma/client';
 import type { z } from 'zod';
 import type { createTicketSchema, listTicketsQuerySchema } from './ticket.validators.js';
+
+const TICKET_SORTABLE_FIELDS = ['subject', 'category', 'status', 'createdAt', 'updatedAt'] as const;
 
 export interface RequestMeta {
   actorUserId?: string;
@@ -99,15 +102,25 @@ export class TicketService {
   }
 
   async assign(tenantId: string, id: string, assignedToId: string | null, meta: RequestMeta) {
-    await this.requireTicket(tenantId, id);
-    if (assignedToId) {
-      const employee = await this.employeeRepository.findById(assignedToId);
-      if (!employee || employee.tenantId !== tenantId) throw new NotFoundError('Assignee not found');
-    }
+    const ticket = await this.requireTicket(tenantId, id);
+    const assignee = assignedToId ? await this.employeeRepository.findById(assignedToId) : null;
+    if (assignedToId && (!assignee || assignee.tenantId !== tenantId)) throw new NotFoundError('Assignee not found');
     const updated = await this.repository.update(id, {
       assignedTo: assignedToId ? { connect: { id: assignedToId } } : { disconnect: true },
     });
     await this.audit(tenantId, meta, 'TICKET_ASSIGNED', id);
+
+    if (assignee && assignedToId !== ticket.assignedToId) {
+      await notificationService.notify({
+        tenantId,
+        userId: assignee.userId,
+        type: 'TICKET_ASSIGNED',
+        title: 'Ticket assigned to you',
+        body: ticket.subject,
+        link: `/helpdesk/${id}`,
+      });
+    }
+
     return updated;
   }
 
@@ -141,9 +154,11 @@ export class TicketService {
       ownedByEmployeeId = profile.id;
     }
 
+    const orderBy = toPrismaOrderBy(query.sort, TICKET_SORTABLE_FIELDS, { field: 'createdAt', direction: 'desc' });
     const { rows, total } = await this.repository.findMany(
       tenantId,
       { status: query.status, category: query.category, assignedToId: query.assignedToId, ownedByEmployeeId },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );

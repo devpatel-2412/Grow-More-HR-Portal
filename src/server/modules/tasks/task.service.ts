@@ -3,7 +3,10 @@ import { ProjectService } from '../projects/project.service.js';
 import { EmployeeRepository } from '../employees/employee.repository.js';
 import { ForbiddenError, NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { notificationService } from '../notifications/notification.service.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
+
+const TASK_SORTABLE_FIELDS = ['title', 'priority', 'status', 'dueDate', 'createdAt'] as const;
 import type { z } from 'zod';
 import type { createTaskSchema, updateTaskSchema, listTasksQuerySchema } from './task.validators.js';
 
@@ -48,7 +51,24 @@ export class TaskService {
       userAgent: meta.userAgent,
     });
 
+    if (input.assignedToId) {
+      await this.notifyAssignee(tenantId, input.assignedToId, input.projectId, task.title);
+    }
+
     return task;
+  }
+
+  private async notifyAssignee(tenantId: string, assignedToId: string, projectId: string, title: string) {
+    const assignee = await this.employeeRepository.findById(assignedToId);
+    if (!assignee) return;
+    await notificationService.notify({
+      tenantId,
+      userId: assignee.userId,
+      type: 'TASK_ASSIGNED',
+      title: 'New task assigned to you',
+      body: title,
+      link: `/projects/${projectId}`,
+    });
   }
 
   async getById(tenantId: string, id: string) {
@@ -91,6 +111,10 @@ export class TaskService {
       userAgent: meta.userAgent,
     });
 
+    if (input.assignedToId && input.assignedToId !== task.assignedToId) {
+      await this.notifyAssignee(tenantId, input.assignedToId, task.projectId, updated.title);
+    }
+
     return updated;
   }
 
@@ -110,9 +134,11 @@ export class TaskService {
   }
 
   async list(tenantId: string, query: z.infer<typeof listTasksQuerySchema>) {
+    const orderBy = toPrismaOrderBy(query.sort, TASK_SORTABLE_FIELDS, { field: 'createdAt', direction: 'desc' });
     const { rows, total } = await this.repository.findMany(
       tenantId,
       { projectId: query.projectId, status: query.status, priority: query.priority, assignedToId: query.assignedToId },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );

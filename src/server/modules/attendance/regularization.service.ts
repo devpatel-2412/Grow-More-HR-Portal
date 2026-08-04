@@ -5,10 +5,12 @@ import { TenantRepository } from '../tenants/tenant.repository.js';
 import { computeAttendanceDerivedFields, type AttendancePolicy } from './attendance.service.js';
 import { BadRequestError, ConflictError, NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
 import type { RegularizationStatus, Tenant } from '@prisma/client';
 import type { z } from 'zod';
 import type { requestRegularizationSchema, listRegularizationsQuerySchema } from './attendance.validators.js';
+
+const REGULARIZATION_SORTABLE_FIELDS = ['date', 'status', 'createdAt', 'reviewedAt'] as const;
 
 interface RequestMeta {
   actorUserId?: string;
@@ -71,9 +73,11 @@ export class RegularizationService {
       employeeId = own.id;
     }
 
+    const orderBy = toPrismaOrderBy(query.sort, REGULARIZATION_SORTABLE_FIELDS, { field: 'createdAt', direction: 'desc' });
     const { rows, total } = await this.repository.findMany(
       tenantId,
       { employeeId, status: query.status },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );

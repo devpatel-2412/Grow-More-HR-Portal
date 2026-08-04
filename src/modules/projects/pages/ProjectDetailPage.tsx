@@ -27,7 +27,7 @@ export function ProjectDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-6xl space-y-4">
+      <div className="mx-auto max-w-6xl space-y-6">
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-64 w-full" />
       </div>

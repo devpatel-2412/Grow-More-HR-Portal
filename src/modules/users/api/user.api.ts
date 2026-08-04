@@ -14,7 +14,8 @@ export interface ListUsersQuery {
 
 export const userApi = {
   list: (query: ListUsersQuery) => api.getPaginated<UserListItem>('/users', query),
-  invite: (values: InviteUserFormValues) => api.post<InvitedUser>('/users/invite', values),
+  invite: (values: InviteUserFormValues | { email: string; role: 'CLIENT'; clientPortalId: string }) =>
+    api.post<InvitedUser>('/users/invite', values),
   acceptInvite: (values: AcceptInviteFormValues) => api.post<{ id: string; email: string; status: UserStatus }>('/users/invite/accept', values),
   updateRole: (id: string, role: UserRole) => api.patch<{ id: string; role: UserRole }>(`/users/${id}/role`, { role }),
   updateStatus: (id: string, status: UserStatus) => api.patch<{ id: string; status: UserStatus }>(`/users/${id}/status`, { status }),

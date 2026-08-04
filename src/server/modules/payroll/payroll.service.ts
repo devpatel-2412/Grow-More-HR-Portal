@@ -4,7 +4,13 @@ import { TenantRepository } from '../tenants/tenant.repository.js';
 import { calculatePayroll, round2, type PayrollPolicy } from './payroll.calculator.js';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
+
+const SALARY_STRUCTURE_SORTABLE_FIELDS = ['effectiveFrom', 'basicSalary', 'createdAt'] as const;
+const PAYROLL_RUN_SORTABLE_FIELDS = ['year', 'month', 'status', 'totalNet', 'processedAt', 'createdAt'] as const;
+const PAYROLL_ITEM_SORTABLE_FIELDS = ['year', 'month', 'grossSalary', 'netSalary', 'status'] as const;
+/** Default tie-break for runs/payslips when no explicit sort is requested — newest period first. */
+const YEAR_MONTH_DESC: Record<string, 'asc' | 'desc'>[] = [{ year: 'desc' }, { month: 'desc' }];
 import { prisma } from '../../db/prisma.js';
 import type { Tenant, PayrollStatus } from '@prisma/client';
 import type { z } from 'zod';
@@ -92,9 +98,11 @@ export class PayrollService {
   }
 
   async listSalaryStructures(tenantId: string, query: z.infer<typeof listSalaryStructuresQuerySchema>) {
+    const orderBy = toPrismaOrderBy(query.sort, SALARY_STRUCTURE_SORTABLE_FIELDS, { field: 'effectiveFrom', direction: 'desc' });
     const { rows, total } = await this.structureRepository.findMany(
       tenantId,
       query.employeeId,
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );
@@ -192,9 +200,11 @@ export class PayrollService {
   }
 
   async listRuns(tenantId: string, query: z.infer<typeof listPayrollRunsQuerySchema>) {
+    const orderBy = query.sort ? toPrismaOrderBy(query.sort, PAYROLL_RUN_SORTABLE_FIELDS, 'year') : YEAR_MONTH_DESC;
     const { rows, total } = await this.runRepository.findMany(
       tenantId,
       { year: query.year, status: query.status },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );
@@ -279,9 +289,11 @@ export class PayrollService {
       employeeId = own.id;
     }
 
+    const orderBy = query.sort ? toPrismaOrderBy(query.sort, PAYROLL_ITEM_SORTABLE_FIELDS, 'year') : YEAR_MONTH_DESC;
     const { rows, total } = await this.itemRepository.findMany(
       tenantId,
       { employeeId, month: query.month, year: query.year },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );

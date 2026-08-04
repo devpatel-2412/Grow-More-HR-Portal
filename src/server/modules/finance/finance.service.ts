@@ -1,7 +1,10 @@
 import { FinanceRepository } from './finance.repository.js';
+import { TenantRepository } from '../tenants/tenant.repository.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
+
+const FINANCE_SORTABLE_FIELDS = ['number', 'issueDate', 'dueDate', 'totalAmount', 'amountPaid', 'status'] as const;
 import type { FinanceStatus, FinanceType } from '@prisma/client';
 import type { z } from 'zod';
 import type {
@@ -42,7 +45,18 @@ const ALLOWED_TRANSITIONS: Record<FinanceStatus, FinanceStatus[]> = {
 };
 
 export class FinanceService {
-  constructor(private readonly repository: FinanceRepository = new FinanceRepository()) {}
+  constructor(
+    private readonly repository: FinanceRepository = new FinanceRepository(),
+    private readonly tenantRepository: TenantRepository = new TenantRepository(),
+  ) {}
+
+  /** `undefined` means "don't split" (GST not configured for this tenant or this document) — the caller keeps a single flat taxAmount. */
+  private async resolveInterState(tenantId: string, placeOfSupplyStateCode: string | null | undefined): Promise<boolean | undefined> {
+    if (!placeOfSupplyStateCode) return undefined;
+    const tenant = await this.tenantRepository.findById(tenantId);
+    if (!tenant?.gstStateCode) return undefined;
+    return tenant.gstStateCode !== placeOfSupplyStateCode;
+  }
 
   async createDocument(
     tenantId: string,
@@ -52,6 +66,7 @@ export class FinanceService {
   ) {
     const sequence = await this.repository.nextSequence(tenantId, input.type);
     const number = formatDocumentNumber(input.type, input.issueDate.getUTCFullYear(), sequence);
+    const isInterState = await this.resolveInterState(tenantId, input.placeOfSupplyStateCode);
 
     const { lineItems, clientPortalId, projectId, ...rest } = input;
     const document = await this.repository.createWithLineItems(
@@ -65,6 +80,7 @@ export class FinanceService {
         createdBy: createdByEmployeeId ? { connect: { id: createdByEmployeeId } } : undefined,
       },
       lineItems,
+      isInterState,
     );
 
     await this.audit(tenantId, meta, 'FINANCE_DOC_CREATED', document.id);
@@ -88,17 +104,24 @@ export class FinanceService {
     if (!detail) throw new NotFoundError('Finance document not found');
     if (detail.status !== 'DRAFT') throw new ConflictError('Only a draft document can be edited');
 
-    const { lineItems, taxRate, issueDate, dueDate, notes } = input;
+    const { lineItems, taxRate, placeOfSupplyStateCode, issueDate, dueDate, notes } = input;
     let updated: unknown = detail;
 
-    // A tax-rate change always needs the totals recalculated, whether or not the line items
-    // themselves changed — reusing the same recompute path keeps subtotal/tax/total in lockstep.
-    if (lineItems || taxRate !== undefined) {
+    // A tax-rate or place-of-supply change always needs the totals recalculated, whether or not
+    // the line items themselves changed — reusing the same recompute path keeps subtotal/tax/total
+    // and the CGST/SGST/IGST split in lockstep.
+    if (lineItems || taxRate !== undefined || placeOfSupplyStateCode !== undefined) {
+      const effectivePlaceOfSupply = placeOfSupplyStateCode === undefined ? detail.placeOfSupplyStateCode : placeOfSupplyStateCode;
+      const isInterState = await this.resolveInterState(tenantId, effectivePlaceOfSupply);
       updated = await this.repository.replaceLineItemsAndRecalculate(
         id,
-        lineItems ?? detail.lineItems.map((item) => ({ description: item.description, quantity: item.quantity, unitPrice: item.unitPrice })),
+        lineItems ?? detail.lineItems.map((item) => ({ description: item.description, hsnCode: item.hsnCode ?? undefined, quantity: item.quantity, unitPrice: item.unitPrice })),
         taxRate ?? detail.taxRate,
+        isInterState,
       );
+      if (placeOfSupplyStateCode !== undefined) {
+        updated = await this.repository.update(id, { placeOfSupplyStateCode });
+      }
     }
 
     if (issueDate !== undefined || dueDate !== undefined || notes !== undefined) {
@@ -169,9 +192,11 @@ export class FinanceService {
   }
 
   async listDocuments(tenantId: string, query: z.infer<typeof listFinanceDocumentsQuerySchema>) {
+    const orderBy = toPrismaOrderBy(query.sort, FINANCE_SORTABLE_FIELDS, { field: 'issueDate', direction: 'desc' });
     const { rows, total } = await this.repository.findMany(
       tenantId,
       { type: query.type, status: query.status, clientPortalId: query.clientPortalId, projectId: query.projectId },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );
@@ -189,6 +214,52 @@ export class FinanceService {
 
   summary(tenantId: string) {
     return this.repository.summarise(tenantId);
+  }
+
+  /**
+   * Accrual-basis P&L: revenue recognized when an INVOICE is issued (not when paid), expenses
+   * recognized when an EXPENSE/BILL is issued. QUOTATION is a proposal, not a transaction, so it
+   * never counts. DRAFT/VOID documents are excluded at the repository level.
+   */
+  async profitAndLoss(tenantId: string, from: Date, to: Date) {
+    const rows = await this.repository.findForProfitAndLoss(tenantId, from, to);
+
+    const byMonth = new Map<string, { revenue: number; expenses: number }>();
+    let revenue = 0;
+    let expenses = 0;
+
+    for (const row of rows) {
+      const isRevenue = row.type === 'INVOICE';
+      const isExpense = row.type === 'EXPENSE' || row.type === 'BILL';
+      if (!isRevenue && !isExpense) continue;
+
+      const monthKey = row.issueDate.toISOString().slice(0, 7);
+      const bucket = byMonth.get(monthKey) ?? { revenue: 0, expenses: 0 };
+      if (isRevenue) {
+        revenue += row.totalAmount;
+        bucket.revenue += row.totalAmount;
+      } else {
+        expenses += row.totalAmount;
+        bucket.expenses += row.totalAmount;
+      }
+      byMonth.set(monthKey, bucket);
+    }
+
+    return {
+      from: from.toISOString().slice(0, 10),
+      to: to.toISOString().slice(0, 10),
+      revenue: round2(revenue),
+      expenses: round2(expenses),
+      netProfit: round2(revenue - expenses),
+      byMonth: [...byMonth.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([month, totals]) => ({
+          month,
+          revenue: round2(totals.revenue),
+          expenses: round2(totals.expenses),
+          netProfit: round2(totals.revenue - totals.expenses),
+        })),
+    };
   }
 
   private audit(

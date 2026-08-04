@@ -1,4 +1,13 @@
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'HR_MANAGER' | 'PROJECT_MANAGER' | 'EMPLOYEE' | 'CLIENT';
+export type UserRole =
+  | 'SUPER_ADMIN'
+  | 'ADMIN'
+  | 'HR_MANAGER'
+  | 'PROJECT_MANAGER'
+  | 'EMPLOYEE'
+  | 'CLIENT'
+  | 'RECRUITER'
+  | 'FINANCE'
+  | 'CANDIDATE';
 export type UserStatus = 'PENDING_INVITE' | 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED';
 
 export interface AuthUser {
@@ -29,6 +38,8 @@ export interface Tenant {
   attendanceRequiredWorkMinutes: number;
   attendanceAllowedBreakMinutes: number;
   attendanceBreakOverageExtendsLogout: boolean;
+  gstin: string | null;
+  gstStateCode: string | null;
 }
 
 export interface MeResponse {
@@ -40,3 +51,11 @@ export interface MeResponse {
 export type LoginResponse =
   | { requiresTwoFactor: true; challengeToken: string }
   | { requiresTwoFactor: false; accessToken: string; user: AuthUser };
+
+export interface LoginHistoryEntry {
+  id: string;
+  action: 'USER_LOGIN_SUCCESS' | 'USER_LOGIN_FAILURE';
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}

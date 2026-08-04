@@ -2,7 +2,9 @@ import { WorkReportRepository, type WorkReportFilter } from './workreport.reposi
 import { EmployeeRepository } from '../employees/employee.repository.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
+
+const WORK_REPORT_SORTABLE_FIELDS = ['date', 'status', 'timeSpentMinutes'] as const;
 import { prisma } from '../../db/prisma.js';
 import type { z } from 'zod';
 import type { submitWorkReportSchema, updateWorkReportSchema, listWorkReportQuerySchema } from './workreport.validators.js';
@@ -163,7 +165,8 @@ export class WorkReportService {
       }
     }
 
-    const { rows, total } = await this.repository.findMany(tenantId, filter, (query.page - 1) * query.limit, query.limit);
+    const orderBy = toPrismaOrderBy(query.sort, WORK_REPORT_SORTABLE_FIELDS, { field: 'date', direction: 'desc' });
+    const { rows, total } = await this.repository.findMany(tenantId, filter, orderBy, (query.page - 1) * query.limit, query.limit);
     return { rows, meta: buildPaginationMeta(query.page, query.limit, total) };
   }
 

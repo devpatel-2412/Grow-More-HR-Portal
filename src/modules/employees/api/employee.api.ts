@@ -13,8 +13,11 @@ export interface ListEmployeesQuery {
 
 export const employeeApi = {
   list: (query: ListEmployeesQuery) => api.getPaginated<EmployeeListItem>('/employees', query),
+  get: (id: string) => api.get<EmployeeListItem>(`/employees/${id}`),
   create: (values: CreateEmployeeFormValues) =>
     api.post<EmployeeListItem>('/employees', { ...values, phone: values.phone || undefined }),
-  update: (id: string, values: UpdateEmployeeFormValues) =>
-    api.patch<EmployeeListItem>(`/employees/${id}`, { ...values, phone: values.phone || undefined }),
+  update: (
+    id: string,
+    values: Omit<Partial<UpdateEmployeeFormValues>, 'branchId' | 'teamId'> & { branchId?: string | null; teamId?: string | null },
+  ) => api.patch<EmployeeListItem>(`/employees/${id}`, { ...values, phone: values.phone || undefined }),
 };

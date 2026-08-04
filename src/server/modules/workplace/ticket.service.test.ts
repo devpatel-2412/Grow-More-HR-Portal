@@ -1,8 +1,14 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TicketService, canTransitionTicket } from './ticket.service.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../shared/errors/app-error.js';
+import { notificationService } from '../notifications/notification.service.js';
 
 vi.mock('../audit/audit.service.js', () => ({ auditLogService: { record: vi.fn() } }));
+vi.mock('../notifications/notification.service.js', () => ({ notificationService: { notify: vi.fn().mockResolvedValue(undefined) } }));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 function makeTicket(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -26,7 +32,7 @@ function makeDeps() {
   const commentRepository = { create: vi.fn() };
   const employeeRepository = {
     findByUserId: vi.fn().mockResolvedValue({ id: 'reporter-1' }),
-    findById: vi.fn().mockResolvedValue({ id: 'agent-1', tenantId: 'tenant-1' }),
+    findById: vi.fn().mockResolvedValue({ id: 'agent-1', tenantId: 'tenant-1', userId: 'user-agent-1' }),
   };
   return { repository, commentRepository, employeeRepository };
 }
@@ -100,6 +106,45 @@ describe('TicketService.changeStatus — ownership vs. TICKET_MANAGE', () => {
     await expect(build(deps).changeStatus('tenant-1', 'user-1', true, 'tick-1', 'RESOLVED', {})).rejects.toThrow(
       ConflictError,
     );
+  });
+});
+
+describe('TicketService.assign', () => {
+  it('notifies the newly assigned agent', async () => {
+    const deps = makeDeps();
+    deps.repository.findById.mockResolvedValue(makeTicket({ subject: 'Laptop broken', assignedToId: null }));
+
+    await build(deps).assign('tenant-1', 'tick-1', 'agent-1', {});
+
+    expect(notificationService.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: 'tenant-1', userId: 'user-agent-1', type: 'TICKET_ASSIGNED', link: '/helpdesk/tick-1' }),
+    );
+  });
+
+  it('does not notify when the ticket is unassigned (assignedToId: null)', async () => {
+    const deps = makeDeps();
+    deps.repository.findById.mockResolvedValue(makeTicket({ assignedToId: 'agent-1' }));
+
+    await build(deps).assign('tenant-1', 'tick-1', null, {});
+
+    expect(notificationService.notify).not.toHaveBeenCalled();
+  });
+
+  it('does not re-notify when re-assigning to the same agent', async () => {
+    const deps = makeDeps();
+    deps.repository.findById.mockResolvedValue(makeTicket({ assignedToId: 'agent-1' }));
+
+    await build(deps).assign('tenant-1', 'tick-1', 'agent-1', {});
+
+    expect(notificationService.notify).not.toHaveBeenCalled();
+  });
+
+  it('404s when assigning to an employee outside the tenant', async () => {
+    const deps = makeDeps();
+    deps.employeeRepository.findById.mockResolvedValue({ id: 'agent-1', tenantId: 'other-tenant', userId: 'user-agent-1' });
+
+    await expect(build(deps).assign('tenant-1', 'tick-1', 'agent-1', {})).rejects.toThrow(NotFoundError);
+    expect(notificationService.notify).not.toHaveBeenCalled();
   });
 });
 

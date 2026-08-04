@@ -16,6 +16,7 @@ export const updateProjectSchema = z.object({
   startDate: z.coerce.date().optional(),
   endDate: z.coerce.date().nullable().optional(),
   status: z.nativeEnum(ProjectStatus).optional(),
+  clientPortalId: z.string().uuid().nullable().optional(),
 });
 
 export const listProjectsQuerySchema = paginationQuerySchema.extend({

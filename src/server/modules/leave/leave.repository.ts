@@ -37,7 +37,7 @@ export class LeaveRepository {
     });
   }
 
-  async findMany(tenantId: string, filter: LeaveFilter, skip: number, take: number) {
+  async findMany(tenantId: string, filter: LeaveFilter, orderBy: Record<string, 'asc' | 'desc'>, skip: number, take: number) {
     const where: Prisma.LeaveRequestWhereInput = {
       tenantId,
       employeeId: filter.employeeId,
@@ -48,7 +48,7 @@ export class LeaveRepository {
       endDate: filter.to ? { lte: filter.to } : undefined,
     };
     const [rows, total] = await Promise.all([
-      prisma.leaveRequest.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      prisma.leaveRequest.findMany({ where, orderBy, skip, take }),
       prisma.leaveRequest.count({ where }),
     ]);
     return { rows, total };

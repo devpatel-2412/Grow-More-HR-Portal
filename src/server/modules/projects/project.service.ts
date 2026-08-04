@@ -1,7 +1,9 @@
 import { ProjectRepository } from './project.repository.js';
 import { NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
+
+const PROJECT_SORTABLE_FIELDS = ['name', 'startDate', 'endDate', 'status'] as const;
 import type { z } from 'zod';
 import type { createProjectSchema, updateProjectSchema, listProjectsQuerySchema } from './project.validators.js';
 
@@ -45,7 +47,12 @@ export class ProjectService {
 
   async update(tenantId: string, id: string, input: z.infer<typeof updateProjectSchema>, meta: RequestMeta = {}) {
     await this.getById(tenantId, id);
-    const updated = await this.repository.update(id, input);
+    const { clientPortalId, ...rest } = input;
+    const updated = await this.repository.update(id, {
+      ...rest,
+      clientPortal:
+        clientPortalId === undefined ? undefined : clientPortalId === null ? { disconnect: true } : { connect: { id: clientPortalId } },
+    });
 
     await auditLogService.record({
       tenantId,
@@ -76,9 +83,11 @@ export class ProjectService {
   }
 
   async list(tenantId: string, query: z.infer<typeof listProjectsQuerySchema>) {
+    const orderBy = toPrismaOrderBy(query.sort, PROJECT_SORTABLE_FIELDS, { field: 'startDate', direction: 'desc' });
     const { rows, total } = await this.repository.findMany(
       tenantId,
       { status: query.status, search: query.search },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );

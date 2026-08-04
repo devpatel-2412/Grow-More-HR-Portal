@@ -18,7 +18,13 @@ export class KbRepository {
     return prisma.knowledgeBaseArticle.delete({ where: { id } });
   }
 
-  async findMany(tenantId: string, filter: { category?: string; search?: string }, skip: number, take: number) {
+  async findMany(
+    tenantId: string,
+    filter: { category?: string; search?: string },
+    orderBy: Record<string, 'asc' | 'desc'>,
+    skip: number,
+    take: number,
+  ) {
     const where: Prisma.KnowledgeBaseArticleWhereInput = {
       tenantId,
       category: filter.category,
@@ -30,7 +36,7 @@ export class KbRepository {
         : undefined,
     };
     const [rows, total] = await Promise.all([
-      prisma.knowledgeBaseArticle.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      prisma.knowledgeBaseArticle.findMany({ where, orderBy, skip, take }),
       prisma.knowledgeBaseArticle.count({ where }),
     ]);
     return { rows, total };

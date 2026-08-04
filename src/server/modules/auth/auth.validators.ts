@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginationQuerySchema } from '../../shared/utils/pagination.util.js';
 
 export const passwordSchema = z
   .string()
@@ -54,3 +55,5 @@ export const twoFactorDisableSchema = z.object({
   password: z.string().min(1),
   code: z.string().length(6).regex(/^\d{6}$/),
 });
+
+export const loginHistoryQuerySchema = paginationQuerySchema;

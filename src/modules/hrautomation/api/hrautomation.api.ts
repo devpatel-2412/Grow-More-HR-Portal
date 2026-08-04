@@ -1,4 +1,4 @@
-import { api } from '../../../shared/lib/api-client';
+import { api, apiDownload } from '../../../shared/lib/api-client';
 import type { TemplateRecord, GeneratedDocumentRecord, AnnouncementRecord, TemplateType, LayoutField, AnnouncementAudience } from '../types/hrautomation.types';
 
 export interface CreateTemplatePayload {
@@ -25,10 +25,26 @@ export const templateApi = {
   generate: (id: string, employeeId: string) => api.post<GeneratedDocumentRecord>(`/templates/${id}/generate`, { employeeId }),
   listGenerated: (query: { page: number; limit: number; employeeId?: string }) =>
     api.getPaginated<GeneratedDocumentRecord>('/templates/generated-documents', query),
+  downloadPdf: (documentId: string) => apiDownload(`/templates/generated-documents/${documentId}/pdf`),
+  downloadDocx: (documentId: string) => apiDownload(`/templates/generated-documents/${documentId}/docx`),
+  emailDocument: (documentId: string) => api.post<{ to: string }>(`/templates/generated-documents/${documentId}/email`),
 };
 
 export const announcementApi = {
   publish: (payload: CreateAnnouncementPayload) => api.post<AnnouncementRecord>('/announcements', payload),
   list: (query: { page: number; limit: number }) => api.getPaginated<AnnouncementRecord>('/announcements', query),
   remove: (id: string) => api.delete<void>(`/announcements/${id}`),
+};
+
+export interface DocumentVerificationResult {
+  valid: boolean;
+  documentType: string;
+  employeeName: string;
+  companyName: string;
+  issuedDate: string;
+}
+
+/** Public — no tenant login required, matches the unauthenticated /api/v1/verify/documents/:id endpoint. */
+export const verifyApi = {
+  verifyDocument: (id: string) => api.get<DocumentVerificationResult>(`/verify/documents/${id}`),
 };

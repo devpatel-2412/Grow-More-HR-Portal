@@ -3,7 +3,9 @@ import { EmployeeRepository } from '../employees/employee.repository.js';
 import { TaskRepository } from '../tasks/task.repository.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
+
+const TIMELOG_SORTABLE_FIELDS = ['startedAt', 'endedAt', 'durationMinutes', 'source'] as const;
 import type { z } from 'zod';
 import type { startTimerSchema, manualTimeLogSchema, listTimeLogQuerySchema } from './timelog.validators.js';
 
@@ -168,7 +170,8 @@ export class TimeLogService {
   ) {
     const employeeId = await this.resolveScope(tenantId, requester, query.employeeId);
     const filter: TimeLogFilter = { employeeId, taskId: query.taskId, from: query.from, to: query.to };
-    const { rows, total } = await this.repository.findMany(tenantId, filter, (query.page - 1) * query.limit, query.limit);
+    const orderBy = toPrismaOrderBy(query.sort, TIMELOG_SORTABLE_FIELDS, { field: 'startedAt', direction: 'desc' });
+    const { rows, total } = await this.repository.findMany(tenantId, filter, orderBy, (query.page - 1) * query.limit, query.limit);
     return { rows, meta: buildPaginationMeta(query.page, query.limit, total) };
   }
 

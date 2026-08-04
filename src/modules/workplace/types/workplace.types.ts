@@ -48,13 +48,24 @@ export interface DocumentRecord {
   id: string;
   tenantId: string;
   name: string;
+  category: string | null;
   folderPath: string;
   fileUrl: string;
   version: number;
   expiresAt: string | null;
   isDigitallySigned: boolean;
+  archived: boolean;
+  archivedAt: string | null;
   uploadedById: string | null;
   createdAt: string;
+}
+
+export interface DocumentVersionRecord {
+  id: string;
+  version: number;
+  fileUrl: string;
+  createdAt: string;
+  uploadedBy: { firstName: string; lastName: string } | null;
 }
 
 // Assets

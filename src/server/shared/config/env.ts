@@ -20,6 +20,15 @@ const envSchema = z.object({
   REFRESH_COOKIE_DOMAIN: z.string().optional().default(''),
 
   REDIS_URL: z.string().optional().default(''),
+
+  // SMTP is entirely optional — when SMTP_HOST is unset, EmailService falls back to the
+  // dev-console implementation (which throws instead of silently dropping mail in production).
+  SMTP_HOST: z.string().optional().default(''),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_SECURE: z.coerce.boolean().default(false),
+  SMTP_USER: z.string().optional().default(''),
+  SMTP_PASSWORD: z.string().optional().default(''),
+  SMTP_FROM: z.string().optional().default(''),
 });
 
 export type Env = z.infer<typeof envSchema>;

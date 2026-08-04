@@ -1,10 +1,16 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { LeaveService, computeTotalDays } from './leave.service.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../shared/errors/app-error.js';
+import { notificationService } from '../notifications/notification.service.js';
 
 vi.mock('../audit/audit.service.js', () => ({
   auditLogService: { record: vi.fn().mockResolvedValue(undefined) },
 }));
+vi.mock('../notifications/notification.service.js', () => ({ notificationService: { notify: vi.fn().mockResolvedValue(undefined) } }));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 function utc(y: number, m: number, d: number): Date {
   return new Date(Date.UTC(y, m, d));
@@ -47,6 +53,7 @@ function makeDeps() {
   };
   const employeeRepository = {
     findByUserId: vi.fn().mockResolvedValue({ id: 'emp-1', managerId: 'mgr-1' }),
+    findById: vi.fn().mockResolvedValue({ id: 'emp-1', userId: 'user-1' }),
   };
   return { repository, employeeRepository };
 }
@@ -174,6 +181,52 @@ describe('LeaveService.hrReview', () => {
     const service = new LeaveService(repository as never, employeeRepository as never);
 
     await expect(service.hrReview('hr-user', 'tenant-1', 'leave-1', 'APPROVED', {})).rejects.toThrow(ConflictError);
+  });
+});
+
+describe('LeaveService — employee decision notifications', () => {
+  it('does not notify on a manager approval — it is not a final decision yet', async () => {
+    const { repository, employeeRepository } = makeDeps();
+    employeeRepository.findByUserId.mockResolvedValue({ id: 'mgr-1', managerId: null });
+    repository.findById.mockResolvedValue(makeRecord());
+    repository.update.mockResolvedValue(makeRecord({ status: 'PENDING_HR' }));
+    const service = new LeaveService(repository as never, employeeRepository as never);
+
+    await service.managerReview('mgr-user', 'tenant-1', 'leave-1', 'APPROVED', false, {});
+
+    expect(notificationService.notify).not.toHaveBeenCalled();
+  });
+
+  it('notifies the employee on a manager rejection — that is terminal', async () => {
+    const { repository, employeeRepository } = makeDeps();
+    employeeRepository.findByUserId.mockResolvedValue({ id: 'mgr-1', managerId: null });
+    repository.findById.mockResolvedValue(makeRecord());
+    repository.update.mockResolvedValue(makeRecord({ status: 'REJECTED' }));
+    const service = new LeaveService(repository as never, employeeRepository as never);
+
+    await service.managerReview('mgr-user', 'tenant-1', 'leave-1', 'REJECTED', false, {});
+
+    expect(notificationService.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: 'tenant-1', userId: 'user-1', type: 'LEAVE_REJECTED' }),
+    );
+  });
+
+  it('notifies the employee on both an HR approval and an HR rejection', async () => {
+    const { repository, employeeRepository } = makeDeps();
+    repository.findById.mockResolvedValue(makeRecord({ status: 'PENDING_HR' }));
+    repository.update.mockResolvedValue(makeRecord({ status: 'APPROVED' }));
+    const service = new LeaveService(repository as never, employeeRepository as never);
+
+    await service.hrReview('hr-user', 'tenant-1', 'leave-1', 'APPROVED', {});
+    expect(notificationService.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-1', type: 'LEAVE_APPROVED' }),
+    );
+
+    repository.findById.mockResolvedValue(makeRecord({ status: 'PENDING_HR' }));
+    await service.hrReview('hr-user', 'tenant-1', 'leave-1', 'REJECTED', {});
+    expect(notificationService.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-1', type: 'LEAVE_REJECTED' }),
+    );
   });
 });
 

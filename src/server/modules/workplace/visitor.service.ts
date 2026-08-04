@@ -3,9 +3,11 @@ import { VisitorRepository } from './visitor.repository.js';
 import { EmployeeRepository } from '../employees/employee.repository.js';
 import { ConflictError, NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
+
 import type { z } from 'zod';
 import type { registerVisitorSchema, listVisitorsQuerySchema } from './visitor.validators.js';
+const VISITOR_SORTABLE_FIELDS = ['name', 'expectedAt', 'checkInTime', 'checkOutTime', 'status'] as const;
 
 export interface RequestMeta {
   actorUserId?: string;
@@ -67,9 +69,11 @@ export class VisitorService {
   }
 
   async list(tenantId: string, query: z.infer<typeof listVisitorsQuerySchema>) {
+    const orderBy = toPrismaOrderBy(query.sort, VISITOR_SORTABLE_FIELDS, { field: 'expectedAt', direction: 'desc' });
     const { rows, total } = await this.repository.findMany(
       tenantId,
       { status: query.status, hostEmployeeId: query.hostEmployeeId },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );

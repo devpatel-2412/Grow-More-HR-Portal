@@ -28,6 +28,34 @@ describe('pagination.util', () => {
     expect(toPrismaOrderBy('email:sideways', ['email'], 'email')).toEqual({ email: 'asc' });
   });
 
+  it('defaults to the fallback field, ascending, when no sort is given and the fallback is a plain string', () => {
+    expect(toPrismaOrderBy(undefined, ['email', 'createdAt'], 'createdAt')).toEqual({ createdAt: 'asc' });
+  });
+
+  it('preserves a module-specific default direction via an object fallback when no sort is given', () => {
+    expect(toPrismaOrderBy(undefined, ['title', 'createdAt'], { field: 'createdAt', direction: 'desc' })).toEqual({
+      createdAt: 'desc',
+    });
+  });
+
+  it('an object fallback still only supplies its direction as the fallback, not for a valid explicit sort', () => {
+    expect(toPrismaOrderBy('title:asc', ['title', 'createdAt'], { field: 'createdAt', direction: 'desc' })).toEqual({
+      title: 'asc',
+    });
+  });
+
+  it('an unknown field falls back to the fallback field but keeps an explicitly valid requested direction', () => {
+    expect(toPrismaOrderBy('bogus:asc', ['title', 'createdAt'], { field: 'createdAt', direction: 'desc' })).toEqual({
+      createdAt: 'asc',
+    });
+  });
+
+  it('an unknown field with a garbled direction falls back to the field AND direction from the object fallback', () => {
+    expect(toPrismaOrderBy('bogus:sideways', ['title', 'createdAt'], { field: 'createdAt', direction: 'desc' })).toEqual({
+      createdAt: 'desc',
+    });
+  });
+
   it('builds pagination meta with correct totalPages, at least 1', () => {
     expect(buildPaginationMeta(1, 20, 45)).toEqual({ page: 1, limit: 20, total: 45, totalPages: 3 });
     expect(buildPaginationMeta(1, 20, 0)).toEqual({ page: 1, limit: 20, total: 0, totalPages: 1 });

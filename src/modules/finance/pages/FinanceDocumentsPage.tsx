@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
-import { Receipt } from 'lucide-react';
+import { Receipt, TrendingUp } from 'lucide-react';
 import { useFinanceDocuments } from '../hooks/useFinance';
 import { usePagination } from '../../../shared/hooks/usePagination';
 import { CreateFinanceDocumentDialog } from '../components/CreateFinanceDocumentDialog';
 import { FinanceStatusBadge, TYPE_LABEL, formatMoney } from '../components/FinanceBadges';
 import { Card } from '../../../shared/components/ui/card';
+import { Button } from '../../../shared/components/ui/button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui/table';
 import { PaginationBar } from '../../../shared/components/ui/pagination';
 import { EmptyState } from '../../../shared/components/feedback/EmptyState';
@@ -22,7 +23,15 @@ export function FinanceDocumentsPage() {
           <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">Finance</h1>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">Quotations, invoices, expenses, and bills.</p>
         </div>
-        <CreateFinanceDocumentDialog />
+        <div className="flex gap-2">
+          <Button asChild size="sm" variant="outline">
+            <Link to="/finance/reports/profit-loss">
+              <TrendingUp className="h-4 w-4" />
+              Profit &amp; Loss
+            </Link>
+          </Button>
+          <CreateFinanceDocumentDialog />
+        </div>
       </div>
 
       <Card>

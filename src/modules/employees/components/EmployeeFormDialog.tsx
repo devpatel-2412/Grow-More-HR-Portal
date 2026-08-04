@@ -7,6 +7,7 @@ import { createEmployeeSchema, updateEmployeeSchema, EMPLOYEE_STATUSES, type Cre
 import { useCreateEmployee } from '../hooks/useCreateEmployee';
 import { useUpdateEmployee } from '../hooks/useUpdateEmployee';
 import { useUsers } from '../../users/hooks/useUsers';
+import { useBranches, useTeams } from '../../organization/hooks/useOrganization';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -156,8 +157,12 @@ function CreateEmployeeForm({ existingEmployeeUserIds, onDone }: { existingEmplo
   );
 }
 
+const NONE = '__none__';
+
 function EditEmployeeForm({ employee, onDone }: { employee: EmployeeListItem; onDone: () => void }) {
   const updateMutation = useUpdateEmployee();
+  const { data: branchPage } = useBranches({ page: 1, limit: 100 });
+  const { data: teamPage } = useTeams({ page: 1, limit: 100 });
   const {
     register,
     control,
@@ -171,12 +176,21 @@ function EditEmployeeForm({ employee, onDone }: { employee: EmployeeListItem; on
       department: employee.department,
       designation: employee.designation,
       status: employee.status,
+      branchId: employee.branchId ?? NONE,
+      teamId: employee.teamId ?? NONE,
     },
   });
 
   async function onSubmit(values: UpdateEmployeeFormValues) {
     try {
-      await updateMutation.mutateAsync({ id: employee.id, values });
+      await updateMutation.mutateAsync({
+        id: employee.id,
+        values: {
+          ...values,
+          branchId: values.branchId === NONE ? null : values.branchId,
+          teamId: values.teamId === NONE ? null : values.teamId,
+        },
+      });
       toast.success('Employee profile updated.');
       onDone();
     } catch (err) {
@@ -209,6 +223,52 @@ function EditEmployeeForm({ employee, onDone }: { employee: EmployeeListItem; on
         <div>
           <Label htmlFor="edit-phone">Phone</Label>
           <Input id="edit-phone" {...register('phone')} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="edit-branch">Branch</Label>
+            <Controller
+              control={control}
+              name="branchId"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id="edit-branch">
+                    <SelectValue placeholder="No branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>No branch</SelectItem>
+                    {(branchPage?.data ?? []).map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+          <div>
+            <Label htmlFor="edit-team">Team</Label>
+            <Controller
+              control={control}
+              name="teamId"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id="edit-team">
+                    <SelectValue placeholder="No team" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>No team</SelectItem>
+                    {(teamPage?.data ?? []).map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
         </div>
         <div>
           <Label htmlFor="edit-status">Status</Label>

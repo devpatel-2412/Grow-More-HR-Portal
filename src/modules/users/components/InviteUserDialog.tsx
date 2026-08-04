@@ -3,7 +3,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { UserPlus } from 'lucide-react';
-import { inviteUserSchema, USER_ROLES, type InviteUserFormValues } from '../schemas/user.schemas';
+import { inviteUserSchema, STAFF_ROLES, type InviteUserFormValues } from '../schemas/user.schemas';
 import { useInviteUser } from '../hooks/useInviteUser';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
@@ -68,7 +68,7 @@ export function InviteUserDialog() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {USER_ROLES.map((role) => (
+                    {STAFF_ROLES.map((role) => (
                       <SelectItem key={role} value={role}>
                         {role.replace('_', ' ')}
                       </SelectItem>

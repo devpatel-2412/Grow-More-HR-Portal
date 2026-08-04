@@ -67,7 +67,7 @@ export function TicketDetailPage() {
       </Link>
 
       <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-extrabold tracking-tight text-[var(--foreground)]">{ticket.subject}</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">{ticket.subject}</h1>
         <TicketStatusBadge status={ticket.status} />
       </div>
 

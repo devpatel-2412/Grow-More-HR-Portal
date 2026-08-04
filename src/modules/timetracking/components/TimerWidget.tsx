@@ -9,6 +9,7 @@ import { Input } from '../../../shared/components/ui/input';
 import { Label } from '../../../shared/components/ui/label';
 import { Card } from '../../../shared/components/ui/card';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../shared/components/ui/select';
+import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
 
 const NO_TASK = '__none__';
 
@@ -67,7 +68,12 @@ export function TimerWidget() {
   }
 
   if (isLoading) {
-    return <Card className="p-6 text-sm text-[var(--muted-foreground)]">Loading timer…</Card>;
+    return (
+      <Card className="space-y-4 p-6">
+        <Skeleton className="h-5 w-1/3" />
+        <Skeleton className="h-10 w-full" />
+      </Card>
+    );
   }
 
   return (

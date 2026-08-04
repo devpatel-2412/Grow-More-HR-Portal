@@ -18,7 +18,13 @@ export class AnnouncementRepository {
    * Visible set for one employee: every ALL-audience announcement, plus DEPARTMENT-scoped ones
    * matching their own department. Expired announcements (past `expiresAt`) are excluded.
    */
-  async findVisible(tenantId: string, department: string | undefined, skip: number, take: number) {
+  async findVisible(
+    tenantId: string,
+    department: string | undefined,
+    orderBy: Record<string, 'asc' | 'desc'>,
+    skip: number,
+    take: number,
+  ) {
     const where: Prisma.AnnouncementWhereInput = {
       tenantId,
       AND: [
@@ -27,7 +33,7 @@ export class AnnouncementRepository {
       ],
     };
     const [rows, total] = await Promise.all([
-      prisma.announcement.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      prisma.announcement.findMany({ where, orderBy, skip, take }),
       prisma.announcement.count({ where }),
     ]);
     return { rows, total };

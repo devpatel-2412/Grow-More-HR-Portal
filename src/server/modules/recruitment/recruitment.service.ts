@@ -2,7 +2,11 @@ import { JobPostingRepository, CandidateRepository, InterviewRepository } from '
 import { EmployeeRepository } from '../employees/employee.repository.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
+
+const JOB_POSTING_SORTABLE_FIELDS = ['title', 'department', 'location', 'status', 'closingDate', 'createdAt'] as const;
+const CANDIDATE_SORTABLE_FIELDS = ['firstName', 'lastName', 'status', 'rating', 'createdAt'] as const;
+const INTERVIEW_SORTABLE_FIELDS = ['scheduledAt', 'round', 'outcome', 'rating'] as const;
 import { prisma } from '../../db/prisma.js';
 import type { CandidateStatus } from '@prisma/client';
 import type { z } from 'zod';
@@ -97,9 +101,11 @@ export class RecruitmentService {
   }
 
   async listPostings(tenantId: string, query: z.infer<typeof listJobPostingsQuerySchema>) {
+    const orderBy = toPrismaOrderBy(query.sort, JOB_POSTING_SORTABLE_FIELDS, { field: 'createdAt', direction: 'desc' });
     const { rows, total } = await this.postingRepository.findMany(
       tenantId,
       { status: query.status, department: query.department, search: query.search },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );
@@ -187,9 +193,11 @@ export class RecruitmentService {
   }
 
   async listCandidates(tenantId: string, query: z.infer<typeof listCandidatesQuerySchema>) {
+    const orderBy = toPrismaOrderBy(query.sort, CANDIDATE_SORTABLE_FIELDS, { field: 'createdAt', direction: 'desc' });
     const { rows, total } = await this.candidateRepository.findMany(
       tenantId,
       { jobPostingId: query.jobPostingId, status: query.status, search: query.search },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );
@@ -271,6 +279,7 @@ export class RecruitmentService {
   }
 
   async listInterviews(tenantId: string, query: z.infer<typeof listInterviewsQuerySchema>) {
+    const orderBy = toPrismaOrderBy(query.sort, INTERVIEW_SORTABLE_FIELDS, { field: 'scheduledAt', direction: 'asc' });
     const { rows, total } = await this.interviewRepository.findMany(
       tenantId,
       {
@@ -280,6 +289,7 @@ export class RecruitmentService {
         from: query.from,
         to: query.to,
       },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );

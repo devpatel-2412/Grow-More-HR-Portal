@@ -22,6 +22,7 @@ import {
 
 const documentSchema = z.object({
   name: z.string().min(1, 'Required').max(300),
+  category: z.string().max(120).optional(),
   folderPath: z.string().min(1, 'Required').max(500),
   fileUrl: z.string().url('Enter a valid URL'),
 });
@@ -38,12 +39,12 @@ export function UploadDocumentDialog() {
     reset,
   } = useForm<DocumentFormValues>({
     resolver: zodResolver(documentSchema),
-    defaultValues: { name: '', folderPath: '/', fileUrl: '' },
+    defaultValues: { name: '', category: '', folderPath: '/', fileUrl: '' },
   });
 
   async function onSubmit(values: DocumentFormValues) {
     try {
-      await uploadMutation.mutateAsync({ ...values, isDigitallySigned: false });
+      await uploadMutation.mutateAsync({ ...values, category: values.category || undefined, isDigitallySigned: false });
       toast.success('Document added.');
       reset();
       setOpen(false);
@@ -72,6 +73,11 @@ export function UploadDocumentDialog() {
             <Label htmlFor="doc-name">Name</Label>
             <Input id="doc-name" {...register('name')} />
             {errors.name && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.name.message}</p>}
+          </div>
+
+          <div>
+            <Label htmlFor="doc-category">Category (optional)</Label>
+            <Input id="doc-category" placeholder="Policies" {...register('category')} />
           </div>
 
           <div>

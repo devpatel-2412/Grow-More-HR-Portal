@@ -56,3 +56,26 @@ export async function listGeneratedDocuments(req: Request, res: Response): Promi
   const { rows, meta } = await templateService.listGeneratedDocuments(req.user!.tenantId, query);
   sendPaginated(res, rows, meta);
 }
+
+export async function downloadGeneratedDocumentPdf(req: Request, res: Response): Promise<void> {
+  const { buffer, filename } = await templateService.getGeneratedDocumentPdf(req.user!.tenantId, req.params.id);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(buffer);
+}
+
+export async function downloadGeneratedDocumentDocx(req: Request, res: Response): Promise<void> {
+  const { buffer, filename } = await templateService.getGeneratedDocumentDocx(req.user!.tenantId, req.params.id);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(buffer);
+}
+
+export async function emailGeneratedDocument(req: Request, res: Response): Promise<void> {
+  sendOk(res, await templateService.emailGeneratedDocument(req.user!.tenantId, req.params.id, requestMeta(req)));
+}
+
+/** Public — hit by anyone scanning the QR code printed on a generated letter, no tenant login required. */
+export async function verifyGeneratedDocument(req: Request, res: Response): Promise<void> {
+  sendOk(res, await templateService.verifyDocument(req.params.id));
+}

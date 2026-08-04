@@ -3,9 +3,11 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { Plus, Trash2, FilePlus2 } from 'lucide-react';
+import { FilePlus2 } from 'lucide-react';
 import { useCreateTemplate } from '../hooks/useHrAutomation';
-import { POSTER_TYPES, TEMPLATE_VARIABLES } from '../types/hrautomation.types';
+import { POSTER_TYPES, TEMPLATE_VARIABLES, TEMPLATE_TYPE_LABELS } from '../types/hrautomation.types';
+import type { TemplateType } from '../types/hrautomation.types';
+import { TemplateCanvasEditor } from './TemplateCanvasEditor';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -23,13 +25,16 @@ import {
 } from '../../../shared/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../shared/components/ui/select';
 
-const TEMPLATE_TYPES = ['POSTER_WELCOME', 'POSTER_BIRTHDAY', 'POSTER_PROMOTION', 'LETTER_OFFER', 'LETTER_EXPERIENCE', 'LETTER_RELIEVING'] as const;
+const TEMPLATE_TYPES = Object.keys(TEMPLATE_TYPE_LABELS) as TemplateType[];
 
 const fieldSchema = z.object({
   id: z.string(),
   variableKey: z.enum(TEMPLATE_VARIABLES),
   x: z.number().min(0),
   y: z.number().min(0),
+  fontSize: z.number().min(4).max(400),
+  color: z.string().min(1),
+  fontWeight: z.enum(['normal', 'bold']),
 });
 
 const templateSchema = z.object({
@@ -56,8 +61,9 @@ export function CreateTemplateDialog() {
     resolver: zodResolver(templateSchema),
     defaultValues: { name: '', type: 'LETTER_OFFER', backgroundUrl: '', bodyTemplate: '', fields: [] },
   });
-  const { fields, append, remove } = useFieldArray({ control, name: 'fields' });
+  const { fields, append, remove, update } = useFieldArray({ control, name: 'fields' });
   const type = watch('type');
+  const backgroundUrl = watch('backgroundUrl');
   const isPoster = useMemo(() => POSTER_TYPES.includes(type), [type]);
 
   async function onSubmit(values: TemplateFormValues) {
@@ -67,7 +73,7 @@ export function CreateTemplateDialog() {
         type: values.type,
         backgroundUrl: isPoster ? values.backgroundUrl : undefined,
         layoutFields: isPoster
-          ? values.fields.map((f) => ({ id: f.id, variableKey: f.variableKey, x: f.x, y: f.y, fontSize: 16, color: '#000000', fontWeight: 'normal' as const }))
+          ? values.fields.map((f) => ({ id: f.id, variableKey: f.variableKey, x: f.x, y: f.y, fontSize: f.fontSize, color: f.color, fontWeight: f.fontWeight }))
           : undefined,
         bodyTemplate: isPoster ? undefined : values.bodyTemplate,
       });
@@ -117,7 +123,7 @@ export function CreateTemplateDialog() {
                     <SelectContent>
                       {TEMPLATE_TYPES.map((t) => (
                         <SelectItem key={t} value={t}>
-                          {t.replace('_', ' ')}
+                          {TEMPLATE_TYPE_LABELS[t]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -133,46 +139,15 @@ export function CreateTemplateDialog() {
                 <Label htmlFor="tpl-bg">Background image URL</Label>
                 <Input id="tpl-bg" placeholder="https://…" {...register('backgroundUrl')} />
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Text fields</Label>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => append({ id: crypto.randomUUID(), variableKey: 'firstName', x: 0, y: 0 })}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add field
-                  </Button>
-                </div>
-                {fields.map((field, index) => (
-                  <div key={field.id} className="grid grid-cols-[1fr_80px_80px_32px] items-center gap-2">
-                    <Controller
-                      control={control}
-                      name={`fields.${index}.variableKey`}
-                      render={({ field: f }) => (
-                        <Select value={f.value} onValueChange={f.onChange}>
-                          <SelectTrigger aria-label="Variable">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {TEMPLATE_VARIABLES.map((v) => (
-                              <SelectItem key={v} value={v}>
-                                {v}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    <Input type="number" placeholder="X" {...register(`fields.${index}.x`, { valueAsNumber: true })} />
-                    <Input type="number" placeholder="Y" {...register(`fields.${index}.y`, { valueAsNumber: true })} />
-                    <Button type="button" size="icon" variant="ghost" onClick={() => remove(index)} aria-label="Remove field">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+              <div>
+                <Label>Text fields — drag on the canvas to position</Label>
+                <TemplateCanvasEditor
+                  backgroundUrl={backgroundUrl}
+                  fields={fields}
+                  onAddField={(id) => append({ id, variableKey: 'firstName', x: 20, y: 20, fontSize: 16, color: '#000000', fontWeight: 'normal' })}
+                  onRemoveField={remove}
+                  onUpdateField={(index, patch) => update(index, { ...fields[index], ...patch })}
+                />
               </div>
             </>
           ) : (

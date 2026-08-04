@@ -5,6 +5,7 @@ import type {
   TicketStatus,
   KbArticleRecord,
   DocumentRecord,
+  DocumentVersionRecord,
   AssetRecord,
   AssetType,
   AssetStatus,
@@ -35,11 +36,15 @@ export const kbApi = {
 };
 
 export const documentApi = {
-  upload: (payload: { name: string; folderPath: string; fileUrl: string; isDigitallySigned: boolean }) =>
+  upload: (payload: { name: string; category?: string; folderPath: string; fileUrl: string; isDigitallySigned: boolean }) =>
     api.post<DocumentRecord>('/documents', payload),
-  list: (query: { page: number; limit: number; folderPath?: string; search?: string }) =>
+  list: (query: { page: number; limit: number; folderPath?: string; category?: string; search?: string; archived?: boolean }) =>
     api.getPaginated<DocumentRecord>('/documents', query),
   remove: (id: string) => api.delete<void>(`/documents/${id}`),
+  archive: (id: string) => api.post<DocumentRecord>(`/documents/${id}/archive`),
+  restore: (id: string) => api.post<DocumentRecord>(`/documents/${id}/restore`),
+  replaceFile: (id: string, fileUrl: string) => api.post<DocumentRecord>(`/documents/${id}/replace`, { fileUrl }),
+  listVersions: (id: string) => api.get<DocumentVersionRecord[]>(`/documents/${id}/versions`),
 };
 
 export const assetApi = {

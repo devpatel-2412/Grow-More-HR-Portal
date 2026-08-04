@@ -2,11 +2,12 @@
  * Full HTTP integration tests against the real Express app + a real Postgres database.
  * See auth.routes.integration.test.ts's header comment for setup commands — same requirements.
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../../app.js';
 import { prisma } from '../../db/prisma.js';
 import { hashPassword } from '../../shared/utils/hash.util.js';
+import { emailService } from '../../shared/email/email.service.js';
 
 const app = createApp();
 
@@ -91,7 +92,7 @@ async function createEmployeeAccount(tenantId: string, domain: string, departmen
     },
   });
   const login = await request(app).post('/api/v1/auth/login').send({ email, password });
-  return { token: login.body.data.accessToken as string, employeeId: profile.id };
+  return { token: login.body.data.accessToken as string, employeeId: profile.id, email };
 }
 
 beforeAll(async () => {
@@ -184,6 +185,147 @@ describe('HR automation — templates', () => {
     expect(rendered).toEqual([
       { id: 'f1', variableKey: 'firstName', x: 100, y: 200, fontSize: 16, color: '#000000', fontWeight: 'normal', text: 'Wanda' },
     ]);
+  });
+
+  it('downloads a real PDF for a letter document but refuses one for a poster', async () => {
+    const { res: signupRes, domain } = await signupTenant();
+    const adminToken = signupRes.body.data.accessToken;
+    const me = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${adminToken}`);
+    const worker = await createEmployeeAccount(me.body.data.tenant.id, domain);
+
+    const letterRes = await request(app)
+      .post('/api/v1/templates')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Relieving Letter', type: 'LETTER_RELIEVING', bodyTemplate: 'Dear {{firstName}}, this confirms your relieving.' });
+    const letterDocRes = await request(app)
+      .post(`/api/v1/templates/${letterRes.body.data.id}/generate`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ employeeId: worker.employeeId });
+
+    const pdfRes = await request(app)
+      .get(`/api/v1/templates/generated-documents/${letterDocRes.body.data.id}/pdf`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      });
+    expect(pdfRes.status).toBe(200);
+    expect(pdfRes.headers['content-type']).toBe('application/pdf');
+    expect(pdfRes.headers['content-disposition']).toContain('attachment');
+    expect((pdfRes.body as Buffer).subarray(0, 5).toString('latin1')).toBe('%PDF-');
+
+    const posterRes = await request(app)
+      .post('/api/v1/templates')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Welcome Poster', type: 'POSTER_WELCOME', backgroundUrl: 'https://files.example.com/bg.png' });
+    const posterDocRes = await request(app)
+      .post(`/api/v1/templates/${posterRes.body.data.id}/generate`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ employeeId: worker.employeeId });
+
+    const posterPdfRes = await request(app)
+      .get(`/api/v1/templates/generated-documents/${posterDocRes.body.data.id}/pdf`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(posterPdfRes.status).toBe(409);
+  });
+
+  it('downloads a real DOCX for a letter document, and the QR-verification link works without any login', async () => {
+    const { res: signupRes, domain } = await signupTenant();
+    const adminToken = signupRes.body.data.accessToken;
+    const me = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${adminToken}`);
+    const worker = await createEmployeeAccount(me.body.data.tenant.id, domain);
+
+    const letterRes = await request(app)
+      .post('/api/v1/templates')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Experience Letter', type: 'LETTER_EXPERIENCE', bodyTemplate: 'Dear {{firstName}}, thank you for your service.' });
+    const letterDocRes = await request(app)
+      .post(`/api/v1/templates/${letterRes.body.data.id}/generate`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ employeeId: worker.employeeId });
+    const documentId = letterDocRes.body.data.id;
+
+    const docxRes = await request(app)
+      .get(`/api/v1/templates/generated-documents/${documentId}/docx`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      });
+    expect(docxRes.status).toBe(200);
+    expect(docxRes.headers['content-type']).toBe('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    expect((docxRes.body as Buffer).subarray(0, 2).toString('latin1')).toBe('PK');
+
+    // A DOCX download requires TEMPLATE_MANAGE, same as the PDF path.
+    const forbiddenDocxRes = await request(app)
+      .get(`/api/v1/templates/generated-documents/${documentId}/docx`)
+      .set('Authorization', `Bearer ${worker.token}`);
+    expect(forbiddenDocxRes.status).toBe(403);
+
+    // The verification endpoint (what the printed QR code points at) needs no Authorization header at all.
+    const verifyRes = await request(app).get(`/api/v1/verify/documents/${documentId}`);
+    expect(verifyRes.status).toBe(200);
+    expect(verifyRes.body.data).toEqual({
+      valid: true,
+      documentType: 'Experience Letter',
+      employeeName: 'Wanda Worker',
+      companyName: 'Acme Inc',
+      issuedDate: expect.any(String),
+    });
+
+    // A made-up document id is a clean 404, not an internal error.
+    const missingVerifyRes = await request(app).get('/api/v1/verify/documents/00000000-0000-0000-0000-000000000000');
+    expect(missingVerifyRes.status).toBe(404);
+  });
+
+  it("emails the letter's PDF to the employee's registered address but refuses one for a poster", async () => {
+    const { res: signupRes, domain } = await signupTenant();
+    const adminToken = signupRes.body.data.accessToken;
+    const me = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${adminToken}`);
+    const worker = await createEmployeeAccount(me.body.data.tenant.id, domain);
+    const sendSpy = vi.spyOn(emailService, 'send').mockResolvedValue();
+
+    const letterRes = await request(app)
+      .post('/api/v1/templates')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'NOC', type: 'LETTER_NOC', bodyTemplate: 'Dear {{firstName}}, no objection.' });
+    const letterDocRes = await request(app)
+      .post(`/api/v1/templates/${letterRes.body.data.id}/generate`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ employeeId: worker.employeeId });
+
+    const emailRes = await request(app)
+      .post(`/api/v1/templates/generated-documents/${letterDocRes.body.data.id}/email`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(emailRes.status).toBe(200);
+    expect(emailRes.body.data.to).toBe(worker.email);
+
+    expect(sendSpy).toHaveBeenCalledOnce();
+    const [message] = sendSpy.mock.calls[0];
+    expect(message.to).toBe(worker.email);
+    expect(message.subject).toBe('Your No Objection Certificate');
+    expect(message.attachments?.[0]?.filename).toMatch(/\.pdf$/);
+    expect(message.attachments?.[0]?.content.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+
+    const posterRes = await request(app)
+      .post('/api/v1/templates')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Birthday Poster', type: 'POSTER_BIRTHDAY', backgroundUrl: 'https://files.example.com/bg.png' });
+    const posterDocRes = await request(app)
+      .post(`/api/v1/templates/${posterRes.body.data.id}/generate`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ employeeId: worker.employeeId });
+
+    const posterEmailRes = await request(app)
+      .post(`/api/v1/templates/generated-documents/${posterDocRes.body.data.id}/email`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(posterEmailRes.status).toBe(409);
+
+    sendSpy.mockRestore();
   });
 
   it('blocks a plain employee from managing templates and isolates tenants', async () => {

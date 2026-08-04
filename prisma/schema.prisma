@@ -14,6 +14,14 @@ enum UserRole {
   PROJECT_MANAGER
   EMPLOYEE
   CLIENT
+  // Added additively — RECRUITER and FINANCE are staff roles scoped to a single module each
+  // (recruitment:*, finance:* respectively) and go through the normal staff invite flow.
+  // CANDIDATE is reserved: it exists so the enum is structurally complete, but there is no
+  // candidate-facing portal yet (see ClientPortalShell for the pattern a future one would
+  // follow), so it is deliberately excluded from the invite UI until that portal is built.
+  RECRUITER
+  FINANCE
+  CANDIDATE
 }
 
 enum UserStatus {
@@ -117,6 +125,9 @@ enum AuditAction {
   KB_ARTICLE_DELETED
   DOCUMENT_UPLOADED
   DOCUMENT_DELETED
+  DOCUMENT_VERSION_REPLACED
+  DOCUMENT_ARCHIVED
+  DOCUMENT_RESTORED
   ASSET_CREATED
   ASSET_ASSIGNED
   ASSET_UNASSIGNED
@@ -130,8 +141,39 @@ enum AuditAction {
   TEMPLATE_UPDATED
   TEMPLATE_DELETED
   DOCUMENT_GENERATED
+  DOCUMENT_EMAILED
   ANNOUNCEMENT_PUBLISHED
   ANNOUNCEMENT_DELETED
+  BRANCH_CREATED
+  BRANCH_UPDATED
+  BRANCH_DELETED
+  TEAM_CREATED
+  TEAM_UPDATED
+  TEAM_DELETED
+  CHECKLIST_ITEM_CREATED
+  CHECKLIST_ITEM_UPDATED
+  CHECKLIST_ITEM_DELETED
+  EMPLOYEE_CONFIRMED
+  EMPLOYEE_PROMOTED
+  EMPLOYEE_TRANSFERRED
+  EMPLOYEE_EXIT_INITIATED
+  EMPLOYEE_EXIT_COMPLETED
+  FNF_SETTLEMENT_CREATED
+  FNF_SETTLEMENT_UPDATED
+  VENDOR_CREATED
+  VENDOR_UPDATED
+  VENDOR_DELETED
+  INVENTORY_ITEM_CREATED
+  INVENTORY_ITEM_UPDATED
+  INVENTORY_ITEM_DELETED
+  INVENTORY_STOCK_IN
+  INVENTORY_STOCK_OUT
+  INVENTORY_STOCK_ADJUSTED
+  SOP_CREATED
+  SOP_UPDATED
+  SOP_PUBLISHED
+  SOP_ARCHIVED
+  SOP_DELETED
 }
 
 enum EmployeeStatus {
@@ -330,8 +372,19 @@ enum TemplateType {
   POSTER_BIRTHDAY
   POSTER_PROMOTION
   LETTER_OFFER
+  LETTER_APPOINTMENT
+  LETTER_JOINING
+  LETTER_CONFIRMATION
+  LETTER_PROMOTION
+  LETTER_SALARY_REVISION
   LETTER_EXPERIENCE
   LETTER_RELIEVING
+  LETTER_WARNING
+  LETTER_APPRECIATION
+  LETTER_INTERNSHIP_CERTIFICATE
+  LETTER_SALARY_CERTIFICATE
+  LETTER_NOC
+  LETTER_FNF_SETTLEMENT
 }
 
 enum RoomBookingStatus {
@@ -372,6 +425,12 @@ model Tenant {
   payrollOvertimeMultiplier Float @default(1.5)
   payrollWorkingDaysPerMonth Int  @default(26)
 
+  // GST (Indian tax) registration — optional. When both this and a finance document's
+  // placeOfSupplyStateCode are set, tax is split into CGST/SGST (same state) or IGST (different
+  // state) instead of staying a single flat taxAmount.
+  gstin        String?
+  gstStateCode String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -387,6 +446,7 @@ model Tenant {
   kbArticles       KnowledgeBaseArticle[]
   tickets          Ticket[]
   documents        SecureDocument[]
+  documentVersions DocumentVersion[]
   templates        CanvaTemplate[]
   subscriptions    Subscription[]
   invites          Invite[]
@@ -411,6 +471,17 @@ model Tenant {
   ticketComments   TicketComment[]
   generatedDocuments GeneratedDocument[]
   announcements    Announcement[]
+  branches         Branch[]
+  teams            Team[]
+  checklistItems   OnboardingChecklistItem[]
+  lifecycleEvents  LifecycleEvent[]
+  fnfSettlements   FnfSettlement[]
+  vendors          Vendor[]
+  inventoryItems   InventoryItem[]
+  inventoryTransactions InventoryTransaction[]
+  sops             Sop[]
+  sopRevisions     SopRevision[]
+  notifications    Notification[]
 }
 
 model User {
@@ -434,6 +505,7 @@ model User {
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   auditLogs           AuditLog[]
+  notifications       Notification[]
   clientProfile       ClientPortal?        @relation(fields: [clientProfileId], references: [id])
   clientProfileId     String?
 
@@ -528,6 +600,11 @@ model EmployeeProfile {
   managerId     String?
   manager       EmployeeProfile?  @relation("ManagerToEmployee", fields: [managerId], references: [id])
   subordinates  EmployeeProfile[] @relation("ManagerToEmployee")
+  branchId      String?
+  branch        Branch?           @relation(fields: [branchId], references: [id])
+  teamId        String?
+  team          Team?             @relation("TeamMembers", fields: [teamId], references: [id])
+  teamsLed      Team[]            @relation("TeamLead")
 
   attendance      Attendance[]
   regularizations AttendanceRegularization[]
@@ -554,14 +631,254 @@ model EmployeeProfile {
   articles        KnowledgeBaseArticle[]
   hostedVisitors  Visitor[]
   uploadedDocuments SecureDocument[]
+  uploadedDocumentVersions DocumentVersion[]
   createdTemplates CanvaTemplate[]
   generatedDocumentsAsSubject GeneratedDocument[] @relation("GeneratedDocumentSubject")
   generatedDocumentsAsAuthor  GeneratedDocument[] @relation("GeneratedDocumentAuthor")
   publishedAnnouncements Announcement[]
+  checklistItems  OnboardingChecklistItem[]
+  lifecycleEvents LifecycleEvent[]
+  fnfSettlement   FnfSettlement?
+  inventoryTransactions InventoryTransaction[]
+  ownedSops       Sop[]         @relation("SopOwner")
+  sopRevisions    SopRevision[]
 
   @@index([tenantId])
   @@index([tenantId, department])
   @@index([managerId])
+  @@index([branchId])
+  @@index([teamId])
+}
+
+enum LifecycleEventType {
+  CONFIRMATION
+  PROMOTION
+  TRANSFER
+  EXIT_INITIATED
+  EXIT_COMPLETED
+}
+
+enum FnfStatus {
+  DRAFT
+  APPROVED
+  PAID
+}
+
+model OnboardingChecklistItem {
+  id            String           @id @default(uuid())
+  tenantId      String
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId    String
+  employee      EmployeeProfile  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  label         String
+  isCompleted   Boolean          @default(false)
+  completedAt   DateTime?
+  createdAt     DateTime         @default(now())
+
+  @@index([tenantId])
+  @@index([employeeId])
+}
+
+/** One row per lifecycle action taken on an employee — the audit trail a promotion/transfer/exit letter is generated from. */
+model LifecycleEvent {
+  id              String             @id @default(uuid())
+  tenantId        String
+  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId      String
+  employee        EmployeeProfile    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type            LifecycleEventType
+  effectiveDate   DateTime
+  previousValue   String?
+  newValue        String?
+  notes           String?
+  createdById     String?
+  createdAt       DateTime           @default(now())
+
+  @@index([tenantId])
+  @@index([employeeId, createdAt])
+}
+
+/** One settlement per employee — a re-hire after a prior exit is out of scope, same as elsewhere in this schema. */
+model FnfSettlement {
+  id              String          @id @default(uuid())
+  tenantId        String
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId      String          @unique
+  employee        EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  lastWorkingDay  DateTime
+  pendingSalary   Float           @default(0)
+  leaveEncashment Float           @default(0)
+  bonus           Float           @default(0)
+  deductions      Float           @default(0)
+  netPayable      Float
+  status          FnfStatus       @default(DRAFT)
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([tenantId])
+}
+
+enum VendorStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum SopStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Sop {
+  id          String    @id @default(uuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title       String
+  category    String?
+  department  String?
+  version     Int       @default(1)
+  status      SopStatus @default(DRAFT)
+  body        String
+  fileUrl     String?
+  ownerId     String?
+  owner       EmployeeProfile? @relation("SopOwner", fields: [ownerId], references: [id])
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  revisions SopRevision[]
+
+  @@unique([tenantId, title])
+  @@index([tenantId, status])
+}
+
+/** A snapshot of a published SOP's body taken just before each subsequent revision overwrites it. */
+model SopRevision {
+  id          String          @id @default(uuid())
+  tenantId    String
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sopId       String
+  sop         Sop             @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  version     Int
+  body        String
+  changedById String?
+  changedBy   EmployeeProfile? @relation(fields: [changedById], references: [id])
+  createdAt   DateTime        @default(now())
+
+  @@index([sopId, version])
+}
+
+model Vendor {
+  id          String       @id @default(uuid())
+  tenantId    String
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  gstNumber   String?
+  status      VendorStatus @default(ACTIVE)
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  inventoryItems InventoryItem[]
+  transactions   InventoryTransaction[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+enum InventoryTransactionType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+model InventoryItem {
+  id             String   @id @default(uuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name           String
+  sku            String
+  category       String?
+  unit           String   @default("pcs")
+  quantityOnHand Int      @default(0)
+  reorderLevel   Int      @default(0)
+  unitCost       Float    @default(0)
+  vendorId       String?
+  vendor         Vendor?  @relation(fields: [vendorId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  transactions InventoryTransaction[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId])
+  @@index([vendorId])
+}
+
+/** The append-only ledger backing `InventoryItem.quantityOnHand` — the running total is a cache of this history, not the source of truth. */
+model InventoryTransaction {
+  id            String                   @id @default(uuid())
+  tenantId      String
+  tenant        Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  itemId        String
+  item          InventoryItem            @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  type          InventoryTransactionType
+  quantity      Int
+  reference     String?
+  vendorId      String?
+  vendor        Vendor?                  @relation(fields: [vendorId], references: [id])
+  performedById String?
+  performedBy   EmployeeProfile?         @relation(fields: [performedById], references: [id])
+  createdAt     DateTime                 @default(now())
+
+  @@index([tenantId])
+  @@index([itemId, createdAt])
+}
+
+model Branch {
+  id           String            @id @default(uuid())
+  tenantId     String
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name         String
+  code         String
+  address      String?
+  city         String?
+  state        String?
+  country      String?
+  isHeadOffice Boolean           @default(false)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  teams     Team[]
+  employees EmployeeProfile[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model Team {
+  id          String           @id @default(uuid())
+  tenantId    String
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  branchId    String?
+  branch      Branch?          @relation(fields: [branchId], references: [id])
+  leadId      String?
+  lead        EmployeeProfile? @relation("TeamLead", fields: [leadId], references: [id])
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  members EmployeeProfile[] @relation("TeamMembers")
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([branchId])
 }
 
 model Attendance {
@@ -1048,6 +1365,11 @@ model FinanceDocument {
   subtotal       Float
   taxRate        Float         @default(0)
   taxAmount      Float         @default(0)
+  /** GST split of taxAmount — only populated when both the tenant's gstStateCode and this document's placeOfSupplyStateCode are set. */
+  placeOfSupplyStateCode String?
+  cgstAmount     Float         @default(0)
+  sgstAmount     Float         @default(0)
+  igstAmount     Float         @default(0)
   totalAmount    Float
   amountPaid     Float         @default(0)
   notes          String?
@@ -1073,6 +1395,7 @@ model FinanceLineItem {
   financeDocumentId  String
   financeDocument    FinanceDocument @relation(fields: [financeDocumentId], references: [id], onDelete: Cascade)
   description        String
+  hsnCode            String?
   quantity           Float           @default(1)
   unitPrice          Float
   amount             Float
@@ -1194,16 +1517,67 @@ model SecureDocument {
   tenantId          String
   tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name              String
+  category          String?
   folderPath        String           @default("/")
   fileUrl           String
   version           Int              @default(1)
   expiresAt         DateTime?
   isDigitallySigned Boolean          @default(false)
+  archived          Boolean          @default(false)
+  archivedAt        DateTime?
   uploadedById      String?
   uploadedBy        EmployeeProfile? @relation(fields: [uploadedById], references: [id])
+  versions          DocumentVersion[]
   createdAt         DateTime         @default(now())
 
   @@index([tenantId, folderPath])
+  @@index([tenantId, archived])
+  @@index([tenantId, category])
+}
+
+/** Immutable snapshot of one prior file behind a SecureDocument — created on every upload and every replace, so "current" is just the highest `version` row and nothing is ever overwritten in place. */
+model DocumentVersion {
+  id           String           @id @default(uuid())
+  tenantId     String
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  documentId   String
+  document     SecureDocument   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version      Int
+  fileUrl      String
+  uploadedById String?
+  uploadedBy   EmployeeProfile? @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime         @default(now())
+
+  @@unique([documentId, version])
+  @@index([documentId])
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  LEAVE_APPROVED
+  LEAVE_REJECTED
+  TICKET_ASSIGNED
+  DOCUMENT_EXPIRING
+  GENERIC
+}
+
+/** In-app notification for a single user login (not per-employee — mirrors AuditLog.actorUserId) — the bell icon in the app shell. */
+model Notification {
+  id        String           @id @default(uuid())
+  tenantId  String
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  /** Frontend route to navigate to when the notification is clicked, e.g. "/tasks/123" — not a full URL. */
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt, createdAt])
+  @@index([tenantId, createdAt])
 }
 
 /**

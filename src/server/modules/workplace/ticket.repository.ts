@@ -28,6 +28,7 @@ export class TicketRepository {
       /** Restricts to tickets where the caller is either the reporter or the assignee — used when the caller lacks tenant-wide read. */
       ownedByEmployeeId?: string;
     },
+    orderBy: Record<string, 'asc' | 'desc'>,
     skip: number,
     take: number,
   ) {
@@ -42,7 +43,7 @@ export class TicketRepository {
         : {}),
     };
     const [rows, total] = await Promise.all([
-      prisma.ticket.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      prisma.ticket.findMany({ where, orderBy, skip, take }),
       prisma.ticket.count({ where }),
     ]);
     return { rows, total };

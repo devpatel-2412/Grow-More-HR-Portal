@@ -12,6 +12,7 @@ import {
   passwordChangeSchema,
   twoFactorEnableSchema,
   twoFactorDisableSchema,
+  loginHistoryQuerySchema,
 } from './auth.validators.js';
 import {
   signup,
@@ -21,6 +22,7 @@ import {
   logout,
   logoutAll,
   me,
+  loginHistory,
   requestPasswordReset,
   confirmPasswordReset,
   changePassword,
@@ -38,6 +40,7 @@ authRouter.post('/refresh', refreshLimiter, asyncHandler(refresh));
 authRouter.post('/logout', authenticateAccessToken, asyncHandler(logout));
 authRouter.post('/logout-all', authenticateAccessToken, asyncHandler(logoutAll));
 authRouter.get('/me', authenticateAccessToken, asyncHandler(me));
+authRouter.get('/login-history', authenticateAccessToken, validate({ query: loginHistoryQuerySchema }), asyncHandler(loginHistory));
 
 authRouter.post(
   '/password-reset/request',

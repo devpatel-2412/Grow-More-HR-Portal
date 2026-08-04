@@ -21,6 +21,7 @@ export class JobPostingRepository {
   async findMany(
     tenantId: string,
     filter: { status?: JobPostingStatus; department?: string; search?: string },
+    orderBy: Record<string, 'asc' | 'desc'>,
     skip: number,
     take: number,
   ) {
@@ -36,7 +37,7 @@ export class JobPostingRepository {
         : undefined,
     };
     const [rows, total] = await Promise.all([
-      prisma.jobPosting.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      prisma.jobPosting.findMany({ where, orderBy, skip, take }),
       prisma.jobPosting.count({ where }),
     ]);
     return { rows, total };
@@ -80,6 +81,7 @@ export class CandidateRepository {
   async findMany(
     tenantId: string,
     filter: { jobPostingId?: string; status?: CandidateStatus; search?: string },
+    orderBy: Record<string, 'asc' | 'desc'>,
     skip: number,
     take: number,
   ) {
@@ -96,7 +98,7 @@ export class CandidateRepository {
         : undefined,
     };
     const [rows, total] = await Promise.all([
-      prisma.candidate.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      prisma.candidate.findMany({ where, orderBy, skip, take }),
       prisma.candidate.count({ where }),
     ]);
     return { rows, total };
@@ -144,6 +146,7 @@ export class InterviewRepository {
   async findMany(
     tenantId: string,
     filter: { candidateId?: string; interviewerId?: string; outcome?: InterviewOutcome; from?: Date; to?: Date },
+    orderBy: Record<string, 'asc' | 'desc'>,
     skip: number,
     take: number,
   ) {
@@ -155,7 +158,7 @@ export class InterviewRepository {
       scheduledAt: filter.from || filter.to ? { gte: filter.from, lte: filter.to } : undefined,
     };
     const [rows, total] = await Promise.all([
-      prisma.interview.findMany({ where, orderBy: { scheduledAt: 'asc' }, skip, take }),
+      prisma.interview.findMany({ where, orderBy, skip, take }),
       prisma.interview.count({ where }),
     ]);
     return { rows, total };

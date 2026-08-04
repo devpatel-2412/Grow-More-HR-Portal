@@ -1,6 +1,7 @@
 import { useAuth } from '../../auth/context/AuthContext';
 import { useTenant } from '../hooks/useTenant';
 import { TenantBrandingForm } from '../components/TenantBrandingForm';
+import { TaxSettingsForm } from '../components/TaxSettingsForm';
 import { AttendancePolicyForm } from '../../attendance/components/AttendancePolicyForm';
 import { Card } from '../../../shared/components/ui/card';
 import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
@@ -40,6 +41,10 @@ export function TenantSettingsPage() {
           <Card>
             <h3 className="mb-4 text-sm font-bold text-[var(--foreground)]">Attendance policy</h3>
             <AttendancePolicyForm tenant={tenant} />
+          </Card>
+          <Card>
+            <h3 className="mb-4 text-sm font-bold text-[var(--foreground)]">Tax settings</h3>
+            <TaxSettingsForm tenant={tenant} />
           </Card>
         </>
       )}

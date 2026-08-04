@@ -3,8 +3,17 @@ import type { Prisma, FinanceType, FinanceStatus } from '@prisma/client';
 
 export interface LineItemInput {
   description: string;
+  hsnCode?: string;
   quantity: number;
   unitPrice: number;
+}
+
+/** Splits a flat tax total into GST components: same-state is CGST+SGST (halved), cross-state is IGST (whole); `undefined` (state codes not configured) leaves all three at zero. */
+function splitGst(taxAmount: number, isInterState: boolean | undefined) {
+  if (isInterState === undefined) return { cgstAmount: 0, sgstAmount: 0, igstAmount: 0 };
+  return isInterState
+    ? { cgstAmount: 0, sgstAmount: 0, igstAmount: taxAmount }
+    : { cgstAmount: taxAmount / 2, sgstAmount: taxAmount / 2, igstAmount: 0 };
 }
 
 export class FinanceRepository {
@@ -28,6 +37,7 @@ export class FinanceRepository {
   createWithLineItems(
     data: Omit<Prisma.FinanceDocumentCreateInput, 'lineItems' | 'subtotal' | 'totalAmount'>,
     lineItems: LineItemInput[],
+    isInterState?: boolean,
   ) {
     return prisma.$transaction(async (tx) => {
       const subtotal = lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
@@ -41,9 +51,11 @@ export class FinanceRepository {
           subtotal,
           taxAmount,
           totalAmount,
+          ...splitGst(taxAmount, isInterState),
           lineItems: {
             create: lineItems.map((item, index) => ({
               description: item.description,
+              hsnCode: item.hsnCode,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               amount: item.quantity * item.unitPrice,
@@ -57,7 +69,7 @@ export class FinanceRepository {
   }
 
   /** Replacing line items recomputes the document's totals in the same transaction so they never drift apart. */
-  replaceLineItemsAndRecalculate(id: string, lineItems: LineItemInput[], taxRate: number) {
+  replaceLineItemsAndRecalculate(id: string, lineItems: LineItemInput[], taxRate: number, isInterState?: boolean) {
     return prisma.$transaction(async (tx) => {
       await tx.financeLineItem.deleteMany({ where: { financeDocumentId: id } });
 
@@ -72,9 +84,11 @@ export class FinanceRepository {
           taxAmount,
           totalAmount,
           taxRate,
+          ...splitGst(taxAmount, isInterState),
           lineItems: {
             create: lineItems.map((item, index) => ({
               description: item.description,
+              hsnCode: item.hsnCode,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               amount: item.quantity * item.unitPrice,
@@ -120,6 +134,7 @@ export class FinanceRepository {
   async findMany(
     tenantId: string,
     filter: { type?: FinanceType; status?: FinanceStatus; clientPortalId?: string; projectId?: string },
+    orderBy: Record<string, 'asc' | 'desc'>,
     skip: number,
     take: number,
   ) {
@@ -131,7 +146,7 @@ export class FinanceRepository {
       projectId: filter.projectId,
     };
     const [rows, total] = await Promise.all([
-      prisma.financeDocument.findMany({ where, orderBy: { issueDate: 'desc' }, skip, take }),
+      prisma.financeDocument.findMany({ where, orderBy, skip, take }),
       prisma.financeDocument.count({ where }),
     ]);
     return { rows, total };
@@ -152,5 +167,17 @@ export class FinanceRepository {
       totalAmount: row._sum.totalAmount ?? 0,
       amountPaid: row._sum.amountPaid ?? 0,
     }));
+  }
+
+  /**
+   * Raw rows for a Profit & Loss report — DRAFT/VOID are excluded since neither is a recognized
+   * transaction (a draft isn't issued yet; a void was cancelled). Aggregation into revenue vs.
+   * expense and month buckets happens in the service, not here.
+   */
+  findForProfitAndLoss(tenantId: string, from: Date, to: Date) {
+    return prisma.financeDocument.findMany({
+      where: { tenantId, issueDate: { gte: from, lte: to }, status: { notIn: ['DRAFT', 'VOID'] } },
+      select: { type: true, totalAmount: true, issueDate: true },
+    });
   }
 }

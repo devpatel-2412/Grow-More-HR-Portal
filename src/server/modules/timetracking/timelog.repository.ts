@@ -31,10 +31,10 @@ export class TimeLogRepository {
     return prisma.timeLog.findFirst({ where: { employeeId, endedAt: null } });
   }
 
-  async findMany(tenantId: string, filter: TimeLogFilter, skip: number, take: number) {
+  async findMany(tenantId: string, filter: TimeLogFilter, orderBy: Record<string, 'asc' | 'desc'>, skip: number, take: number) {
     const where = buildWhere(tenantId, filter);
     const [rows, total] = await Promise.all([
-      prisma.timeLog.findMany({ where, orderBy: { startedAt: 'desc' }, skip, take }),
+      prisma.timeLog.findMany({ where, orderBy, skip, take }),
       prisma.timeLog.count({ where }),
     ]);
     return { rows, total };

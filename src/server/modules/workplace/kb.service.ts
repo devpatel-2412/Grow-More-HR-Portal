@@ -2,9 +2,11 @@ import { KbRepository } from './kb.repository.js';
 import { EmployeeRepository } from '../employees/employee.repository.js';
 import { NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
+
 import type { z } from 'zod';
 import type { createArticleSchema, updateArticleSchema, listArticlesQuerySchema } from './kb.validators.js';
+const KB_SORTABLE_FIELDS = ['title', 'category', 'createdAt', 'updatedAt'] as const;
 
 export interface RequestMeta {
   actorUserId?: string;
@@ -51,9 +53,11 @@ export class KbService {
   }
 
   async list(tenantId: string, query: z.infer<typeof listArticlesQuerySchema>) {
+    const orderBy = toPrismaOrderBy(query.sort, KB_SORTABLE_FIELDS, { field: 'createdAt', direction: 'desc' });
     const { rows, total } = await this.repository.findMany(
       tenantId,
       { category: query.category, search: query.search },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );

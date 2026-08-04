@@ -4,6 +4,7 @@ export type FinanceStatus = 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'VOID';
 export interface FinanceLineItemRecord {
   id: string;
   description: string;
+  hsnCode: string | null;
   quantity: number;
   unitPrice: number;
   amount: number;
@@ -28,6 +29,10 @@ export interface FinanceDocumentRecord {
   subtotal: number;
   taxRate: number;
   taxAmount: number;
+  placeOfSupplyStateCode: string | null;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
   totalAmount: number;
   amountPaid: number;
   notes: string | null;
@@ -45,4 +50,20 @@ export interface FinanceSummaryRow {
   count: number;
   totalAmount: number;
   amountPaid: number;
+}
+
+export interface ProfitAndLossMonth {
+  month: string;
+  revenue: number;
+  expenses: number;
+  netProfit: number;
+}
+
+export interface ProfitAndLossReport {
+  from: string;
+  to: string;
+  revenue: number;
+  expenses: number;
+  netProfit: number;
+  byMonth: ProfitAndLossMonth[];
 }

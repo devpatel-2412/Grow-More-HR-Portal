@@ -23,6 +23,8 @@ export const updateTenantSchema = z.object({
   attendanceRequiredWorkMinutes: z.coerce.number().int().min(1).max(1440).optional(),
   attendanceAllowedBreakMinutes: z.coerce.number().int().min(0).max(1440).optional(),
   attendanceBreakOverageExtendsLogout: z.coerce.boolean().optional(),
+  gstin: z.string().max(20).optional(),
+  gstStateCode: z.string().length(2).optional(),
 });
 
 export const listTenantsQuerySchema = paginationQuerySchema;

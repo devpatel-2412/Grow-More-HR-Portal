@@ -5,6 +5,7 @@ import { useTemplates, useDeleteTemplate } from '../hooks/useHrAutomation';
 import { usePagination } from '../../../shared/hooks/usePagination';
 import { CreateTemplateDialog } from '../components/CreateTemplateDialog';
 import { GenerateDocumentDialog } from '../components/GenerateDocumentDialog';
+import { TEMPLATE_TYPE_LABELS } from '../types/hrautomation.types';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Card } from '../../../shared/components/ui/card';
 import { Button } from '../../../shared/components/ui/button';
@@ -66,7 +67,7 @@ export function TemplatesPage() {
                   <TableRow key={template.id}>
                     <TableCell className="font-medium">{template.name}</TableCell>
                     <TableCell>
-                      <Badge variant="neutral">{template.type.replace('_', ' ')}</Badge>
+                      <Badge variant="neutral">{TEMPLATE_TYPE_LABELS[template.type]}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

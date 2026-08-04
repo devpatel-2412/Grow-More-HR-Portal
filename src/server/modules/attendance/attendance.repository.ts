@@ -36,6 +36,7 @@ export class AttendanceRepository {
   async findManyByTenant(
     tenantId: string,
     filter: { employeeId?: string; from?: Date; to?: Date },
+    orderBy: Record<string, 'asc' | 'desc'>,
     skip: number,
     take: number,
   ) {
@@ -45,7 +46,7 @@ export class AttendanceRepository {
       date: filter.from || filter.to ? { gte: filter.from, lte: filter.to } : undefined,
     };
     const [rows, total] = await Promise.all([
-      prisma.attendance.findMany({ where, orderBy: { date: 'desc' }, skip, take, include: { breaks: true } }),
+      prisma.attendance.findMany({ where, orderBy, skip, take, include: { breaks: true } }),
       prisma.attendance.count({ where }),
     ]);
     return { rows, total };

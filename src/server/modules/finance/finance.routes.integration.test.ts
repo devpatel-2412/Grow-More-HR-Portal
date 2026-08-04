@@ -227,3 +227,101 @@ describe('Finance — documents and payments', () => {
     expect(crossTenantRes.status).toBe(404);
   });
 });
+
+describe('Finance — GST split', () => {
+  it('leaves tax unsplit until both the tenant GSTIN state and the document place of supply are set', async () => {
+    const { res: signupRes } = await signupTenant();
+    const adminToken = signupRes.body.data.accessToken;
+    const me = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${adminToken}`);
+    const tenantId = me.body.data.tenant.id;
+
+    const noGstRes = await request(app)
+      .post('/api/v1/finance')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        type: 'INVOICE',
+        issueDate: '2026-07-01',
+        taxRate: 18,
+        placeOfSupplyStateCode: '27',
+        lineItems: [{ description: 'Work', quantity: 1, unitPrice: 1000, hsnCode: '9983' }],
+      });
+    expect(noGstRes.status).toBe(201);
+    expect(noGstRes.body.data.cgstAmount).toBe(0);
+    expect(noGstRes.body.data.sgstAmount).toBe(0);
+    expect(noGstRes.body.data.igstAmount).toBe(0);
+    expect(noGstRes.body.data.taxAmount).toBe(180);
+
+    await request(app)
+      .patch(`/api/v1/tenants/${tenantId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ gstin: '27ABCDE1234F1Z5', gstStateCode: '27' });
+
+    const sameStateRes = await request(app)
+      .post('/api/v1/finance')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        type: 'INVOICE',
+        issueDate: '2026-07-01',
+        taxRate: 18,
+        placeOfSupplyStateCode: '27',
+        lineItems: [{ description: 'Work', quantity: 1, unitPrice: 1000 }],
+      });
+    expect(sameStateRes.status).toBe(201);
+    expect(sameStateRes.body.data.cgstAmount).toBe(90);
+    expect(sameStateRes.body.data.sgstAmount).toBe(90);
+    expect(sameStateRes.body.data.igstAmount).toBe(0);
+
+    const crossStateRes = await request(app)
+      .post('/api/v1/finance')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        type: 'INVOICE',
+        issueDate: '2026-07-01',
+        taxRate: 18,
+        placeOfSupplyStateCode: '09',
+        lineItems: [{ description: 'Work', quantity: 1, unitPrice: 1000 }],
+      });
+    expect(crossStateRes.status).toBe(201);
+    expect(crossStateRes.body.data.cgstAmount).toBe(0);
+    expect(crossStateRes.body.data.sgstAmount).toBe(0);
+    expect(crossStateRes.body.data.igstAmount).toBe(180);
+  });
+});
+
+describe('Finance — Profit & Loss report', () => {
+  it('recognizes invoices as revenue and expenses/bills as expenses within the date range', async () => {
+    const { res: signupRes } = await signupTenant();
+    const adminToken = signupRes.body.data.accessToken;
+
+    async function createAndSend(type: string, issueDate: string, unitPrice: number) {
+      const createRes = await request(app)
+        .post('/api/v1/finance')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ type, issueDate, taxRate: 0, lineItems: [{ description: 'x', quantity: 1, unitPrice }] });
+      await request(app).post(`/api/v1/finance/${createRes.body.data.id}/send`).set('Authorization', `Bearer ${adminToken}`);
+    }
+
+    await createAndSend('INVOICE', '2026-01-15', 1000);
+    await createAndSend('EXPENSE', '2026-01-20', 200);
+    await createAndSend('BILL', '2026-02-05', 100);
+    // Outside the report range — must not be counted.
+    await createAndSend('INVOICE', '2026-03-01', 9999);
+    // A draft is never a recognized transaction.
+    await request(app)
+      .post('/api/v1/finance')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ type: 'INVOICE', issueDate: '2026-01-10', taxRate: 0, lineItems: [{ description: 'draft', quantity: 1, unitPrice: 5000 }] });
+
+    const reportRes = await request(app)
+      .get('/api/v1/finance/reports/profit-loss?from=2026-01-01&to=2026-02-28')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(reportRes.status).toBe(200);
+    expect(reportRes.body.data.revenue).toBe(1000);
+    expect(reportRes.body.data.expenses).toBe(300);
+    expect(reportRes.body.data.netProfit).toBe(700);
+    expect(reportRes.body.data.byMonth).toEqual([
+      { month: '2026-01', revenue: 1000, expenses: 200, netProfit: 800 },
+      { month: '2026-02', revenue: 0, expenses: 100, netProfit: -100 },
+    ]);
+  });
+});

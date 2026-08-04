@@ -8,6 +8,9 @@ const ROLE_VARIANT: Record<UserRole, 'info' | 'success' | 'neutral'> = {
   PROJECT_MANAGER: 'info',
   EMPLOYEE: 'neutral',
   CLIENT: 'neutral',
+  RECRUITER: 'info',
+  FINANCE: 'info',
+  CANDIDATE: 'neutral',
 };
 
 export function RoleBadge({ role }: { role: UserRole }) {

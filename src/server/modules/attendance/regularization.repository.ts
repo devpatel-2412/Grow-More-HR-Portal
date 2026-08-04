@@ -17,6 +17,7 @@ export class RegularizationRepository {
   async findMany(
     tenantId: string,
     filter: { employeeId?: string; status?: RegularizationStatus },
+    orderBy: Record<string, 'asc' | 'desc'>,
     skip: number,
     take: number,
   ) {
@@ -26,7 +27,7 @@ export class RegularizationRepository {
       status: filter.status,
     };
     const [rows, total] = await Promise.all([
-      prisma.attendanceRegularization.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      prisma.attendanceRegularization.findMany({ where, orderBy, skip, take }),
       prisma.attendanceRegularization.count({ where }),
     ]);
     return { rows, total };

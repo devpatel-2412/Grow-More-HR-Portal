@@ -18,14 +18,21 @@ export class ProjectRepository {
     return prisma.project.delete({ where: { id } });
   }
 
-  async findMany(tenantId: string, filter: { status?: ProjectStatus; search?: string }, skip: number, take: number) {
+  async findMany(
+    tenantId: string,
+    filter: { status?: ProjectStatus; clientPortalId?: string; search?: string },
+    orderBy: Record<string, 'asc' | 'desc'>,
+    skip: number,
+    take: number,
+  ) {
     const where: Prisma.ProjectWhereInput = {
       tenantId,
       status: filter.status,
+      clientPortalId: filter.clientPortalId,
       name: filter.search ? { contains: filter.search, mode: 'insensitive' } : undefined,
     };
     const [rows, total] = await Promise.all([
-      prisma.project.findMany({ where, orderBy: { startDate: 'desc' }, skip, take }),
+      prisma.project.findMany({ where, orderBy, skip, take }),
       prisma.project.count({ where }),
     ]);
     return { rows, total };

@@ -2,10 +2,13 @@ import { LeaveRepository, type LeaveFilter } from './leave.repository.js';
 import { EmployeeRepository } from '../employees/employee.repository.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { notificationService } from '../notifications/notification.service.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
 import { prisma } from '../../db/prisma.js';
 import type { z } from 'zod';
 import type { submitLeaveSchema, listLeaveQuerySchema } from './leave.validators.js';
+
+const LEAVE_SORTABLE_FIELDS = ['startDate', 'endDate', 'status', 'leaveType', 'totalDays', 'createdAt'] as const;
 
 interface RequestMeta {
   actorUserId?: string;
@@ -131,7 +134,26 @@ export class LeaveService {
       userAgent: meta.userAgent,
     });
 
+    // A manager rejection is terminal (no HR stage follows); an approval just moves the
+    // request on to HR, so it isn't a final outcome worth notifying the employee about yet.
+    if (status === 'REJECTED') {
+      await this.notifyEmployeeOfDecision(tenantId, record.employeeId, 'REJECTED');
+    }
+
     return updated;
+  }
+
+  private async notifyEmployeeOfDecision(tenantId: string, employeeId: string, status: 'APPROVED' | 'REJECTED') {
+    const employee = await this.employeeRepository.findById(employeeId);
+    if (!employee) return;
+    await notificationService.notify({
+      tenantId,
+      userId: employee.userId,
+      type: status === 'APPROVED' ? 'LEAVE_APPROVED' : 'LEAVE_REJECTED',
+      title: status === 'APPROVED' ? 'Leave request approved' : 'Leave request rejected',
+      body: status === 'APPROVED' ? 'Your leave request has been approved.' : 'Your leave request has been rejected.',
+      link: '/leave',
+    });
   }
 
   async hrReview(userId: string, tenantId: string, id: string, status: 'APPROVED' | 'REJECTED', meta: RequestMeta) {
@@ -154,6 +176,8 @@ export class LeaveService {
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent,
     });
+
+    await this.notifyEmployeeOfDecision(tenantId, record.employeeId, status);
 
     return updated;
   }
@@ -199,7 +223,8 @@ export class LeaveService {
       from: query.from,
       to: query.to,
     };
-    const { rows, total } = await this.repository.findMany(tenantId, filter, (query.page - 1) * query.limit, query.limit);
+    const orderBy = toPrismaOrderBy(query.sort, LEAVE_SORTABLE_FIELDS, { field: 'createdAt', direction: 'desc' });
+    const { rows, total } = await this.repository.findMany(tenantId, filter, orderBy, (query.page - 1) * query.limit, query.limit);
     return { rows, meta: buildPaginationMeta(query.page, query.limit, total) };
   }
 

@@ -18,12 +18,12 @@ export class TenantRepository {
     return prisma.tenant.update({ where: { id }, data });
   }
 
-  async findMany(skip: number, take: number, search?: string) {
+  async findMany(skip: number, take: number, orderBy: Record<string, 'asc' | 'desc'>, search?: string) {
     const where: Prisma.TenantWhereInput = search
       ? { OR: [{ name: { contains: search, mode: 'insensitive' } }, { domain: { contains: search, mode: 'insensitive' } }] }
       : {};
     const [rows, total] = await Promise.all([
-      prisma.tenant.findMany({ where, skip, take, orderBy: { createdAt: 'desc' } }),
+      prisma.tenant.findMany({ where, skip, take, orderBy }),
       prisma.tenant.count({ where }),
     ]);
     return { rows, total };

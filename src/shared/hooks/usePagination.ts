@@ -33,6 +33,11 @@ export function usePagination(initialLimit = 20): PaginationControls {
     setPageState(value);
   }
 
+  function setSortAndResetPage(value: string | undefined) {
+    setSort(value);
+    setPageState(1);
+  }
+
   const queryParams = useMemo(
     () => ({
       page,
@@ -43,5 +48,5 @@ export function usePagination(initialLimit = 20): PaginationControls {
     [page, initialLimit, debouncedSearch, sort],
   );
 
-  return { page, limit: initialLimit, search, sort, debouncedSearch, setPage, setSearch, setSort, queryParams };
+  return { page, limit: initialLimit, search, sort, debouncedSearch, setPage, setSearch, setSort: setSortAndResetPage, queryParams };
 }

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticateAccessToken } from '../../shared/middleware/auth.middleware.js';
-import { requirePermission } from '../../shared/middleware/rbac.middleware.js';
+import { requirePermission, requireStaff } from '../../shared/middleware/rbac.middleware.js';
 import { validate } from '../../shared/middleware/validate.middleware.js';
 import { PERMISSIONS } from '../../shared/permissions/permissions.js';
 import { asyncHandler } from '../../shared/utils/async-handler.js';
@@ -11,6 +11,7 @@ const manage = requirePermission(PERMISSIONS.KB_MANAGE);
 
 export const kbRouter = Router();
 kbRouter.use(authenticateAccessToken);
+kbRouter.use(requireStaff); // internal knowledge base — never visible to a CLIENT portal login
 
 // Reading the knowledge base is open to every authenticated employee; only writing needs KB_MANAGE.
 kbRouter.post('/', manage, validate({ body: createArticleSchema }), asyncHandler(createArticle));

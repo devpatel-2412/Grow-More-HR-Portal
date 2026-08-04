@@ -8,7 +8,11 @@ import { Card } from '../../../shared/components/ui/card';
 import { Button } from '../../../shared/components/ui/button';
 import { TwoFactorSettings } from '../components/TwoFactorSettings';
 import { ChangePasswordForm } from '../components/ChangePasswordForm';
+import { LoginHistoryPanel } from '../components/LoginHistoryPanel';
 import { PunchWidget } from '../../attendance/components/PunchWidget';
+import { AdminKpiDashboard } from '../../dashboard/components/AdminKpiDashboard';
+
+const ADMIN_DASHBOARD_ROLES = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'];
 
 export function DashboardPage() {
   const { user, profile, tenant, logout } = useAuth();
@@ -29,8 +33,10 @@ export function DashboardPage() {
     }
   }
 
+  const showAdminDashboard = !!user && ADMIN_DASHBOARD_ROLES.includes(user.role);
+
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
+    <div className={showAdminDashboard ? 'mx-auto max-w-6xl space-y-6' : 'mx-auto max-w-4xl space-y-6'}>
       <div>
         <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">
           Welcome back{profile ? `, ${profile.firstName}` : ''}
@@ -38,7 +44,9 @@ export function DashboardPage() {
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">{tenant?.name}</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      {showAdminDashboard && <AdminKpiDashboard />}
+
+      <div className={showAdminDashboard ? 'grid grid-cols-1 gap-6 md:grid-cols-3' : 'grid grid-cols-1 gap-6 md:grid-cols-2'}>
         {profile && (
           <Card>
             <h3 className="mb-4 text-sm font-bold text-[var(--foreground)]">Today</h3>
@@ -80,6 +88,11 @@ export function DashboardPage() {
             <Button variant="outline" size="sm" onClick={handleLogoutAllDevices} loading={loggingOutAll}>
               Log out all devices
             </Button>
+          </div>
+
+          <div className="mt-6 border-t border-[var(--border)] pt-4">
+            <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Recent sign-ins</h4>
+            <LoginHistoryPanel />
           </div>
         </Card>
 

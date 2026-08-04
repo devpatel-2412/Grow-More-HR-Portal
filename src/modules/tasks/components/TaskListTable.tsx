@@ -24,7 +24,20 @@ export function TaskListTable({ tasks, onOpenTask }: { tasks: TaskRecord[]; onOp
       </TableHeader>
       <TableBody>
         {tasks.map((task) => (
-          <TableRow key={task.id} className="cursor-pointer" onClick={() => onOpenTask(task)}>
+          <TableRow
+            key={task.id}
+            role="button"
+            tabIndex={0}
+            aria-label={`Open task ${task.title}`}
+            className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ring)]"
+            onClick={() => onOpenTask(task)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onOpenTask(task);
+              }
+            }}
+          >
             <TableCell className="font-semibold">{task.title}</TableCell>
             <TableCell>
               <TaskPriorityBadge priority={task.priority} />

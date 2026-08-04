@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticateAccessToken } from '../../shared/middleware/auth.middleware.js';
-import { requirePermission } from '../../shared/middleware/rbac.middleware.js';
+import { requirePermission, requireStaff } from '../../shared/middleware/rbac.middleware.js';
 import { validate } from '../../shared/middleware/validate.middleware.js';
 import { PERMISSIONS } from '../../shared/permissions/permissions.js';
 import { asyncHandler } from '../../shared/utils/async-handler.js';
@@ -27,6 +27,7 @@ import {
 
 export const projectRouter = Router();
 projectRouter.use(authenticateAccessToken);
+projectRouter.use(requireStaff); // tenant-wide project list — a CLIENT only ever sees their own via /client-portal/projects
 
 projectRouter.post('/', requirePermission(PERMISSIONS.PROJECT_MANAGE), validate({ body: createProjectSchema }), asyncHandler(createProject));
 projectRouter.get('/', validate({ query: listProjectsQuerySchema }), asyncHandler(listProjects));
@@ -54,6 +55,7 @@ projectRouter.get('/:projectId/milestones', asyncHandler(listMilestones));
 
 export const milestoneRouter = Router();
 milestoneRouter.use(authenticateAccessToken);
+milestoneRouter.use(requireStaff);
 
 milestoneRouter.patch(
   '/:id',

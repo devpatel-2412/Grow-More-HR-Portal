@@ -2,9 +2,11 @@ import { RoomBookingRepository } from './roombooking.repository.js';
 import { EmployeeRepository } from '../employees/employee.repository.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
+
 import type { z } from 'zod';
 import type { createRoomBookingSchema, listRoomBookingsQuerySchema } from './roombooking.validators.js';
+const ROOM_BOOKING_SORTABLE_FIELDS = ['roomName', 'startTime', 'endTime', 'status'] as const;
 
 export interface RequestMeta {
   actorUserId?: string;
@@ -61,9 +63,11 @@ export class RoomBookingService {
   }
 
   async list(tenantId: string, query: z.infer<typeof listRoomBookingsQuerySchema>) {
+    const orderBy = toPrismaOrderBy(query.sort, ROOM_BOOKING_SORTABLE_FIELDS, { field: 'startTime', direction: 'asc' });
     const { rows, total } = await this.repository.findMany(
       tenantId,
       { roomName: query.roomName, from: query.from, to: query.to },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );

@@ -25,10 +25,16 @@ export class SalaryStructureRepository {
     });
   }
 
-  async findMany(tenantId: string, employeeId: string | undefined, skip: number, take: number) {
+  async findMany(
+    tenantId: string,
+    employeeId: string | undefined,
+    orderBy: Record<string, 'asc' | 'desc'>,
+    skip: number,
+    take: number,
+  ) {
     const where: Prisma.SalaryStructureWhereInput = { tenantId, employeeId };
     const [rows, total] = await Promise.all([
-      prisma.salaryStructure.findMany({ where, orderBy: { effectiveFrom: 'desc' }, skip, take }),
+      prisma.salaryStructure.findMany({ where, orderBy, skip, take }),
       prisma.salaryStructure.count({ where }),
     ]);
     return { rows, total };
@@ -56,10 +62,16 @@ export class PayrollRunRepository {
     return prisma.payrollRun.delete({ where: { id } });
   }
 
-  async findMany(tenantId: string, filter: { year?: number; status?: PayrollStatus }, skip: number, take: number) {
+  async findMany(
+    tenantId: string,
+    filter: { year?: number; status?: PayrollStatus },
+    orderBy: Record<string, 'asc' | 'desc'> | Record<string, 'asc' | 'desc'>[],
+    skip: number,
+    take: number,
+  ) {
     const where: Prisma.PayrollRunWhereInput = { tenantId, year: filter.year, status: filter.status };
     const [rows, total] = await Promise.all([
-      prisma.payrollRun.findMany({ where, orderBy: [{ year: 'desc' }, { month: 'desc' }], skip, take }),
+      prisma.payrollRun.findMany({ where, orderBy, skip, take }),
       prisma.payrollRun.count({ where }),
     ]);
     return { rows, total };
@@ -103,6 +115,7 @@ export class PayrollItemRepository {
   async findMany(
     tenantId: string,
     filter: { employeeId?: string; month?: number; year?: number },
+    orderBy: Record<string, 'asc' | 'desc'> | Record<string, 'asc' | 'desc'>[],
     skip: number,
     take: number,
   ) {
@@ -113,7 +126,7 @@ export class PayrollItemRepository {
       year: filter.year,
     };
     const [rows, total] = await Promise.all([
-      prisma.payrollItem.findMany({ where, orderBy: [{ year: 'desc' }, { month: 'desc' }], skip, take }),
+      prisma.payrollItem.findMany({ where, orderBy, skip, take }),
       prisma.payrollItem.count({ where }),
     ]);
     return { rows, total };

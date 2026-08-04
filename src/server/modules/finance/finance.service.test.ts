@@ -32,12 +32,16 @@ function makeDeps() {
     recordPaymentAndRollUp: vi.fn(),
     findMany: vi.fn(),
     summarise: vi.fn(),
+    findForProfitAndLoss: vi.fn().mockResolvedValue([]),
   };
-  return { repository };
+  const tenantRepository = {
+    findById: vi.fn().mockResolvedValue({ id: 'tenant-1', gstStateCode: null }),
+  };
+  return { repository, tenantRepository };
 }
 
 function build(deps: ReturnType<typeof makeDeps>) {
-  return new FinanceService(deps.repository as never);
+  return new FinanceService(deps.repository as never, deps.tenantRepository as never);
 }
 
 describe('formatDocumentNumber', () => {
@@ -210,5 +214,79 @@ describe('FinanceService.deleteDocument', () => {
     const deps = makeDeps();
     deps.repository.findById.mockResolvedValue(makeDocument({ status: 'SENT' }));
     await expect(build(deps).deleteDocument('tenant-1', 'doc-1')).rejects.toThrow(ConflictError);
+  });
+});
+
+describe('FinanceService.createDocument — GST split', () => {
+  const baseInput = {
+    type: 'INVOICE' as const,
+    issueDate: new Date('2026-07-29T00:00:00.000Z'),
+    currency: 'USD',
+    taxRate: 18,
+    lineItems: [{ description: 'Work', quantity: 1, unitPrice: 100 }],
+  };
+
+  it('does not split tax when the tenant has no gstStateCode configured', async () => {
+    const deps = makeDeps();
+    deps.tenantRepository.findById.mockResolvedValue({ id: 'tenant-1', gstStateCode: null });
+    await build(deps).createDocument('tenant-1', 'emp-1', { ...baseInput, placeOfSupplyStateCode: '27' }, {});
+    const isInterState = deps.repository.createWithLineItems.mock.calls[0][2];
+    expect(isInterState).toBeUndefined();
+  });
+
+  it('does not split tax when the document has no placeOfSupplyStateCode', async () => {
+    const deps = makeDeps();
+    deps.tenantRepository.findById.mockResolvedValue({ id: 'tenant-1', gstStateCode: '27' });
+    await build(deps).createDocument('tenant-1', 'emp-1', baseInput, {});
+    const isInterState = deps.repository.createWithLineItems.mock.calls[0][2];
+    expect(isInterState).toBeUndefined();
+  });
+
+  it('splits as CGST/SGST (same state) when place of supply matches the tenant', async () => {
+    const deps = makeDeps();
+    deps.tenantRepository.findById.mockResolvedValue({ id: 'tenant-1', gstStateCode: '27' });
+    await build(deps).createDocument('tenant-1', 'emp-1', { ...baseInput, placeOfSupplyStateCode: '27' }, {});
+    const isInterState = deps.repository.createWithLineItems.mock.calls[0][2];
+    expect(isInterState).toBe(false);
+  });
+
+  it('splits as IGST (cross-state) when place of supply differs from the tenant', async () => {
+    const deps = makeDeps();
+    deps.tenantRepository.findById.mockResolvedValue({ id: 'tenant-1', gstStateCode: '27' });
+    await build(deps).createDocument('tenant-1', 'emp-1', { ...baseInput, placeOfSupplyStateCode: '09' }, {});
+    const isInterState = deps.repository.createWithLineItems.mock.calls[0][2];
+    expect(isInterState).toBe(true);
+  });
+});
+
+describe('FinanceService.profitAndLoss', () => {
+  it('recognizes INVOICE as revenue and EXPENSE/BILL as expenses, ignoring QUOTATION', async () => {
+    const deps = makeDeps();
+    deps.repository.findForProfitAndLoss.mockResolvedValue([
+      { type: 'INVOICE', totalAmount: 1000, issueDate: new Date('2026-01-15') },
+      { type: 'EXPENSE', totalAmount: 200, issueDate: new Date('2026-01-20') },
+      { type: 'BILL', totalAmount: 100, issueDate: new Date('2026-02-05') },
+      { type: 'QUOTATION', totalAmount: 5000, issueDate: new Date('2026-01-10') },
+    ]);
+
+    const report = await build(deps).profitAndLoss('tenant-1', new Date('2026-01-01'), new Date('2026-02-28'));
+
+    expect(report.revenue).toBe(1000);
+    expect(report.expenses).toBe(300);
+    expect(report.netProfit).toBe(700);
+  });
+
+  it('buckets totals by month, sorted chronologically', async () => {
+    const deps = makeDeps();
+    deps.repository.findForProfitAndLoss.mockResolvedValue([
+      { type: 'INVOICE', totalAmount: 500, issueDate: new Date('2026-02-01') },
+      { type: 'INVOICE', totalAmount: 300, issueDate: new Date('2026-01-01') },
+    ]);
+
+    const report = await build(deps).profitAndLoss('tenant-1', new Date('2026-01-01'), new Date('2026-02-28'));
+
+    expect(report.byMonth.map((m) => m.month)).toEqual(['2026-01', '2026-02']);
+    expect(report.byMonth[0].revenue).toBe(300);
+    expect(report.byMonth[1].revenue).toBe(500);
   });
 });

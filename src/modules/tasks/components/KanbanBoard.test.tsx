@@ -45,6 +45,22 @@ describe('KanbanBoard', () => {
     expect(onOpenTask).toHaveBeenCalledWith(expect.objectContaining({ title: 'Clickable task' }));
   });
 
+  it('opens a card via the keyboard (Enter and Space), for users who cannot click', () => {
+    const onOpenTask = vi.fn();
+    const tasks = [makeTask({ title: 'Keyboard task' })];
+    renderWithProviders(<KanbanBoard tasks={tasks} onOpenTask={onOpenTask} />);
+
+    const card = screen.getByRole('button', { name: 'Open task Keyboard task' });
+    card.focus();
+    expect(card).toHaveFocus();
+
+    card.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    expect(onOpenTask).toHaveBeenCalledTimes(1);
+
+    card.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
+    expect(onOpenTask).toHaveBeenCalledTimes(2);
+  });
+
   it('shows the correct count badge per column', () => {
     const tasks = [makeTask({ id: 't1', status: 'TODO' }), makeTask({ id: 't2', status: 'TODO' })];
     renderWithProviders(<KanbanBoard tasks={tasks} onOpenTask={vi.fn()} />);

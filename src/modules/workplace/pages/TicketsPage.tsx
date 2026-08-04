@@ -4,6 +4,7 @@ import { useTickets } from '../hooks/useWorkplace';
 import { usePagination } from '../../../shared/hooks/usePagination';
 import { CreateTicketDialog } from '../components/CreateTicketDialog';
 import { TicketStatusBadge } from '../components/TicketBadges';
+import { Badge } from '../../../shared/components/ui/badge';
 import { Card } from '../../../shared/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui/table';
 import { PaginationBar } from '../../../shared/components/ui/pagination';
@@ -51,7 +52,9 @@ export function TicketsPage() {
                 {data.data.map((ticket) => (
                   <TableRow key={ticket.id}>
                     <TableCell className="font-medium">{ticket.subject}</TableCell>
-                    <TableCell>{ticket.category}</TableCell>
+                    <TableCell>
+                      <Badge variant="neutral">{ticket.category}</Badge>
+                    </TableCell>
                     <TableCell>
                       <TicketStatusBadge status={ticket.status} />
                     </TableCell>

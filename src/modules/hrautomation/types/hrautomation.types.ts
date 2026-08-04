@@ -1,4 +1,21 @@
-export type TemplateType = 'POSTER_WELCOME' | 'POSTER_BIRTHDAY' | 'POSTER_PROMOTION' | 'LETTER_OFFER' | 'LETTER_EXPERIENCE' | 'LETTER_RELIEVING';
+export type TemplateType =
+  | 'POSTER_WELCOME'
+  | 'POSTER_BIRTHDAY'
+  | 'POSTER_PROMOTION'
+  | 'LETTER_OFFER'
+  | 'LETTER_APPOINTMENT'
+  | 'LETTER_JOINING'
+  | 'LETTER_CONFIRMATION'
+  | 'LETTER_PROMOTION'
+  | 'LETTER_SALARY_REVISION'
+  | 'LETTER_EXPERIENCE'
+  | 'LETTER_RELIEVING'
+  | 'LETTER_WARNING'
+  | 'LETTER_APPRECIATION'
+  | 'LETTER_INTERNSHIP_CERTIFICATE'
+  | 'LETTER_SALARY_CERTIFICATE'
+  | 'LETTER_NOC'
+  | 'LETTER_FNF_SETTLEMENT';
 
 export interface LayoutField {
   id: string;
@@ -46,6 +63,26 @@ export interface AnnouncementRecord {
 }
 
 export const POSTER_TYPES: TemplateType[] = ['POSTER_WELCOME', 'POSTER_BIRTHDAY', 'POSTER_PROMOTION'];
+
+export const TEMPLATE_TYPE_LABELS: Record<TemplateType, string> = {
+  POSTER_WELCOME: 'Welcome Poster',
+  POSTER_BIRTHDAY: 'Birthday Poster',
+  POSTER_PROMOTION: 'Promotion Poster',
+  LETTER_OFFER: 'Offer Letter',
+  LETTER_APPOINTMENT: 'Appointment Letter',
+  LETTER_JOINING: 'Joining Letter',
+  LETTER_CONFIRMATION: 'Confirmation Letter',
+  LETTER_PROMOTION: 'Promotion Letter',
+  LETTER_SALARY_REVISION: 'Salary Revision Letter',
+  LETTER_EXPERIENCE: 'Experience Letter',
+  LETTER_RELIEVING: 'Relieving Letter',
+  LETTER_WARNING: 'Warning Letter',
+  LETTER_APPRECIATION: 'Appreciation Letter',
+  LETTER_INTERNSHIP_CERTIFICATE: 'Internship Certificate',
+  LETTER_SALARY_CERTIFICATE: 'Salary Certificate',
+  LETTER_NOC: 'No Objection Certificate',
+  LETTER_FNF_SETTLEMENT: 'Full & Final Settlement Letter',
+};
 
 export const TEMPLATE_VARIABLES = [
   'firstName',

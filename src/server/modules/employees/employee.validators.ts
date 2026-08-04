@@ -12,6 +12,8 @@ export const createEmployeeProfileSchema = z.object({
   dateOfJoining: z.coerce.date(),
   dateOfBirth: z.coerce.date().optional(),
   managerId: z.string().uuid().optional(),
+  branchId: z.string().uuid().optional(),
+  teamId: z.string().uuid().optional(),
 });
 
 export const updateEmployeeProfileSchema = z.object({
@@ -20,12 +22,16 @@ export const updateEmployeeProfileSchema = z.object({
   designation: z.string().min(1).max(80).optional(),
   status: z.enum(['ACTIVE', 'ONBOARDING', 'OFFBOARDING', 'TERMINATED', 'RESIGNED']).optional(),
   managerId: z.string().uuid().nullable().optional(),
+  branchId: z.string().uuid().nullable().optional(),
+  teamId: z.string().uuid().nullable().optional(),
 });
 
 export const listEmployeesQuerySchema = paginationQuerySchema.extend({
   department: z.string().optional(),
   status: z.string().optional(),
   managerId: z.string().uuid().optional(),
+  branchId: z.string().uuid().optional(),
+  teamId: z.string().uuid().optional(),
 });
 
 export const employeeIdParamSchema = z.object({

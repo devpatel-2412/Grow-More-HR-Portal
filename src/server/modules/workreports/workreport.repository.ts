@@ -26,7 +26,13 @@ export class WorkReportRepository {
     return prisma.dailyWorkReport.update({ where: { id }, data });
   }
 
-  async findMany(tenantId: string, filter: WorkReportFilter, skip: number, take: number) {
+  async findMany(
+    tenantId: string,
+    filter: WorkReportFilter,
+    orderBy: Record<string, 'asc' | 'desc'>,
+    skip: number,
+    take: number,
+  ) {
     const where: Prisma.DailyWorkReportWhereInput = {
       tenantId,
       employeeId: filter.employeeIds ? { in: filter.employeeIds } : filter.employeeId,
@@ -34,7 +40,7 @@ export class WorkReportRepository {
       date: filter.from || filter.to ? { gte: filter.from, lte: filter.to } : undefined,
     };
     const [rows, total] = await Promise.all([
-      prisma.dailyWorkReport.findMany({ where, orderBy: { date: 'desc' }, skip, take }),
+      prisma.dailyWorkReport.findMany({ where, orderBy, skip, take }),
       prisma.dailyWorkReport.count({ where }),
     ]);
     return { rows, total };

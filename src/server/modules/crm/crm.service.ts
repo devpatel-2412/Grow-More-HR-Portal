@@ -2,7 +2,11 @@ import { LeadRepository, ClientRepository, ContactRepository, CrmActivityReposit
 import { EmployeeRepository } from '../employees/employee.repository.js';
 import { ConflictError, NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
+
+const LEAD_SORTABLE_FIELDS = ['companyName', 'contactName', 'status', 'estimatedValue', 'createdAt', 'updatedAt'] as const;
+const CLIENT_SORTABLE_FIELDS = ['companyName', 'status', 'industry', 'createdAt', 'updatedAt'] as const;
+const CRM_ACTIVITY_SORTABLE_FIELDS = ['subject', 'type', 'occurredAt', 'createdAt'] as const;
 import type { LeadStatus } from '@prisma/client';
 import type { z } from 'zod';
 import type {
@@ -164,9 +168,11 @@ export class CrmService {
   }
 
   async listLeads(tenantId: string, query: z.infer<typeof listLeadsQuerySchema>) {
+    const orderBy = toPrismaOrderBy(query.sort, LEAD_SORTABLE_FIELDS, { field: 'createdAt', direction: 'desc' });
     const { rows, total } = await this.leadRepository.findMany(
       tenantId,
       { status: query.status, ownerId: query.ownerId, search: query.search },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );
@@ -233,9 +239,11 @@ export class CrmService {
   }
 
   async listClients(tenantId: string, query: z.infer<typeof listClientsQuerySchema>) {
+    const orderBy = toPrismaOrderBy(query.sort, CLIENT_SORTABLE_FIELDS, { field: 'createdAt', direction: 'desc' });
     const { rows, total } = await this.clientRepository.findMany(
       tenantId,
       { status: query.status, accountManagerId: query.accountManagerId, search: query.search },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );
@@ -291,9 +299,11 @@ export class CrmService {
   }
 
   async listActivities(tenantId: string, query: z.infer<typeof listActivitiesQuerySchema>) {
+    const orderBy = toPrismaOrderBy(query.sort, CRM_ACTIVITY_SORTABLE_FIELDS, { field: 'occurredAt', direction: 'desc' });
     const { rows, total } = await this.activityRepository.findMany(
       tenantId,
       { leadId: query.leadId, clientId: query.clientId, type: query.type },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );

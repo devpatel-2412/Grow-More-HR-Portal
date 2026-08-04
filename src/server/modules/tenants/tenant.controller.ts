@@ -30,6 +30,6 @@ export async function updateTenant(req: Request, res: Response): Promise<void> {
 
 export async function listTenants(req: Request, res: Response): Promise<void> {
   const query = req.query as unknown as z.infer<typeof listTenantsQuerySchema>;
-  const { rows, meta } = await tenantService.list(query.page, query.limit, query.search);
+  const { rows, meta } = await tenantService.list(query.page, query.limit, query.search, query.sort);
   sendPaginated(res, rows, meta);
 }

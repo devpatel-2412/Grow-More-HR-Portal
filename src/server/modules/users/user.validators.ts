@@ -3,10 +3,20 @@ import { UserRole, UserStatus } from '@prisma/client';
 import { paginationQuerySchema } from '../../shared/utils/pagination.util.js';
 import { passwordSchema } from '../auth/auth.validators.js';
 
-export const inviteUserSchema = z.object({
-  email: z.string().email(),
-  role: z.nativeEnum(UserRole),
-});
+export const inviteUserSchema = z
+  .object({
+    email: z.string().email(),
+    role: z.nativeEnum(UserRole),
+    clientPortalId: z.string().uuid().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === 'CLIENT' && !data.clientPortalId) {
+      ctx.addIssue({ code: 'custom', message: 'A client portal invite needs clientPortalId', path: ['clientPortalId'] });
+    }
+    if (data.role !== 'CLIENT' && data.clientPortalId) {
+      ctx.addIssue({ code: 'custom', message: 'clientPortalId is only valid for a CLIENT invite', path: ['clientPortalId'] });
+    }
+  });
 
 export const acceptInviteSchema = z.object({
   token: z.string().min(1),

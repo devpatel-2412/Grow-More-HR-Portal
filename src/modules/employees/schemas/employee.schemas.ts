@@ -19,5 +19,7 @@ export const updateEmployeeSchema = z.object({
   department: z.string().min(1, 'Required').max(80),
   designation: z.string().min(1, 'Required').max(80),
   status: z.enum(EMPLOYEE_STATUSES),
+  branchId: z.string().optional(),
+  teamId: z.string().optional(),
 });
 export type UpdateEmployeeFormValues = z.infer<typeof updateEmployeeSchema>;

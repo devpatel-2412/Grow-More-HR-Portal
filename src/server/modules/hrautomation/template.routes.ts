@@ -20,6 +20,9 @@ import {
   listTemplates,
   generateDocument,
   listGeneratedDocuments,
+  downloadGeneratedDocumentPdf,
+  downloadGeneratedDocumentDocx,
+  emailGeneratedDocument,
 } from './template.controller.js';
 
 const manage = requirePermission(PERMISSIONS.TEMPLATE_MANAGE);
@@ -35,6 +38,21 @@ templateRouter.get(
   '/generated-documents',
   validate({ query: listGeneratedDocumentsQuerySchema }),
   asyncHandler(listGeneratedDocuments),
+);
+templateRouter.get(
+  '/generated-documents/:id/pdf',
+  validate({ params: idParamSchema }),
+  asyncHandler(downloadGeneratedDocumentPdf),
+);
+templateRouter.get(
+  '/generated-documents/:id/docx',
+  validate({ params: idParamSchema }),
+  asyncHandler(downloadGeneratedDocumentDocx),
+);
+templateRouter.post(
+  '/generated-documents/:id/email',
+  validate({ params: idParamSchema }),
+  asyncHandler(emailGeneratedDocument),
 );
 templateRouter.get('/:id', validate({ params: idParamSchema }), asyncHandler(getTemplate));
 templateRouter.patch('/:id', validate({ params: idParamSchema, body: updateTemplateSchema }), asyncHandler(updateTemplate));

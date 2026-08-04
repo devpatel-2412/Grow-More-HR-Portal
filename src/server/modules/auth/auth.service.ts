@@ -273,6 +273,15 @@ export class AuthService {
     await auditLogService.record({ actorUserId: userId, action: 'TOKEN_REVOKE', targetType: 'User', targetId: userId, ...meta });
   }
 
+  /** Self-service — the caller's own recent sign-in attempts (success and failure), not the tenant-wide admin audit log. */
+  async getLoginHistory(userId: string, page: number, limit: number) {
+    return auditLogService.list(
+      { actorUserId: userId, action: ['USER_LOGIN_SUCCESS', 'USER_LOGIN_FAILURE'] },
+      page,
+      limit,
+    );
+  }
+
   async getMe(userId: string) {
     const user = await this.userRepository.findByIdWithProfile(userId);
     if (!user) throw new NotFoundError('User not found');

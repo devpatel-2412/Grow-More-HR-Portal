@@ -48,8 +48,9 @@ export function CreateFinanceDocumentDialog() {
       issueDate: today(),
       dueDate: '',
       taxRate: 0,
+      placeOfSupplyStateCode: '',
       notes: '',
-      lineItems: [{ description: '', quantity: 1, unitPrice: 0 }],
+      lineItems: [{ description: '', hsnCode: '', quantity: 1, unitPrice: 0 }],
     },
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'lineItems' });
@@ -72,8 +73,9 @@ export function CreateFinanceDocumentDialog() {
         issueDate: values.issueDate,
         dueDate: values.dueDate || undefined,
         taxRate: values.taxRate,
+        placeOfSupplyStateCode: values.placeOfSupplyStateCode || undefined,
         notes: values.notes.trim() || undefined,
-        lineItems: values.lineItems,
+        lineItems: values.lineItems.map((item) => ({ ...item, hsnCode: item.hsnCode || undefined })),
       });
       toast.success('Document created as a draft.');
       reset();
@@ -135,19 +137,25 @@ export function CreateFinanceDocumentDialog() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Line items</Label>
-              <Button type="button" size="sm" variant="ghost" onClick={() => append({ description: '', quantity: 1, unitPrice: 0 })}>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => append({ description: '', hsnCode: '', quantity: 1, unitPrice: 0 })}
+              >
                 <Plus className="h-4 w-4" />
                 Add line
               </Button>
             </div>
             {fields.map((field, index) => (
-              <div key={field.id} className="grid grid-cols-[1fr_80px_100px_32px] items-start gap-2">
+              <div key={field.id} className="grid grid-cols-[1fr_90px_80px_100px_32px] items-start gap-2">
                 <div>
                   <Input placeholder="Description" {...register(`lineItems.${index}.description`)} />
                   {errors.lineItems?.[index]?.description && (
                     <p className="mt-1 text-xs text-[var(--destructive)]">{errors.lineItems[index]?.description?.message}</p>
                   )}
                 </div>
+                <Input placeholder="HSN/SAC" {...register(`lineItems.${index}.hsnCode`)} />
                 <Input
                   type="number"
                   step="0.01"
@@ -176,9 +184,15 @@ export function CreateFinanceDocumentDialog() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="doc-tax">Tax rate (%)</Label>
-              <Input id="doc-tax" type="number" step="0.01" {...register('taxRate', { valueAsNumber: true })} />
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="doc-tax">Tax rate (%)</Label>
+                <Input id="doc-tax" type="number" step="0.01" {...register('taxRate', { valueAsNumber: true })} />
+              </div>
+              <div>
+                <Label htmlFor="doc-pos">Place of supply (GST state code)</Label>
+                <Input id="doc-pos" placeholder="e.g. 27" maxLength={2} {...register('placeOfSupplyStateCode')} />
+              </div>
             </div>
             <div className="space-y-1 rounded-lg bg-[var(--muted)] p-3 text-xs">
               <div className="flex justify-between">

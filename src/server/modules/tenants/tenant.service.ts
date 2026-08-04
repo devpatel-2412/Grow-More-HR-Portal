@@ -1,7 +1,9 @@
 import { TenantRepository } from './tenant.repository.js';
 import { ConflictError, NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
+
+const TENANT_SORTABLE_FIELDS = ['name', 'domain', 'createdAt'] as const;
 import type { z } from 'zod';
 import type { createTenantSchema, updateTenantSchema } from './tenant.validators.js';
 
@@ -63,8 +65,9 @@ export class TenantService {
     return tenant;
   }
 
-  async list(page: number, limit: number, search?: string) {
-    const { rows, total } = await this.repository.findMany((page - 1) * limit, limit, search);
+  async list(page: number, limit: number, search?: string, sort?: string) {
+    const orderBy = toPrismaOrderBy(sort, TENANT_SORTABLE_FIELDS, { field: 'createdAt', direction: 'desc' });
+    const { rows, total } = await this.repository.findMany((page - 1) * limit, limit, orderBy, search);
     return { rows, meta: buildPaginationMeta(page, limit, total) };
   }
 }

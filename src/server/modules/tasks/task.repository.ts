@@ -25,7 +25,13 @@ export class TaskRepository {
     return prisma.task.delete({ where: { id } });
   }
 
-  async findMany(tenantId: string, filter: TaskFilter, skip: number, take: number) {
+  async findMany(
+    tenantId: string,
+    filter: TaskFilter,
+    orderBy: Record<string, 'asc' | 'desc'>,
+    skip: number,
+    take: number,
+  ) {
     const where: Prisma.TaskWhereInput = {
       tenantId,
       projectId: filter.projectId,
@@ -34,7 +40,7 @@ export class TaskRepository {
       assignedToId: filter.assignedToId,
     };
     const [rows, total] = await Promise.all([
-      prisma.task.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      prisma.task.findMany({ where, orderBy, skip, take }),
       prisma.task.count({ where }),
     ]);
     return { rows, total };

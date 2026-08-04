@@ -228,6 +228,72 @@ describe('Documents', () => {
     const readRes = await request(app).get('/api/v1/documents').set('Authorization', `Bearer ${worker.token}`);
     expect(readRes.body.data).toHaveLength(1);
   });
+
+  it('replaces a file as a new version, then archives and restores the document', async () => {
+    const { res: signupRes, domain } = await signupTenant();
+    const adminToken = signupRes.body.data.accessToken;
+    const me = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${adminToken}`);
+    const worker = await createEmployeeAccount(me.body.data.tenant.id, domain);
+
+    const uploadRes = await request(app)
+      .post('/api/v1/documents')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Handbook.pdf', category: 'HR', folderPath: '/hr', fileUrl: 'https://files.example.com/handbook-v1.pdf' });
+    const documentId = uploadRes.body.data.id;
+    expect(uploadRes.body.data.version).toBe(1);
+
+    // A plain employee cannot replace the file.
+    const forbiddenReplace = await request(app)
+      .post(`/api/v1/documents/${documentId}/replace`)
+      .set('Authorization', `Bearer ${worker.token}`)
+      .send({ fileUrl: 'https://files.example.com/handbook-sneaky.pdf' });
+    expect(forbiddenReplace.status).toBe(403);
+
+    const replaceRes = await request(app)
+      .post(`/api/v1/documents/${documentId}/replace`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ fileUrl: 'https://files.example.com/handbook-v2.pdf' });
+    expect(replaceRes.status).toBe(200);
+    expect(replaceRes.body.data.version).toBe(2);
+    expect(replaceRes.body.data.fileUrl).toBe('https://files.example.com/handbook-v2.pdf');
+
+    // Full version history is preserved, most recent first.
+    const versionsRes = await request(app)
+      .get(`/api/v1/documents/${documentId}/versions`)
+      .set('Authorization', `Bearer ${worker.token}`);
+    expect(versionsRes.status).toBe(200);
+    expect(versionsRes.body.data).toHaveLength(2);
+    expect(versionsRes.body.data[0]).toMatchObject({ version: 2, fileUrl: 'https://files.example.com/handbook-v2.pdf' });
+    expect(versionsRes.body.data[1]).toMatchObject({ version: 1, fileUrl: 'https://files.example.com/handbook-v1.pdf' });
+
+    // Archiving removes it from the default list but it's still findable via ?archived=true.
+    const archiveRes = await request(app)
+      .post(`/api/v1/documents/${documentId}/archive`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(archiveRes.status).toBe(200);
+    expect(archiveRes.body.data.archived).toBe(true);
+
+    const activeListRes = await request(app).get('/api/v1/documents').set('Authorization', `Bearer ${worker.token}`);
+    expect(activeListRes.body.data).toHaveLength(0);
+
+    const archivedListRes = await request(app).get('/api/v1/documents?archived=true').set('Authorization', `Bearer ${worker.token}`);
+    expect(archivedListRes.body.data).toHaveLength(1);
+
+    // Archiving again is a conflict, not a silent no-op.
+    const doubleArchiveRes = await request(app)
+      .post(`/api/v1/documents/${documentId}/archive`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(doubleArchiveRes.status).toBe(409);
+
+    const restoreRes = await request(app)
+      .post(`/api/v1/documents/${documentId}/restore`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(restoreRes.status).toBe(200);
+    expect(restoreRes.body.data.archived).toBe(false);
+
+    const restoredListRes = await request(app).get('/api/v1/documents').set('Authorization', `Bearer ${worker.token}`);
+    expect(restoredListRes.body.data).toHaveLength(1);
+  });
 });
 
 describe('Assets', () => {

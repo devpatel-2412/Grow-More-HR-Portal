@@ -20,7 +20,7 @@ export class EmployeeRepository {
 
   async findManyByTenant(
     tenantId: string,
-    filter: { department?: string; status?: string; managerId?: string; search?: string },
+    filter: { department?: string; status?: string; managerId?: string; branchId?: string; teamId?: string; search?: string },
     orderBy: Record<string, 'asc' | 'desc'>,
     skip: number,
     take: number,
@@ -29,6 +29,8 @@ export class EmployeeRepository {
       tenantId,
       department: filter.department,
       managerId: filter.managerId,
+      branchId: filter.branchId,
+      teamId: filter.teamId,
       status: filter.status as Prisma.EnumEmployeeStatusFilter['equals'],
       OR: filter.search
         ? [

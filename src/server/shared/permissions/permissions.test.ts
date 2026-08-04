@@ -8,11 +8,26 @@ describe('permissions', () => {
     }
   });
 
-  it('denies EMPLOYEE and CLIENT any permission by default', () => {
+  it('denies EMPLOYEE, CLIENT, and CANDIDATE any permission by default', () => {
     for (const permission of Object.values(PERMISSIONS)) {
       expect(roleHasPermission('EMPLOYEE', permission)).toBe(false);
       expect(roleHasPermission('CLIENT', permission)).toBe(false);
+      expect(roleHasPermission('CANDIDATE', permission)).toBe(false);
     }
+  });
+
+  it('scopes RECRUITER to recruitment only', () => {
+    expect(roleHasPermission('RECRUITER', PERMISSIONS.RECRUITMENT_MANAGE)).toBe(true);
+    expect(roleHasPermission('RECRUITER', PERMISSIONS.RECRUITMENT_READ)).toBe(true);
+    expect(roleHasPermission('RECRUITER', PERMISSIONS.EMPLOYEE_CREATE)).toBe(false);
+    expect(roleHasPermission('RECRUITER', PERMISSIONS.FINANCE_MANAGE)).toBe(false);
+  });
+
+  it('scopes FINANCE to finance only', () => {
+    expect(roleHasPermission('FINANCE', PERMISSIONS.FINANCE_MANAGE)).toBe(true);
+    expect(roleHasPermission('FINANCE', PERMISSIONS.FINANCE_READ)).toBe(true);
+    expect(roleHasPermission('FINANCE', PERMISSIONS.PAYROLL_MANAGE)).toBe(false);
+    expect(roleHasPermission('FINANCE', PERMISSIONS.RECRUITMENT_MANAGE)).toBe(false);
   });
 
   it('grants ADMIN tenant and user management permissions but not platform-wide tenant listing', () => {

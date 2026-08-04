@@ -1,6 +1,6 @@
 import { api } from '../../../shared/lib/api-client';
 import type { LoginFormValues, SignupFormValues, TwoFactorVerifyFormValues } from '../schemas/auth.schemas';
-import type { LoginResponse, MeResponse, AuthUser } from '../types/auth.types';
+import type { LoginResponse, MeResponse, AuthUser, LoginHistoryEntry } from '../types/auth.types';
 
 export const authApi = {
   signup: (values: SignupFormValues) => api.post<{ accessToken: string; user: AuthUser }>('/auth/signup', values),
@@ -18,4 +18,5 @@ export const authApi = {
   beginTwoFactorEnrollment: () => api.post<{ secret: string; qrCodeDataUrl: string }>('/auth/2fa/enroll'),
   enableTwoFactor: (code: string) => api.post<{ recoveryCodes: string[] }>('/auth/2fa/enable', { code }),
   disableTwoFactor: (password: string, code: string) => api.post<void>('/auth/2fa/disable', { password, code }),
+  loginHistory: (query: { page: number; limit: number }) => api.getPaginated<LoginHistoryEntry>('/auth/login-history', query),
 };

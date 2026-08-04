@@ -2,7 +2,7 @@ import { AttendanceRepository } from './attendance.repository.js';
 import { EmployeeRepository } from '../employees/employee.repository.js';
 import { TenantRepository } from '../tenants/tenant.repository.js';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../../shared/errors/app-error.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
 import type { Attendance, AttendanceBreak, Tenant } from '@prisma/client';
 import type { z } from 'zod';
 import type { punchInSchema, listAttendanceQuerySchema } from './attendance.validators.js';
@@ -10,6 +10,8 @@ import type { punchInSchema, listAttendanceQuerySchema } from './attendance.vali
 interface RequestMeta {
   ipAddress?: string;
 }
+
+const ATTENDANCE_SORTABLE_FIELDS = ['date', 'status', 'checkIn', 'checkOut', 'lateMinutes', 'overBreakMinutes'] as const;
 
 /** Midnight UTC for the given instant — the calendar-day key the (employeeId, date) unique constraint is built on. */
 function dayStart(date: Date): Date {
@@ -202,9 +204,11 @@ export class AttendanceService {
       employeeId = own.id;
     }
 
+    const orderBy = toPrismaOrderBy(query.sort, ATTENDANCE_SORTABLE_FIELDS, { field: 'date', direction: 'desc' });
     const { rows, total } = await this.repository.findManyByTenant(
       tenantId,
       { employeeId, from: query.from, to: query.to },
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );

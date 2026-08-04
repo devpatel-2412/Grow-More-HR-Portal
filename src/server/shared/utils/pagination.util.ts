@@ -23,16 +23,24 @@ export function toPrismaSkipTake(query: Pick<PaginationQuery, 'page' | 'limit'>)
   };
 }
 
-/** Parses "field:asc" / "field:desc" into a Prisma orderBy object, restricted to an allow-list of sortable fields to prevent arbitrary-field probing. */
+/**
+ * Parses "field:asc" / "field:desc" into a Prisma orderBy object, restricted to an allow-list of
+ * sortable fields to prevent arbitrary-field probing. `fallback` is used whenever `sort` is
+ * absent or names a field outside the allow-list — pass `{ field, direction }` to preserve a
+ * module's existing default ordering (most lists default to newest-first, i.e. `desc`); a plain
+ * field name defaults to `asc`, matching the original two call sites of this function.
+ */
 export function toPrismaOrderBy<T extends string>(
   sort: string | undefined,
   allowedFields: readonly T[],
-  fallback: T,
+  fallback: T | { field: T; direction: 'asc' | 'desc' },
 ): Record<string, 'asc' | 'desc'> {
-  if (!sort) return { [fallback]: 'asc' };
+  const fallbackField = typeof fallback === 'string' ? fallback : fallback.field;
+  const fallbackDirection = typeof fallback === 'string' ? 'asc' : fallback.direction;
+  if (!sort) return { [fallbackField]: fallbackDirection };
   const [field, direction] = sort.split(':');
-  const safeField = allowedFields.includes(field as T) ? field : fallback;
-  const safeDirection = direction === 'desc' ? 'desc' : 'asc';
+  const safeField = allowedFields.includes(field as T) ? field : fallbackField;
+  const safeDirection = direction === 'desc' ? 'desc' : direction === 'asc' ? 'asc' : fallbackDirection;
   return { [safeField]: safeDirection };
 }
 

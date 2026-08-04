@@ -24,6 +24,13 @@ export function useFinanceSummary() {
   return useQuery({ queryKey: ['finance', 'summary'], queryFn: () => financeApi.summary() });
 }
 
+export function useProfitAndLoss(query: { from: string; to: string }) {
+  return useQuery({
+    queryKey: ['finance', 'profit-loss', query],
+    queryFn: () => financeApi.profitAndLoss(query),
+  });
+}
+
 export function useCreateFinanceDocument() {
   const queryClient = useQueryClient();
   return useMutation({

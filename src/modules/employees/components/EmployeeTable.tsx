@@ -1,42 +1,110 @@
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui/table';
+import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
+import { UserX } from 'lucide-react';
+import { DataTable, type DataTableColumn } from '../../../shared/components/ui/data-table';
 import { EmployeeStatusBadge } from './EmployeeStatusBadge';
 import { EmployeeFormDialog } from './EmployeeFormDialog';
+import { useUpdateEmployee } from '../hooks/useUpdateEmployee';
+import { ApiError } from '../../../shared/lib/api-client';
 import type { EmployeeListItem } from '../types/employee.types';
 
-export function EmployeeTable({ employees }: { employees: EmployeeListItem[] }) {
+export function EmployeeTable({
+  employees,
+  sort,
+  onSortChange,
+}: {
+  employees: EmployeeListItem[];
+  sort?: string;
+  onSortChange?: (sort: string | undefined) => void;
+}) {
+  const updateMutation = useUpdateEmployee();
+
+  const columns: DataTableColumn<EmployeeListItem>[] = useMemo(
+    () => [
+      {
+        id: 'firstName',
+        header: 'Employee',
+        sortable: true,
+        alwaysVisible: true,
+        csvValue: (e) => `${e.firstName} ${e.lastName}`,
+        cell: (e) => (
+          <Link to={`/employees/${e.id}`} className="block hover:underline">
+            <div className="font-semibold">
+              {e.firstName} {e.lastName}
+            </div>
+            <div className="text-[var(--muted-foreground)]">{e.employeeId}</div>
+          </Link>
+        ),
+      },
+      {
+        id: 'department',
+        header: 'Department',
+        sortable: true,
+        csvValue: (e) => e.department,
+        cell: (e) => e.department,
+      },
+      {
+        id: 'designation',
+        header: 'Designation',
+        csvValue: (e) => e.designation,
+        cell: (e) => e.designation,
+      },
+      {
+        id: 'dateOfJoining',
+        header: 'Joined',
+        sortable: true,
+        csvValue: (e) => new Date(e.dateOfJoining).toISOString().slice(0, 10),
+        cell: (e) => <span className="text-[var(--muted-foreground)]">{new Date(e.dateOfJoining).toLocaleDateString()}</span>,
+      },
+      {
+        id: 'status',
+        header: 'Status',
+        csvValue: (e) => e.status,
+        cell: (e) => <EmployeeStatusBadge status={e.status} />,
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        className: 'text-right',
+        cell: (e) => <EmployeeFormDialog mode="edit" employee={e} />,
+      },
+    ],
+    [],
+  );
+
+  async function markOffboarding(rows: EmployeeListItem[]) {
+    try {
+      await Promise.all(
+        rows.map((row) =>
+          updateMutation.mutateAsync({
+            id: row.id,
+            values: {
+              phone: row.phone ?? undefined,
+              department: row.department,
+              designation: row.designation,
+              status: 'OFFBOARDING',
+            },
+          }),
+        ),
+      );
+      toast.success(`${rows.length} employee${rows.length === 1 ? '' : 's'} marked as offboarding.`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Unable to update the selected employees.');
+    }
+  }
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Employee</TableHead>
-          <TableHead>Department</TableHead>
-          <TableHead>Designation</TableHead>
-          <TableHead>Joined</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {employees.map((e) => (
-          <TableRow key={e.id}>
-            <TableCell>
-              <div className="font-semibold">
-                {e.firstName} {e.lastName}
-              </div>
-              <div className="text-[var(--muted-foreground)]">{e.employeeId}</div>
-            </TableCell>
-            <TableCell>{e.department}</TableCell>
-            <TableCell>{e.designation}</TableCell>
-            <TableCell className="text-[var(--muted-foreground)]">{new Date(e.dateOfJoining).toLocaleDateString()}</TableCell>
-            <TableCell>
-              <EmployeeStatusBadge status={e.status} />
-            </TableCell>
-            <TableCell className="text-right">
-              <EmployeeFormDialog mode="edit" employee={e} />
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <DataTable
+      tableId="employees"
+      columns={columns}
+      rows={employees}
+      getRowId={(e) => e.id}
+      sort={sort}
+      onSortChange={onSortChange}
+      selectable
+      bulkActions={[{ label: 'Mark offboarding', icon: UserX, onAction: markOffboarding }]}
+      exportFilename="employees"
+    />
   );
 }

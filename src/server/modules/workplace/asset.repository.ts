@@ -21,6 +21,7 @@ export class AssetRepository {
   async findMany(
     tenantId: string,
     filter: { status?: AssetStatus; type?: AssetType; employeeId?: string },
+    orderBy: Record<string, 'asc' | 'desc'>,
     skip: number,
     take: number,
   ) {
@@ -31,7 +32,7 @@ export class AssetRepository {
       employeeId: filter.employeeId,
     };
     const [rows, total] = await Promise.all([
-      prisma.asset.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      prisma.asset.findMany({ where, orderBy, skip, take }),
       prisma.asset.count({ where }),
     ]);
     return { rows, total };

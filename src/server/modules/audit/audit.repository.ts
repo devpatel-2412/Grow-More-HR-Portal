@@ -15,7 +15,7 @@ export interface RecordAuditLogInput {
 export interface FindAuditLogsFilter {
   tenantId?: string;
   actorUserId?: string;
-  action?: AuditAction;
+  action?: AuditAction | AuditAction[];
   from?: Date;
   to?: Date;
 }
@@ -36,11 +36,11 @@ export class AuditRepository {
     });
   }
 
-  async findMany(filter: FindAuditLogsFilter, skip: number, take: number) {
+  async findMany(filter: FindAuditLogsFilter, orderBy: Record<string, 'asc' | 'desc'>, skip: number, take: number) {
     const where: Prisma.AuditLogWhereInput = {
       tenantId: filter.tenantId,
       actorUserId: filter.actorUserId,
-      action: filter.action,
+      action: Array.isArray(filter.action) ? { in: filter.action } : filter.action,
       createdAt:
         filter.from || filter.to
           ? { gte: filter.from, lte: filter.to }
@@ -50,7 +50,7 @@ export class AuditRepository {
     const [rows, total] = await Promise.all([
       prisma.auditLog.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         skip,
         take,
       }),

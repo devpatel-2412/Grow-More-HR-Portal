@@ -125,6 +125,59 @@ describe('Projects & Tasks — full flow', () => {
     expect(reassignRes.status).toBe(403);
   });
 
+  it('assigning a task notifies the assignee, and the notification can be listed and marked read', async () => {
+    const { res: signupRes, domain } = await signupTenant();
+    const adminToken = signupRes.body.data.accessToken;
+    const adminMe = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${adminToken}`);
+    const tenantId = adminMe.body.data.tenant.id;
+    const { token: workerToken, employeeId: workerEmployeeId } = await createEmployeeAccount(tenantId, domain);
+
+    const projectRes = await request(app)
+      .post('/api/v1/projects')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Website Relaunch', startDate: '2026-03-01' });
+    const projectId = projectRes.body.data.id;
+
+    // No notification yet — the worker has no unread count before anything is assigned.
+    const beforeCount = await request(app).get('/api/v1/notifications/unread-count').set('Authorization', `Bearer ${workerToken}`);
+    expect(beforeCount.body.data.count).toBe(0);
+
+    const taskRes = await request(app)
+      .post('/api/v1/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ projectId, title: 'Design homepage', assignedToId: workerEmployeeId });
+    expect(taskRes.status).toBe(201);
+
+    const afterCount = await request(app).get('/api/v1/notifications/unread-count').set('Authorization', `Bearer ${workerToken}`);
+    expect(afterCount.body.data.count).toBe(1);
+
+    const listRes = await request(app).get('/api/v1/notifications').set('Authorization', `Bearer ${workerToken}`);
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.data).toHaveLength(1);
+    expect(listRes.body.data[0]).toMatchObject({ type: 'TASK_ASSIGNED', body: 'Design homepage', link: `/projects/${projectId}` });
+    const notificationId = listRes.body.data[0].id;
+
+    // The admin who created the task has no notifications of their own.
+    const adminListRes = await request(app).get('/api/v1/notifications').set('Authorization', `Bearer ${adminToken}`);
+    expect(adminListRes.body.data).toHaveLength(0);
+
+    // A different employee cannot mark someone else's notification as read.
+    const { token: bystanderToken } = await createEmployeeAccount(tenantId, domain);
+    const forbiddenReadRes = await request(app)
+      .post(`/api/v1/notifications/${notificationId}/read`)
+      .set('Authorization', `Bearer ${bystanderToken}`);
+    expect(forbiddenReadRes.status).toBe(403);
+
+    const readRes = await request(app)
+      .post(`/api/v1/notifications/${notificationId}/read`)
+      .set('Authorization', `Bearer ${workerToken}`);
+    expect(readRes.status).toBe(200);
+    expect(readRes.body.data.readAt).not.toBeNull();
+
+    const finalCount = await request(app).get('/api/v1/notifications/unread-count').set('Authorization', `Bearer ${workerToken}`);
+    expect(finalCount.body.data.count).toBe(0);
+  });
+
   it('a comment and a milestone can be added, and the board list filters by project', async () => {
     const { res: signupRes } = await signupTenant();
     const adminToken = signupRes.body.data.accessToken;

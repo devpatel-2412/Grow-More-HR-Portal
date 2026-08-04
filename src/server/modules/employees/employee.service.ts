@@ -34,6 +34,8 @@ export class EmployeeService {
       dateOfJoining: input.dateOfJoining,
       dateOfBirth: input.dateOfBirth,
       manager: input.managerId ? { connect: { id: input.managerId } } : undefined,
+      branch: input.branchId ? { connect: { id: input.branchId } } : undefined,
+      team: input.teamId ? { connect: { id: input.teamId } } : undefined,
     });
 
     await auditLogService.record({
@@ -72,6 +74,18 @@ export class EmployeeService {
           : input.managerId === null
             ? { disconnect: true }
             : { connect: { id: input.managerId } },
+      branch:
+        input.branchId === undefined
+          ? undefined
+          : input.branchId === null
+            ? { disconnect: true }
+            : { connect: { id: input.branchId } },
+      team:
+        input.teamId === undefined
+          ? undefined
+          : input.teamId === null
+            ? { disconnect: true }
+            : { connect: { id: input.teamId } },
     });
 
     await auditLogService.record({
@@ -92,7 +106,14 @@ export class EmployeeService {
     const orderBy = toPrismaOrderBy(query.sort, SORTABLE_FIELDS, 'firstName');
     const { rows, total } = await this.repository.findManyByTenant(
       tenantId,
-      { department: query.department, status: query.status, managerId: query.managerId, search: query.search },
+      {
+        department: query.department,
+        status: query.status,
+        managerId: query.managerId,
+        branchId: query.branchId,
+        teamId: query.teamId,
+        search: query.search,
+      },
       orderBy,
       (query.page - 1) * query.limit,
       query.limit,

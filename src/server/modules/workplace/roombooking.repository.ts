@@ -28,14 +28,20 @@ export class RoomBookingRepository {
     });
   }
 
-  async findMany(tenantId: string, filter: { roomName?: string; from?: Date; to?: Date }, skip: number, take: number) {
+  async findMany(
+    tenantId: string,
+    filter: { roomName?: string; from?: Date; to?: Date },
+    orderBy: Record<string, 'asc' | 'desc'>,
+    skip: number,
+    take: number,
+  ) {
     const where: Prisma.RoomBookingWhereInput = {
       tenantId,
       roomName: filter.roomName,
       startTime: filter.from || filter.to ? { gte: filter.from, lte: filter.to } : undefined,
     };
     const [rows, total] = await Promise.all([
-      prisma.roomBooking.findMany({ where, orderBy: { startTime: 'asc' }, skip, take }),
+      prisma.roomBooking.findMany({ where, orderBy, skip, take }),
       prisma.roomBooking.count({ where }),
     ]);
     return { rows, total };

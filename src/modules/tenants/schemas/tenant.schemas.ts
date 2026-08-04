@@ -10,5 +10,7 @@ export const updateTenantSchema = z.object({
   attendanceRequiredWorkMinutes: z.number().int().min(1).max(1440).optional(),
   attendanceAllowedBreakMinutes: z.number().int().min(0).max(1440).optional(),
   attendanceBreakOverageExtendsLogout: z.boolean().optional(),
+  gstin: z.string().max(20).optional().or(z.literal('')),
+  gstStateCode: z.string().length(2).optional().or(z.literal('')),
 });
 export type UpdateTenantFormValues = z.infer<typeof updateTenantSchema>;

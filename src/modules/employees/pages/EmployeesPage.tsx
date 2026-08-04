@@ -51,7 +51,7 @@ export function EmployeesPage() {
 
         {!isLoading && !isError && data && data.data.length > 0 && (
           <div className="space-y-4">
-            <EmployeeTable employees={data.data} />
+            <EmployeeTable employees={data.data} sort={pagination.sort} onSortChange={pagination.setSort} />
             <PaginationBar meta={data.meta} onPageChange={pagination.setPage} />
           </div>
         )}

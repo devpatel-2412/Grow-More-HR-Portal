@@ -57,7 +57,15 @@ export const PERMISSIONS = {
   TEMPLATE_MANAGE: 'template:manage',
   ANNOUNCEMENT_MANAGE: 'announcement:manage',
 
+  ORG_MANAGE: 'org:manage',
+
+  VENDOR_MANAGE: 'vendor:manage',
+  INVENTORY_MANAGE: 'inventory:manage',
+  SOP_MANAGE: 'sop:manage',
+
   AUDIT_READ: 'audit:read',
+
+  DASHBOARD_READ_TENANT: 'dashboard:read:tenant',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -107,7 +115,12 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     PERMISSIONS.ROOM_BOOKING_MANAGE,
     PERMISSIONS.TEMPLATE_MANAGE,
     PERMISSIONS.ANNOUNCEMENT_MANAGE,
+    PERMISSIONS.ORG_MANAGE,
+    PERMISSIONS.VENDOR_MANAGE,
+    PERMISSIONS.INVENTORY_MANAGE,
+    PERMISSIONS.SOP_MANAGE,
     PERMISSIONS.AUDIT_READ,
+    PERMISSIONS.DASHBOARD_READ_TENANT,
   ],
   HR_MANAGER: [
     PERMISSIONS.USER_INVITE,
@@ -135,6 +148,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     PERMISSIONS.ROOM_BOOKING_MANAGE,
     PERMISSIONS.TEMPLATE_MANAGE,
     PERMISSIONS.ANNOUNCEMENT_MANAGE,
+    PERMISSIONS.ORG_MANAGE,
+    PERMISSIONS.VENDOR_MANAGE,
+    PERMISSIONS.INVENTORY_MANAGE,
+    PERMISSIONS.SOP_MANAGE,
+    PERMISSIONS.DASHBOARD_READ_TENANT,
   ],
   PROJECT_MANAGER: [
     PERMISSIONS.EMPLOYEE_READ_TENANT,
@@ -152,6 +170,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
   EMPLOYEE: [],
   CLIENT: [],
+  RECRUITER: [PERMISSIONS.RECRUITMENT_MANAGE, PERMISSIONS.RECRUITMENT_READ],
+  FINANCE: [PERMISSIONS.FINANCE_MANAGE, PERMISSIONS.FINANCE_READ],
+  // No candidate-facing surface exists yet — see the UserRole.CANDIDATE comment in schema.prisma.
+  CANDIDATE: [],
 };
 
 export function roleHasPermission(role: UserRole, permission: Permission): boolean {

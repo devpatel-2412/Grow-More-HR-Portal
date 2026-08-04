@@ -1,6 +1,17 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TaskService } from './task.service.js';
 import { ForbiddenError, NotFoundError } from '../../shared/errors/app-error.js';
+import { notificationService } from '../notifications/notification.service.js';
+
+vi.mock('../audit/audit.service.js', () => ({ auditLogService: { record: vi.fn() } }));
+vi.mock('../notifications/notification.service.js', () => ({ notificationService: { notify: vi.fn().mockResolvedValue(undefined) } }));
+
+// notificationService is a module-scoped mock shared across every test in this file — clear its
+// call history between tests so an earlier test's notify() call can't leak into a later
+// "was not called" assertion.
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 function makeTask(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -29,9 +40,49 @@ function makeDeps() {
   };
   const employeeRepository = {
     findByUserId: vi.fn().mockResolvedValue({ id: 'emp-1' }),
+    findById: vi.fn().mockResolvedValue({ id: 'emp-2', userId: 'user-emp-2' }),
   };
   return { repository, projectService, employeeRepository };
 }
+
+describe('TaskService — assignment notifications', () => {
+  it('notifies the assignee when a task is created already assigned', async () => {
+    const { repository, projectService, employeeRepository } = makeDeps();
+    repository.create.mockResolvedValue(makeTask({ assignedToId: 'emp-2', title: 'Ship it' }));
+    const service = new TaskService(repository as never, projectService as never, employeeRepository as never);
+
+    await service.create('tenant-1', { projectId: 'proj-1', title: 'Ship it', assignedToId: 'emp-2' } as never);
+
+    expect(employeeRepository.findById).toHaveBeenCalledWith('emp-2');
+    expect(notificationService.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: 'tenant-1', userId: 'user-emp-2', type: 'TASK_ASSIGNED', body: 'Ship it' }),
+    );
+  });
+
+  it('does not notify when a task is created with no assignee', async () => {
+    const { repository, projectService, employeeRepository } = makeDeps();
+    repository.create.mockResolvedValue(makeTask({ assignedToId: null }));
+    const service = new TaskService(repository as never, projectService as never, employeeRepository as never);
+
+    await service.create('tenant-1', { projectId: 'proj-1', title: 'Ship it' } as never);
+
+    expect(notificationService.notify).not.toHaveBeenCalled();
+  });
+
+  it('notifies the new assignee on reassignment but not when other fields change without a reassignment', async () => {
+    const { repository, projectService, employeeRepository } = makeDeps();
+    repository.findById.mockResolvedValue(makeTask({ assignedToId: 'emp-1' }));
+    repository.update.mockResolvedValue(makeTask({ priority: 'HIGH' }));
+    const service = new TaskService(repository as never, projectService as never, employeeRepository as never);
+
+    await service.update('tenant-1', 'admin-user', true, 'task-1', { priority: 'HIGH' });
+    expect(notificationService.notify).not.toHaveBeenCalled();
+
+    repository.update.mockResolvedValue(makeTask({ assignedToId: 'emp-2' }));
+    await service.update('tenant-1', 'admin-user', true, 'task-1', { assignedToId: 'emp-2' });
+    expect(notificationService.notify).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user-emp-2', type: 'TASK_ASSIGNED' }));
+  });
+});
 
 describe('TaskService.update — ownership vs. TASK_MANAGE permission', () => {
   it('lets a TASK_MANAGE holder change any field, including reassignment', async () => {

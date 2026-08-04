@@ -4,6 +4,7 @@ export const FINANCE_TYPES = ['QUOTATION', 'INVOICE', 'EXPENSE', 'BILL'] as cons
 
 export const lineItemFormSchema = z.object({
   description: z.string().min(1, 'Required').max(500),
+  hsnCode: z.string().max(20),
   quantity: z.number().min(0.01, 'Must be at least 0.01'),
   unitPrice: z.number().min(0, 'Cannot be negative'),
 });
@@ -13,6 +14,7 @@ export const createFinanceDocumentFormSchema = z.object({
   issueDate: z.string().min(1, 'Required'),
   dueDate: z.string(),
   taxRate: z.number().min(0).max(100),
+  placeOfSupplyStateCode: z.string(),
   notes: z.string(),
   lineItems: z.array(lineItemFormSchema).min(1, 'Add at least one line item'),
 });

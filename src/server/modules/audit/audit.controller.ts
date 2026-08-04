@@ -16,6 +16,7 @@ export async function listAuditLogs(req: Request, res: Response): Promise<void> 
     },
     query.page,
     query.limit,
+    query.sort,
   );
   sendPaginated(res, rows, meta);
 }

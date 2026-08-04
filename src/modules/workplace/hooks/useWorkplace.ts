@@ -86,7 +86,7 @@ export function useDeleteKbArticle() {
 
 // ---------------------------------------------------------------- documents
 
-export function useDocuments(query: { page: number; limit: number; folderPath?: string; search?: string }) {
+export function useDocuments(query: { page: number; limit: number; folderPath?: string; category?: string; search?: string; archived?: boolean }) {
   return useQuery({
     queryKey: ['workplace', 'documents', query],
     queryFn: () => documentApi.list(query),
@@ -94,10 +94,18 @@ export function useDocuments(query: { page: number; limit: number; folderPath?: 
   });
 }
 
+export function useDocumentVersions(id: string | undefined) {
+  return useQuery({
+    queryKey: ['workplace', 'documents', id, 'versions'],
+    queryFn: () => documentApi.listVersions(id!),
+    enabled: !!id,
+  });
+}
+
 export function useUploadDocument() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { name: string; folderPath: string; fileUrl: string; isDigitallySigned: boolean }) =>
+    mutationFn: (payload: { name: string; category?: string; folderPath: string; fileUrl: string; isDigitallySigned: boolean }) =>
       documentApi.upload(payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workplace', 'documents'] }),
   });
@@ -107,6 +115,30 @@ export function useDeleteDocument() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => documentApi.remove(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workplace', 'documents'] }),
+  });
+}
+
+export function useArchiveDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => documentApi.archive(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workplace', 'documents'] }),
+  });
+}
+
+export function useRestoreDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => documentApi.restore(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workplace', 'documents'] }),
+  });
+}
+
+export function useReplaceDocumentFile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, fileUrl }: { id: string; fileUrl: string }) => documentApi.replaceFile(id, fileUrl),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workplace', 'documents'] }),
   });
 }

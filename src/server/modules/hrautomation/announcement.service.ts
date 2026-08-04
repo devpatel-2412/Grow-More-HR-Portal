@@ -2,9 +2,11 @@ import { AnnouncementRepository } from './announcement.repository.js';
 import { EmployeeRepository } from '../employees/employee.repository.js';
 import { NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
 import type { z } from 'zod';
 import type { createAnnouncementSchema, listAnnouncementsQuerySchema } from './announcement.validators.js';
+
+const ANNOUNCEMENT_SORTABLE_FIELDS = ['title', 'audience', 'createdAt', 'expiresAt'] as const;
 
 export interface RequestMeta {
   actorUserId?: string;
@@ -38,9 +40,11 @@ export class AnnouncementService {
 
   async list(tenantId: string, userId: string, query: z.infer<typeof listAnnouncementsQuerySchema>) {
     const profile = await this.employeeRepository.findByUserId(userId);
+    const orderBy = toPrismaOrderBy(query.sort, ANNOUNCEMENT_SORTABLE_FIELDS, { field: 'createdAt', direction: 'desc' });
     const { rows, total } = await this.repository.findVisible(
       tenantId,
       profile?.department,
+      orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );

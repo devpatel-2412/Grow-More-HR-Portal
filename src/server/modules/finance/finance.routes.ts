@@ -9,6 +9,7 @@ import {
   updateFinanceDocumentSchema,
   recordPaymentSchema,
   listFinanceDocumentsQuerySchema,
+  profitAndLossQuerySchema,
   idParamSchema,
 } from './finance.validators.js';
 import {
@@ -21,6 +22,7 @@ import {
   recordPayment,
   listFinanceDocuments,
   getFinanceSummary,
+  getProfitAndLoss,
 } from './finance.controller.js';
 
 const manage = requirePermission(PERMISSIONS.FINANCE_MANAGE);
@@ -31,6 +33,7 @@ financeRouter.use(authenticateAccessToken);
 
 financeRouter.post('/', manage, validate({ body: createFinanceDocumentSchema }), asyncHandler(createFinanceDocument));
 financeRouter.get('/summary', read, asyncHandler(getFinanceSummary));
+financeRouter.get('/reports/profit-loss', read, validate({ query: profitAndLossQuerySchema }), asyncHandler(getProfitAndLoss));
 financeRouter.get('/', read, validate({ query: listFinanceDocumentsQuerySchema }), asyncHandler(listFinanceDocuments));
 financeRouter.get('/:id', read, validate({ params: idParamSchema }), asyncHandler(getFinanceDocument));
 financeRouter.patch(

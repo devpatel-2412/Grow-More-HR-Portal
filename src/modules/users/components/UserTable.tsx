@@ -5,7 +5,7 @@ import { RoleBadge, UserStatusBadge } from './UserBadges';
 import { useUpdateUserRole } from '../hooks/useUpdateUserRole';
 import { useUpdateUserStatus } from '../hooks/useUpdateUserStatus';
 import { ApiError } from '../../../shared/lib/api-client';
-import { USER_ROLES } from '../schemas/user.schemas';
+import { STAFF_ROLES } from '../schemas/user.schemas';
 import type { UserListItem } from '../types/user.types';
 import type { UserRole, UserStatus } from '../../auth/types/auth.types';
 
@@ -66,7 +66,7 @@ export function UserTable({ users, currentUserId }: { users: UserListItem[]; cur
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {USER_ROLES.map((role) => (
+                    {STAFF_ROLES.map((role) => (
                       <SelectItem key={role} value={role}>
                         {role.replace('_', ' ')}
                       </SelectItem>

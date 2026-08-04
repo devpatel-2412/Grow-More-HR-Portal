@@ -18,10 +18,16 @@ export class VisitorRepository {
     return prisma.visitor.update({ where: { id }, data });
   }
 
-  async findMany(tenantId: string, filter: { status?: VisitorStatus; hostEmployeeId?: string }, skip: number, take: number) {
+  async findMany(
+    tenantId: string,
+    filter: { status?: VisitorStatus; hostEmployeeId?: string },
+    orderBy: Record<string, 'asc' | 'desc'>,
+    skip: number,
+    take: number,
+  ) {
     const where: Prisma.VisitorWhereInput = { tenantId, status: filter.status, hostEmployeeId: filter.hostEmployeeId };
     const [rows, total] = await Promise.all([
-      prisma.visitor.findMany({ where, orderBy: { expectedAt: 'desc' }, skip, take }),
+      prisma.visitor.findMany({ where, orderBy, skip, take }),
       prisma.visitor.count({ where }),
     ]);
     return { rows, total };

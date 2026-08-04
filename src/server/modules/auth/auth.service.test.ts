@@ -4,9 +4,13 @@ import { hashPassword } from '../../shared/utils/hash.util.js';
 import { UnauthorizedError, ForbiddenError, ConflictError } from '../../shared/errors/app-error.js';
 import { signTwoFactorChallengeToken } from '../../shared/utils/jwt.util.js';
 import { twoFactorService } from '../two-factor/two-factor.service.js';
+import { auditLogService } from '../audit/audit.service.js';
 
 vi.mock('../audit/audit.service.js', () => ({
-  auditLogService: { record: vi.fn().mockResolvedValue(undefined) },
+  auditLogService: {
+    record: vi.fn().mockResolvedValue(undefined),
+    list: vi.fn().mockResolvedValue({ rows: [], meta: { page: 1, limit: 20, total: 0, totalPages: 1 } }),
+  },
 }));
 vi.mock('../../shared/email/email.service.js', () => ({
   emailService: { send: vi.fn().mockResolvedValue(undefined) },
@@ -239,6 +243,21 @@ describe('AuthService.logout / logoutAll', () => {
     await service.logoutAll('user-1', {});
 
     expect(refreshTokenRepository.revokeAllForUser).toHaveBeenCalledWith('user-1', 'logout_all');
+  });
+});
+
+describe('AuthService.getLoginHistory', () => {
+  it("queries the audit log scoped to the caller's own login attempts, not the tenant-wide log", async () => {
+    const { userRepository, tenantRepository, refreshTokenRepository } = makeMockRepos();
+    const service = new AuthService(userRepository as never, tenantRepository as never, refreshTokenRepository as never);
+
+    await service.getLoginHistory('user-1', 2, 10);
+
+    expect(auditLogService.list).toHaveBeenCalledWith(
+      { actorUserId: 'user-1', action: ['USER_LOGIN_SUCCESS', 'USER_LOGIN_FAILURE'] },
+      2,
+      10,
+    );
   });
 });
 

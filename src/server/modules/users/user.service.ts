@@ -1,6 +1,7 @@
 import { UserRepository } from './user.repository.js';
 import { InviteRepository } from './invite.repository.js';
 import { EmployeeRepository } from '../employees/employee.repository.js';
+import { ClientRepository, ContactRepository } from '../crm/crm.repository.js';
 import { hashPassword, sha256, generateOpaqueToken } from '../../shared/utils/hash.util.js';
 import { ConflictError, NotFoundError, UnauthorizedError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
@@ -19,6 +20,8 @@ export class UserService {
     private readonly repository: UserRepository = new UserRepository(),
     private readonly inviteRepository: InviteRepository = new InviteRepository(),
     private readonly employeeRepository: EmployeeRepository = new EmployeeRepository(),
+    private readonly clientRepository: ClientRepository = new ClientRepository(),
+    private readonly contactRepository: ContactRepository = new ContactRepository(),
   ) {}
 
   async invite(tenantId: string, input: z.infer<typeof inviteUserSchema>, ctx: RequestContext = {}) {
@@ -28,6 +31,11 @@ export class UserService {
     const pendingInvite = await this.inviteRepository.findPendingByTenantAndEmail(tenantId, input.email);
     if (pendingInvite) throw new ConflictError('An invite is already pending for this email');
 
+    if (input.clientPortalId) {
+      const client = await this.clientRepository.findById(input.clientPortalId);
+      if (!client || client.tenantId !== tenantId) throw new NotFoundError('Client not found');
+    }
+
     // Placeholder credential: unusable until acceptInvite() overwrites it, since passwordHash is NOT NULL.
     const placeholderPasswordHash = hashPassword(generateOpaqueToken());
     const invitedUser = await this.repository.create({
@@ -36,6 +44,7 @@ export class UserService {
       role: input.role,
       status: 'PENDING_INVITE',
       tenant: { connect: { id: tenantId } },
+      clientProfile: input.clientPortalId ? { connect: { id: input.clientPortalId } } : undefined,
     });
 
     const rawToken = generateOpaqueToken();
@@ -83,17 +92,36 @@ export class UserService {
       status: 'ACTIVE',
     });
 
-    await this.employeeRepository.create({
-      user: { connect: { id: user.id } },
-      tenant: { connect: { id: invite.tenantId } },
-      employeeId: `EMP-${new Date().getFullYear()}-${user.id.slice(0, 6).toUpperCase()}`,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      department: 'Unassigned',
-      designation: 'Team Member',
-      dateOfJoining: new Date(),
-      status: 'ACTIVE',
-    });
+    // A CLIENT-role invite represents a customer, not staff — it gets a ClientContact record
+    // (so their name shows up against the client they belong to), never an EmployeeProfile.
+    if (invite.role === 'CLIENT') {
+      if (activatedUser.clientProfileId) {
+        const existingContact = await this.contactRepository.findByClientAndEmail(activatedUser.clientProfileId, invite.email);
+        if (!existingContact) {
+          await this.contactRepository.create({
+            tenant: { connect: { id: invite.tenantId } },
+            client: { connect: { id: activatedUser.clientProfileId } },
+            name: `${input.firstName} ${input.lastName}`,
+            email: invite.email,
+          });
+        }
+      }
+    } else if (invite.role !== 'CANDIDATE') {
+      // CANDIDATE has no profile record to create yet either — it isn't exposed in the invite
+      // UI (see UserRole.CANDIDATE in schema.prisma), but a raw API call could still set it, so
+      // this stays explicit rather than falling through to an EmployeeProfile that's wrong for it.
+      await this.employeeRepository.create({
+        user: { connect: { id: user.id } },
+        tenant: { connect: { id: invite.tenantId } },
+        employeeId: `EMP-${new Date().getFullYear()}-${user.id.slice(0, 6).toUpperCase()}`,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        department: 'Unassigned',
+        designation: 'Team Member',
+        dateOfJoining: new Date(),
+        status: 'ACTIVE',
+      });
+    }
 
     await this.inviteRepository.markAccepted(invite.id);
     await auditLogService.record({

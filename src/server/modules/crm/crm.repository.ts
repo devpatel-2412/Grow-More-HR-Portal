@@ -25,6 +25,7 @@ export class LeadRepository {
   async findMany(
     tenantId: string,
     filter: { status?: LeadStatus; ownerId?: string; search?: string },
+    orderBy: Record<string, 'asc' | 'desc'>,
     skip: number,
     take: number,
   ) {
@@ -41,7 +42,7 @@ export class LeadRepository {
         : undefined,
     };
     const [rows, total] = await Promise.all([
-      prisma.lead.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      prisma.lead.findMany({ where, orderBy, skip, take }),
       prisma.lead.count({ where }),
     ]);
     return { rows, total };
@@ -109,6 +110,7 @@ export class ClientRepository {
   async findMany(
     tenantId: string,
     filter: { status?: ClientStatus; accountManagerId?: string; search?: string },
+    orderBy: Record<string, 'asc' | 'desc'>,
     skip: number,
     take: number,
   ) {
@@ -124,7 +126,7 @@ export class ClientRepository {
         : undefined,
     };
     const [rows, total] = await Promise.all([
-      prisma.clientPortal.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      prisma.clientPortal.findMany({ where, orderBy, skip, take }),
       prisma.clientPortal.count({ where }),
     ]);
     return { rows, total };
@@ -165,6 +167,7 @@ export class CrmActivityRepository {
   async findMany(
     tenantId: string,
     filter: { leadId?: string; clientId?: string; type?: CrmActivityType },
+    orderBy: Record<string, 'asc' | 'desc'>,
     skip: number,
     take: number,
   ) {
@@ -175,7 +178,7 @@ export class CrmActivityRepository {
       type: filter.type,
     };
     const [rows, total] = await Promise.all([
-      prisma.crmActivity.findMany({ where, orderBy: { occurredAt: 'desc' }, skip, take }),
+      prisma.crmActivity.findMany({ where, orderBy, skip, take }),
       prisma.crmActivity.count({ where }),
     ]);
     return { rows, total };

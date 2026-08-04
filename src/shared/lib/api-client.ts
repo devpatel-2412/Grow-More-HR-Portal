@@ -115,6 +115,35 @@ export async function apiRequestPaginated<T>(path: string, options: RequestOptio
   return payload as PaginatedResponse<T>;
 }
 
+/** For binary file endpoints (PDF export, etc.) — bypasses the JSON envelope and returns a Blob plus the server-supplied filename. */
+export async function apiDownload(path: string, _isRetry = false): Promise<{ blob: Blob; filename: string }> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+  });
+
+  if (res.status === 401 && !_isRetry) {
+    const refreshed = await attemptSilentRefresh();
+    if (refreshed) return apiDownload(path, true);
+    setAccessToken(null);
+    onAuthExpired?.();
+  }
+
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null);
+    const error = (payload as { error?: { code: string; message: string; details?: unknown } })?.error ?? {
+      code: 'UNKNOWN_ERROR',
+      message: 'An unexpected error occurred.',
+    };
+    throw new ApiError(res.status, error.code, error.message, error.details);
+  }
+
+  const disposition = res.headers.get('content-disposition') ?? '';
+  const filename = disposition.match(/filename="?([^"]+)"?/)?.[1] ?? 'download';
+  const blob = await res.blob();
+  return { blob, filename };
+}
+
 export function toQueryString(params?: object): string {
   if (!params) return '';
   const searchParams = new URLSearchParams();

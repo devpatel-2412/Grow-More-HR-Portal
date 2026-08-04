@@ -1,12 +1,34 @@
 import { z } from 'zod';
 import { passwordSchema } from '../../auth/schemas/auth.schemas';
 
-export const USER_ROLES = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'EMPLOYEE', 'CLIENT'] as const;
+export const USER_ROLES = [
+  'SUPER_ADMIN',
+  'ADMIN',
+  'HR_MANAGER',
+  'PROJECT_MANAGER',
+  'EMPLOYEE',
+  'CLIENT',
+  'RECRUITER',
+  'FINANCE',
+  'CANDIDATE',
+] as const;
+// CLIENT is excluded here: it requires a clientPortalId link, which only the "invite portal user"
+// flow on a client's own page provides — the generic staff invite/role-change flows never set one.
+// CANDIDATE is excluded too: there's no candidate-facing portal yet for an invite to lead to.
+export const STAFF_ROLES = [
+  'SUPER_ADMIN',
+  'ADMIN',
+  'HR_MANAGER',
+  'PROJECT_MANAGER',
+  'EMPLOYEE',
+  'RECRUITER',
+  'FINANCE',
+] as const;
 export const USER_STATUSES = ['PENDING_INVITE', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED'] as const;
 
 export const inviteUserSchema = z.object({
   email: z.string().email('Enter a valid email address'),
-  role: z.enum(USER_ROLES),
+  role: z.enum(STAFF_ROLES),
 });
 export type InviteUserFormValues = z.infer<typeof inviteUserSchema>;
 

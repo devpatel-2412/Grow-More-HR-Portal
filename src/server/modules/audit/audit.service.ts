@@ -1,6 +1,8 @@
 import { AuditRepository, type RecordAuditLogInput, type FindAuditLogsFilter } from './audit.repository.js';
 import { logger } from '../../shared/logger.js';
-import { buildPaginationMeta } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
+
+const AUDIT_SORTABLE_FIELDS = ['createdAt', 'action'] as const;
 
 /**
  * The only entry point any module should use to write an audit trail. Consumed via explicit
@@ -20,8 +22,9 @@ export class AuditLogService {
     }
   }
 
-  async list(filter: FindAuditLogsFilter, page: number, limit: number) {
-    const { rows, total } = await this.repository.findMany(filter, (page - 1) * limit, limit);
+  async list(filter: FindAuditLogsFilter, page: number, limit: number, sort?: string) {
+    const orderBy = toPrismaOrderBy(sort, AUDIT_SORTABLE_FIELDS, { field: 'createdAt', direction: 'desc' });
+    const { rows, total } = await this.repository.findMany(filter, orderBy, (page - 1) * limit, limit);
     return { rows, meta: buildPaginationMeta(page, limit, total) };
   }
 }

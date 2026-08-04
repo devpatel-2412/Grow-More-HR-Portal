@@ -2,6 +2,7 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useClient } from '../hooks/useCrm';
 import { ContactDialog } from '../components/ContactDialog';
+import { InvitePortalUserDialog } from '../components/InvitePortalUserDialog';
 import { ActivityLog } from '../components/ActivityLog';
 import { ClientStatusBadge } from '../components/CrmBadges';
 import { Card } from '../../../shared/components/ui/card';
@@ -23,9 +24,12 @@ export function ClientDetailPage() {
         All clients
       </Link>
 
-      <div className="flex items-center gap-3">
-        <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">{client.companyName}</h1>
-        <ClientStatusBadge status={client.status} />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">{client.companyName}</h1>
+          <ClientStatusBadge status={client.status} />
+        </div>
+        {id && <InvitePortalUserDialog clientId={id} clientName={client.companyName} />}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -56,7 +60,7 @@ export function ClientDetailPage() {
               {(client.projects ?? []).map((project) => (
                 <div key={project.id} className="flex items-center justify-between text-xs">
                   <span className="text-[var(--foreground)]">{project.name}</span>
-                  <Badge variant="neutral">{project.status}</Badge>
+                  <Badge variant="neutral">{project.status.replace('_', ' ')}</Badge>
                 </div>
               ))}
             </div>

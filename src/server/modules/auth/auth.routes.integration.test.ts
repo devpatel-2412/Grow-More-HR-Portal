@@ -127,6 +127,31 @@ describe('Auth flow — signup, login, me, refresh, logout', () => {
     const refreshAfterLogout = await request(app).post('/api/v1/auth/refresh').set('Cookie', cookie);
     expect(refreshAfterLogout.status).toBe(401);
   });
+
+  it("lists the caller's own successful and failed login attempts, and never another user's", async () => {
+    const domainA = uniqueDomain('acme');
+    const emailA = `admin-${domainA}@acme.com`;
+    const signupA = await signupTenant({ tenantDomain: domainA, email: emailA });
+    const tokenA = signupA.res.body.data.accessToken;
+
+    // One more successful login, plus one failed attempt, both against account A.
+    await request(app).post('/api/v1/auth/login').send({ email: emailA, password: 'CorrectPassword123' });
+    await request(app).post('/api/v1/auth/login').send({ email: emailA, password: 'WrongPassword!' });
+
+    // A second, unrelated tenant/account — its own login history must stay isolated.
+    const { res: signupB } = await signupTenant();
+    const tokenB = signupB.body.data.accessToken;
+
+    const historyA = await request(app).get('/api/v1/auth/login-history').set('Authorization', `Bearer ${tokenA}`);
+    expect(historyA.status).toBe(200);
+    // signup itself doesn't record a login-history entry, only the two explicit /login calls above.
+    expect(historyA.body.data).toHaveLength(2);
+    expect(historyA.body.data.map((e: { action: string }) => e.action).sort()).toEqual(['USER_LOGIN_FAILURE', 'USER_LOGIN_SUCCESS']);
+
+    const historyB = await request(app).get('/api/v1/auth/login-history').set('Authorization', `Bearer ${tokenB}`);
+    expect(historyB.status).toBe(200);
+    expect(historyB.body.data).toHaveLength(0);
+  });
 });
 
 describe('RBAC — role/permission denial', () => {

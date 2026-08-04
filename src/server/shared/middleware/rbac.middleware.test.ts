@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Request, Response } from 'express';
-import { requireRole, requirePermission } from './rbac.middleware.js';
+import { requireRole, requirePermission, requireStaff } from './rbac.middleware.js';
 import { PERMISSIONS } from '../permissions/permissions.js';
 import { UnauthorizedError, ForbiddenError } from '../errors/app-error.js';
 
@@ -47,5 +47,29 @@ describe('requirePermission', () => {
       requirePermission(permission)(mockReq({ role: 'SUPER_ADMIN' } as never), {} as Response, next);
     }
     expect(next).toHaveBeenCalledTimes(Object.values(PERMISSIONS).length);
+  });
+});
+
+describe('requireStaff', () => {
+  it('throws UnauthorizedError when there is no authenticated user', () => {
+    const next = vi.fn();
+    expect(() => requireStaff(mockReq(undefined), {} as Response, next)).toThrow(UnauthorizedError);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('throws ForbiddenError for an external-role login (CLIENT or CANDIDATE)', () => {
+    for (const role of ['CLIENT', 'CANDIDATE']) {
+      const next = vi.fn();
+      expect(() => requireStaff(mockReq({ role } as never), {} as Response, next)).toThrow(ForbiddenError);
+      expect(next).not.toHaveBeenCalled();
+    }
+  });
+
+  it('calls next() for every staff role', () => {
+    for (const role of ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'EMPLOYEE', 'RECRUITER', 'FINANCE']) {
+      const next = vi.fn();
+      requireStaff(mockReq({ role } as never), {} as Response, next);
+      expect(next).toHaveBeenCalledOnce();
+    }
   });
 });

@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { authService } from './auth.service.js';
-import { sendCreated, sendOk } from '../../shared/utils/response.util.js';
+import { sendCreated, sendOk, sendPaginated } from '../../shared/utils/response.util.js';
 import { UnauthorizedError } from '../../shared/errors/app-error.js';
 import { env, isProduction } from '../../shared/config/env.js';
 import type { z } from 'zod';
@@ -13,6 +13,7 @@ import type {
   passwordChangeSchema,
   twoFactorEnableSchema,
   twoFactorDisableSchema,
+  loginHistoryQuerySchema,
 } from './auth.validators.js';
 
 function requestMeta(req: Request) {
@@ -89,6 +90,12 @@ export async function logoutAll(req: Request, res: Response): Promise<void> {
 export async function me(req: Request, res: Response): Promise<void> {
   const result = await authService.getMe(req.user!.sub);
   sendOk(res, result);
+}
+
+export async function loginHistory(req: Request, res: Response): Promise<void> {
+  const query = req.query as unknown as z.infer<typeof loginHistoryQuerySchema>;
+  const { rows, meta } = await authService.getLoginHistory(req.user!.sub, query.page, query.limit);
+  sendPaginated(res, rows, meta);
 }
 
 export async function requestPasswordReset(req: Request, res: Response): Promise<void> {

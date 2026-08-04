@@ -88,6 +88,7 @@ export function FinanceDocumentDetailPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Description</TableHead>
+              <TableHead>HSN/SAC</TableHead>
               <TableHead className="text-right">Qty</TableHead>
               <TableHead className="text-right">Unit price</TableHead>
               <TableHead className="text-right">Amount</TableHead>
@@ -97,6 +98,7 @@ export function FinanceDocumentDetailPage() {
             {(doc.lineItems ?? []).map((item) => (
               <TableRow key={item.id}>
                 <TableCell>{item.description}</TableCell>
+                <TableCell>{item.hsnCode ?? '—'}</TableCell>
                 <TableCell className="text-right tabular-nums">{item.quantity}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatMoney(item.unitPrice, doc.currency)}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatMoney(item.amount, doc.currency)}</TableCell>
@@ -110,10 +112,33 @@ export function FinanceDocumentDetailPage() {
             <span className="text-[var(--muted-foreground)]">Subtotal</span>
             <span className="tabular-nums text-[var(--foreground)]">{formatMoney(doc.subtotal, doc.currency)}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-[var(--muted-foreground)]">Tax ({doc.taxRate}%)</span>
-            <span className="tabular-nums text-[var(--foreground)]">{formatMoney(doc.taxAmount, doc.currency)}</span>
-          </div>
+          {doc.cgstAmount === 0 && doc.sgstAmount === 0 && doc.igstAmount === 0 ? (
+            <div className="flex justify-between">
+              <span className="text-[var(--muted-foreground)]">Tax ({doc.taxRate}%)</span>
+              <span className="tabular-nums text-[var(--foreground)]">{formatMoney(doc.taxAmount, doc.currency)}</span>
+            </div>
+          ) : (
+            <>
+              {doc.cgstAmount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-[var(--muted-foreground)]">CGST</span>
+                  <span className="tabular-nums text-[var(--foreground)]">{formatMoney(doc.cgstAmount, doc.currency)}</span>
+                </div>
+              )}
+              {doc.sgstAmount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-[var(--muted-foreground)]">SGST</span>
+                  <span className="tabular-nums text-[var(--foreground)]">{formatMoney(doc.sgstAmount, doc.currency)}</span>
+                </div>
+              )}
+              {doc.igstAmount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-[var(--muted-foreground)]">IGST</span>
+                  <span className="tabular-nums text-[var(--foreground)]">{formatMoney(doc.igstAmount, doc.currency)}</span>
+                </div>
+              )}
+            </>
+          )}
           <div className="flex justify-between border-t border-[var(--border)] pt-1 font-bold">
             <span className="text-[var(--foreground)]">Total</span>
             <span className="tabular-nums text-[var(--foreground)]">{formatMoney(doc.totalAmount, doc.currency)}</span>
