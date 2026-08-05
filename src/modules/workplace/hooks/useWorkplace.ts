@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ticketApi, kbApi, documentApi, assetApi, visitorApi, roomBookingApi } from '../api/workplace.api';
+import type { UploadDocumentPayload } from '../api/workplace.api';
 import type {
   TicketCategory,
   TicketStatus,
@@ -105,9 +106,20 @@ export function useDocumentVersions(id: string | undefined) {
 export function useUploadDocument() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { name: string; category?: string; folderPath: string; fileUrl: string; isDigitallySigned: boolean }) =>
-      documentApi.upload(payload),
+    mutationFn: (payload: UploadDocumentPayload) => documentApi.upload(payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workplace', 'documents'] }),
+  });
+}
+
+export function useDownloadDocument() {
+  return useMutation({
+    mutationFn: (id: string) => documentApi.getDownloadUrl(id),
+  });
+}
+
+export function useDownloadDocumentVersion() {
+  return useMutation({
+    mutationFn: ({ id, versionId }: { id: string; versionId: string }) => documentApi.getVersionDownloadUrl(id, versionId),
   });
 }
 
@@ -138,7 +150,7 @@ export function useRestoreDocument() {
 export function useReplaceDocumentFile() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, fileUrl }: { id: string; fileUrl: string }) => documentApi.replaceFile(id, fileUrl),
+    mutationFn: ({ id, file }: { id: string; file: File }) => documentApi.replaceFile(id, file),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workplace', 'documents'] }),
   });
 }

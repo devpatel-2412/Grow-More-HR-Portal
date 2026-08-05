@@ -1,5 +1,7 @@
 import { History } from 'lucide-react';
-import { useDocumentVersions } from '../hooks/useWorkplace';
+import { toast } from 'sonner';
+import { useDocumentVersions, useDownloadDocumentVersion } from '../hooks/useWorkplace';
+import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../../shared/components/ui/dialog';
 import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
@@ -8,6 +10,23 @@ import type { DocumentRecord } from '../types/workplace.types';
 
 export function DocumentVersionHistoryDialog({ document, onOpenChange }: { document: DocumentRecord | undefined; onOpenChange: (open: boolean) => void }) {
   const { data: versions, isLoading } = useDocumentVersions(document?.id);
+  const downloadVersionMutation = useDownloadDocumentVersion();
+
+  async function downloadVersion(versionId: string) {
+    if (!document) return;
+    try {
+      const { url, fileName } = await downloadVersionMutation.mutateAsync({ id: document.id, versionId });
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.rel = 'noopener';
+      window.document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Unable to download this version.');
+    }
+  }
 
   return (
     <Dialog open={!!document} onOpenChange={onOpenChange}>
@@ -42,10 +61,8 @@ export function DocumentVersionHistoryDialog({ document, onOpenChange }: { docum
                     {new Date(v.createdAt).toLocaleString()}
                   </p>
                 </div>
-                <Button variant="outline" size="sm" asChild>
-                  <a href={v.fileUrl} target="_blank" rel="noreferrer noopener">
-                    Open
-                  </a>
+                <Button variant="outline" size="sm" onClick={() => downloadVersion(v.id)}>
+                  Download
                 </Button>
               </li>
             ))}

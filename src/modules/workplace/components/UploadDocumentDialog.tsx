@@ -9,7 +9,9 @@ import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
 import { Label } from '../../../shared/components/ui/label';
+import { FileDropzone } from '../../../shared/components/ui/file-dropzone';
 import { InlineFormError } from '../../../shared/components/feedback/ErrorState';
+import { MAX_DOCUMENT_UPLOAD_BYTES, DOCUMENT_ACCEPT } from '../constants/upload.constants';
 import {
   Dialog,
   DialogContent,
@@ -21,15 +23,15 @@ import {
 } from '../../../shared/components/ui/dialog';
 
 const documentSchema = z.object({
-  name: z.string().min(1, 'Required').max(300),
   category: z.string().max(120).optional(),
   folderPath: z.string().min(1, 'Required').max(500),
-  fileUrl: z.string().url('Enter a valid URL'),
 });
 type DocumentFormValues = z.infer<typeof documentSchema>;
 
 export function UploadDocumentDialog() {
   const [open, setOpen] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const [fileError, setFileError] = useState<string | null>(null);
   const uploadMutation = useUploadDocument();
   const {
     register,
@@ -39,22 +41,43 @@ export function UploadDocumentDialog() {
     reset,
   } = useForm<DocumentFormValues>({
     resolver: zodResolver(documentSchema),
-    defaultValues: { name: '', category: '', folderPath: '/', fileUrl: '' },
+    defaultValues: { category: '', folderPath: '/' },
   });
 
   async function onSubmit(values: DocumentFormValues) {
+    if (files.length === 0) {
+      setFileError('Add at least one file.');
+      return;
+    }
+    setFileError(null);
     try {
-      await uploadMutation.mutateAsync({ ...values, category: values.category || undefined, isDigitallySigned: false });
-      toast.success('Document added.');
+      await uploadMutation.mutateAsync({
+        files,
+        category: values.category || undefined,
+        folderPath: values.folderPath,
+        isDigitallySigned: false,
+      });
+      toast.success(files.length > 1 ? `${files.length} documents added.` : 'Document added.');
       reset();
+      setFiles([]);
       setOpen(false);
     } catch (err) {
-      setError('root', { message: err instanceof ApiError ? err.message : 'Unable to add this document.' });
+      setError('root', { message: err instanceof ApiError ? err.message : 'Unable to add these documents.' });
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) {
+          reset();
+          setFiles([]);
+          setFileError(null);
+        }
+        setOpen(next);
+      }}
+    >
       <DialogTrigger asChild>
         <Button size="sm">
           <UploadCloud className="h-4 w-4" />
@@ -63,17 +86,22 @@ export function UploadDocumentDialog() {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add a document</DialogTitle>
-          <DialogDescription>Linked by URL — no file storage is wired up in this build.</DialogDescription>
+          <DialogTitle>Add documents</DialogTitle>
+          <DialogDescription>Drop one or more files, or click to browse.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <InlineFormError message={errors.root?.message} />
 
-          <div>
-            <Label htmlFor="doc-name">Name</Label>
-            <Input id="doc-name" {...register('name')} />
-            {errors.name && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.name.message}</p>}
-          </div>
+          <FileDropzone
+            files={files}
+            onFilesChange={(next) => {
+              setFiles(next);
+              if (next.length > 0) setFileError(null);
+            }}
+            accept={DOCUMENT_ACCEPT}
+            maxSizeBytes={MAX_DOCUMENT_UPLOAD_BYTES}
+          />
+          {fileError && <p className="text-xs text-[var(--destructive)]">{fileError}</p>}
 
           <div>
             <Label htmlFor="doc-category">Category (optional)</Label>
@@ -86,15 +114,9 @@ export function UploadDocumentDialog() {
             {errors.folderPath && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.folderPath.message}</p>}
           </div>
 
-          <div>
-            <Label htmlFor="doc-url">File URL</Label>
-            <Input id="doc-url" placeholder="https://…" {...register('fileUrl')} />
-            {errors.fileUrl && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.fileUrl.message}</p>}
-          </div>
-
           <DialogFooter>
             <Button type="submit" loading={uploadMutation.isPending}>
-              Add
+              Upload
             </Button>
           </DialogFooter>
         </form>

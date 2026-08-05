@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { FileText, Trash2, Archive, ArchiveRestore, History, Replace } from 'lucide-react';
-import { useDocuments, useDeleteDocument, useArchiveDocument, useRestoreDocument } from '../hooks/useWorkplace';
+import { FileText, Trash2, Archive, ArchiveRestore, History, Replace, Download } from 'lucide-react';
+import { useDocuments, useDeleteDocument, useArchiveDocument, useRestoreDocument, useDownloadDocument } from '../hooks/useWorkplace';
 import { usePagination } from '../../../shared/hooks/usePagination';
 import { UploadDocumentDialog } from '../components/UploadDocumentDialog';
 import { DocumentVersionHistoryDialog } from '../components/DocumentVersionHistoryDialog';
@@ -31,6 +31,7 @@ export function DocumentsPage() {
   const deleteMutation = useDeleteDocument();
   const archiveMutation = useArchiveDocument();
   const restoreMutation = useRestoreDocument();
+  const downloadMutation = useDownloadDocument();
   const { user } = useAuth();
   const canManage = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'HR_MANAGER' || user?.role === 'PROJECT_MANAGER';
 
@@ -58,6 +59,21 @@ export function DocumentsPage() {
       toast.success('Document restored.');
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Unable to restore this document.');
+    }
+  }
+
+  async function download(id: string) {
+    try {
+      const { url, fileName } = await downloadMutation.mutateAsync(id);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Unable to download this document.');
     }
   }
 
@@ -110,16 +126,15 @@ export function DocumentsPage() {
               <TableBody>
                 {data.data.map((doc) => (
                   <TableRow key={doc.id}>
-                    <TableCell className="font-medium">
-                      <a href={doc.fileUrl} target="_blank" rel="noreferrer noopener" className="text-[var(--primary)] hover:underline">
-                        {doc.name}
-                      </a>
-                    </TableCell>
+                    <TableCell className="font-medium text-[var(--foreground)]">{doc.name}</TableCell>
                     <TableCell>{doc.category ? <Badge variant="neutral">{doc.category}</Badge> : '—'}</TableCell>
                     <TableCell>{doc.folderPath}</TableCell>
                     <TableCell>v{doc.version}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <Button size="icon" variant="ghost" aria-label={`Download ${doc.name}`} onClick={() => download(doc.id)}>
+                          <Download className="h-4 w-4" />
+                        </Button>
                         <Button size="icon" variant="ghost" aria-label={`Version history for ${doc.name}`} onClick={() => setVersionsFor(doc)}>
                           <History className="h-4 w-4" />
                         </Button>

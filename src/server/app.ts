@@ -2,7 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
-import { corsOrigins } from './shared/config/env.js';
+import { corsOrigins, env } from './shared/config/env.js';
+import { localStorageRouter } from './shared/storage/local-storage.routes.js';
 import { requestLogger } from './shared/middleware/request-logger.middleware.js';
 import { globalApiLimiter } from './shared/middleware/rate-limit.middleware.js';
 import { notFoundHandler, errorHandler } from './shared/middleware/error.middleware.js';
@@ -109,6 +110,13 @@ export function createApp() {
   app.use('/api/v1/inventory-items', inventoryRouter);
   app.use('/api/v1/sops', sopRouter);
   app.use('/api/v1/client-portal', clientPortalRouter);
+
+  // Only mounted when Supabase Storage isn't configured — this is the local-disk fallback's own
+  // download route, so it has no reason to exist (and every reason not to) once a real provider
+  // is in play. See storage.service.ts for the same condition deciding which adapter loads.
+  if (!(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY)) {
+    app.use('/api/v1/local-storage', localStorageRouter);
+  }
 
   app.use(notFoundHandler);
   app.use(errorHandler);

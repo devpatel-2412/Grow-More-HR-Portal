@@ -33,6 +33,12 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional().default(''),
   SMTP_PASSWORD: z.string().optional().default(''),
   SMTP_FROM: z.string().optional().default(''),
+
+  // Supabase Storage is entirely optional — when unset, StorageService falls back to a local-disk
+  // implementation for development (which throws instead of silently losing uploads in production).
+  SUPABASE_URL: z.string().optional().default(''),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional().default(''),
+  SUPABASE_STORAGE_BUCKET: z.string().default('documents'),
 });
 
 export type Env = z.infer<typeof envSchema>;
