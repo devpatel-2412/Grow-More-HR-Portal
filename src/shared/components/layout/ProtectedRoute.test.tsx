@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
 import { ProtectedRoute } from './ProtectedRoute';
 import { AuthProvider } from '../../../modules/auth/context/AuthContext';
+import { server, handlers } from '../../../test/msw/server';
 
 function renderProtected() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -30,5 +31,17 @@ describe('ProtectedRoute', () => {
 
     expect(await screen.findByText('Login Page')).toBeInTheDocument();
     expect(screen.queryByText('Secret Dashboard')).not.toBeInTheDocument();
+  });
+
+  it('renders the protected route on a valid session restore, without ever bouncing through /login', async () => {
+    // Regression test: isAuthenticated used to be synced from the session-restore query result via
+    // its own useEffect, one render behind isLoading — creating a one-tick window where isLoading
+    // was already false but isAuthenticated was still false, so ProtectedRoute redirected to /login
+    // even though the session was valid. isAuthenticated must now be derived synchronously.
+    server.use(handlers.meSuccess);
+    renderProtected();
+
+    expect(await screen.findByText('Secret Dashboard')).toBeInTheDocument();
+    expect(screen.queryByText('Login Page')).not.toBeInTheDocument();
   });
 });

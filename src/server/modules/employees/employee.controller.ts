@@ -3,7 +3,7 @@ import { employeeService } from './employee.service.js';
 import { sendCreated, sendOk, sendPaginated } from '../../shared/utils/response.util.js';
 import { NotFoundError } from '../../shared/errors/app-error.js';
 import type { z } from 'zod';
-import type { createEmployeeProfileSchema, updateEmployeeProfileSchema, listEmployeesQuerySchema } from './employee.validators.js';
+import type { createEmployeeProfileSchema, updateEmployeeProfileSchema, listEmployeesQuerySchema, selfUpdateEmployeeSchema } from './employee.validators.js';
 
 function requestContext(req: Request) {
   return { actorUserId: req.user?.sub, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
@@ -23,6 +23,12 @@ export async function getEmployee(req: Request, res: Response): Promise<void> {
 export async function getMyEmployeeProfile(req: Request, res: Response): Promise<void> {
   const profile = await employeeService.getByUserId(req.user!.sub);
   if (!profile) throw new NotFoundError('No employee profile for this account');
+  sendOk(res, profile);
+}
+
+export async function updateMyEmployeeProfile(req: Request, res: Response): Promise<void> {
+  const body = req.body as z.infer<typeof selfUpdateEmployeeSchema>;
+  const profile = await employeeService.updateSelf(req.user!.sub, body, requestContext(req));
   sendOk(res, profile);
 }
 

@@ -1,10 +1,12 @@
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ShieldCheck, ShieldX, Sparkles } from 'lucide-react';
+import { ShieldCheck, ShieldX } from 'lucide-react';
 import { verifyApi } from '../api/hrautomation.api';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Card } from '../../../shared/components/ui/card';
 import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
+import { Logo } from '../../../shared/components/ui/logo';
+import { APP_NAME } from '../../../shared/config/brand';
 
 /**
  * Public page — what the QR code printed on a generated letter points at. No login, no sidebar:
@@ -26,10 +28,8 @@ export function VerifyDocumentPage() {
     <div className="flex min-h-screen items-center justify-center bg-[var(--background)] p-6">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex items-center justify-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-indigo-500 to-pink-500 shadow-lg">
-            <Sparkles className="h-4 w-4 text-white" aria-hidden="true" />
-          </div>
-          <span className="text-sm font-extrabold tracking-tight text-[var(--foreground)]">Business OS</span>
+          <Logo className="h-8 w-8 shadow-lg" />
+          <span className="text-sm font-extrabold tracking-tight text-[var(--foreground)]">{APP_NAME}</span>
         </div>
 
         {isLoading && (

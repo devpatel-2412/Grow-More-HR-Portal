@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
-import { env } from './shared/config/env.js';
+import { corsOrigins } from './shared/config/env.js';
 import { requestLogger } from './shared/middleware/request-logger.middleware.js';
 import { globalApiLimiter } from './shared/middleware/rate-limit.middleware.js';
 import { notFoundHandler, errorHandler } from './shared/middleware/error.middleware.js';
@@ -49,7 +49,15 @@ export function createApp() {
   app.use(helmet());
   app.use(
     cors({
-      origin: env.CORS_ORIGIN,
+      origin(requestOrigin, callback) {
+        // No Origin header (curl, same-machine health checks, server-to-server) — allow.
+        // An unrecognized origin is NOT an error: CORS is a browser-enforced policy, so the
+        // right server response is to simply omit the Allow-Origin header (the browser blocks
+        // the read on its own if it's genuinely cross-origin). Hard-failing the request here
+        // would break legitimate same-origin traffic whose Origin header text doesn't happen
+        // to match this allow-list exactly.
+        callback(null, !requestOrigin || corsOrigins.includes(requestOrigin));
+      },
       credentials: true,
     }),
   );

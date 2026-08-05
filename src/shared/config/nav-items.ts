@@ -60,11 +60,11 @@ export const NAV_ITEMS: NavItem[] = [
 
   { label: 'Attendance', path: '/attendance', icon: Clock, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'EMPLOYEE', 'RECRUITER', 'FINANCE'] },
   { label: 'Leave', path: '/leave', icon: CalendarOff, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'EMPLOYEE', 'RECRUITER', 'FINANCE'] },
-  { label: 'Leave Approvals', path: '/leave/approvals', icon: ClipboardCheck, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'EMPLOYEE', 'RECRUITER', 'FINANCE'] },
+  { label: 'Leave Approvals', path: '/leave/approvals', icon: ClipboardCheck, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'RECRUITER', 'FINANCE'] },
   { label: 'Projects', path: '/projects', icon: FolderKanban, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'EMPLOYEE', 'RECRUITER', 'FINANCE'] },
   { label: 'Time Tracking', path: '/time-tracking', icon: Timer, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'EMPLOYEE', 'RECRUITER', 'FINANCE'] },
   { label: 'Work Reports', path: '/work-reports', icon: NotebookPen, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'EMPLOYEE', 'RECRUITER', 'FINANCE'] },
-  { label: 'Report Reviews', path: '/work-reports/review', icon: ListChecks, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'EMPLOYEE', 'RECRUITER', 'FINANCE'] },
+  { label: 'Report Reviews', path: '/work-reports/review', icon: ListChecks, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'RECRUITER', 'FINANCE'] },
   { label: 'My Payslips', path: '/payslips', icon: Receipt, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'EMPLOYEE', 'RECRUITER', 'FINANCE'] },
   { label: 'Employees', path: '/employees', icon: Contact, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'EMPLOYEE', 'RECRUITER', 'FINANCE'] },
   { label: 'Helpdesk', path: '/helpdesk', icon: LifeBuoy, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'EMPLOYEE', 'RECRUITER', 'FINANCE'] },

@@ -17,7 +17,7 @@ export function TwoFactorPage() {
     <AuthLayout>
       <Card className="w-full max-w-md">
         <CardHeader>
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500 to-pink-500 shadow-lg shadow-indigo-500/20">
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-(--primary) shadow-lg shadow-(--primary)/20">
             <ShieldCheck className="h-6 w-6 text-white" aria-hidden="true" />
           </div>
           <CardTitle className="text-2xl">Two-factor verification</CardTitle>

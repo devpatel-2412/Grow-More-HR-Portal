@@ -15,7 +15,7 @@ export function TeamsPage() {
   const pagination = usePagination(20);
   const { data, isLoading, isError, refetch } = useTeams(pagination.queryParams);
   const { data: branchPage } = useBranches({ page: 1, limit: 100 });
-  const { data: employeePage } = useEmployees({ page: 1, limit: 200 });
+  const { data: employeePage } = useEmployees({ page: 1, limit: 100 });
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">

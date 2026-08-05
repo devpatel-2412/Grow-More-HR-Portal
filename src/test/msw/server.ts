@@ -16,6 +16,15 @@ export const handlers = {
   meUnauthenticated: http.get('/api/v1/auth/me', () =>
     HttpResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Access token required' } }, { status: 401 }),
   ),
+  meSuccess: http.get('/api/v1/auth/me', () =>
+    HttpResponse.json({
+      data: {
+        user: { id: 'u1', email: 'admin@acme.com', role: 'ADMIN', status: 'ACTIVE' },
+        profile: null,
+        tenant: { id: 't1', name: 'Acme Inc', domain: 'acme', logoUrl: null, primaryColor: '#16a34a', secondaryColor: '#0ea5e9' },
+      },
+    }),
+  ),
   refreshFails: http.post('/api/v1/auth/refresh', () =>
     HttpResponse.json({ error: { code: 'UNAUTHORIZED', message: 'No session cookie present' } }, { status: 401 }),
   ),

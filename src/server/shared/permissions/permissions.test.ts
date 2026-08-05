@@ -8,9 +8,18 @@ describe('permissions', () => {
     }
   });
 
-  it('denies EMPLOYEE, CLIENT, and CANDIDATE any permission by default', () => {
+  it('grants EMPLOYEE only self-service permissions', () => {
+    // Should have self-service permissions
+    expect(roleHasPermission('EMPLOYEE', PERMISSIONS.EMPLOYEE_READ_SELF)).toBe(true);
+    expect(roleHasPermission('EMPLOYEE', PERMISSIONS.ATTENDANCE_SELF)).toBe(true);
+    
+    // Should NOT have manage or global permissions
+    expect(roleHasPermission('EMPLOYEE', PERMISSIONS.EMPLOYEE_MANAGE)).toBe(false);
+    expect(roleHasPermission('EMPLOYEE', PERMISSIONS.TENANT_MANAGE)).toBe(false);
+  });
+
+  it('denies CLIENT and CANDIDATE any permission by default', () => {
     for (const permission of Object.values(PERMISSIONS)) {
-      expect(roleHasPermission('EMPLOYEE', permission)).toBe(false);
       expect(roleHasPermission('CLIENT', permission)).toBe(false);
       expect(roleHasPermission('CANDIDATE', permission)).toBe(false);
     }

@@ -8,17 +8,18 @@ import { createSopSchema, updateSopSchema, listSopsQuerySchema, sopIdParamSchema
 import { createSop, getSop, updateSop, publishSop, archiveSop, deleteSop, listSops, listSopRevisions } from './sop.controller.js';
 
 const manage = requirePermission(PERMISSIONS.SOP_MANAGE);
+const read = requirePermission(PERMISSIONS.SOP_READ);
 
 export const sopRouter = Router();
 sopRouter.use(authenticateAccessToken);
 sopRouter.use(requireStaff); // internal procedure library — never visible to a CLIENT portal login
 
 // SOPs are visible to every tenant member, not just managers — only mutations are gated.
-sopRouter.get('/', validate({ query: listSopsQuerySchema }), asyncHandler(listSops));
+sopRouter.get('/', read, validate({ query: listSopsQuerySchema }), asyncHandler(listSops));
 sopRouter.post('/', manage, validate({ body: createSopSchema }), asyncHandler(createSop));
-sopRouter.get('/:id', validate({ params: sopIdParamSchema }), asyncHandler(getSop));
+sopRouter.get('/:id', read, validate({ params: sopIdParamSchema }), asyncHandler(getSop));
 sopRouter.patch('/:id', manage, validate({ params: sopIdParamSchema, body: updateSopSchema }), asyncHandler(updateSop));
 sopRouter.delete('/:id', manage, validate({ params: sopIdParamSchema }), asyncHandler(deleteSop));
 sopRouter.post('/:id/publish', manage, validate({ params: sopIdParamSchema }), asyncHandler(publishSop));
 sopRouter.post('/:id/archive', manage, validate({ params: sopIdParamSchema }), asyncHandler(archiveSop));
-sopRouter.get('/:id/revisions', validate({ params: sopIdParamSchema }), asyncHandler(listSopRevisions));
+sopRouter.get('/:id/revisions', read, validate({ params: sopIdParamSchema }), asyncHandler(listSopRevisions));

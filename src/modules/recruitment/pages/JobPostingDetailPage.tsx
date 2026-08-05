@@ -13,7 +13,7 @@ import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
 export function JobPostingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: posting, isLoading, isError, refetch } = useJobPosting(id);
-  const { data: candidatePage } = useCandidates({ page: 1, limit: 200, jobPostingId: id });
+  const { data: candidatePage } = useCandidates({ page: 1, limit: 100, jobPostingId: id });
   const [openCandidateId, setOpenCandidateId] = useState<string | undefined>();
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;

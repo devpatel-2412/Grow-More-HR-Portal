@@ -304,7 +304,7 @@ export class AuthService {
 
     await emailService.send({
       to: user.email,
-      subject: 'Reset your Business OS password',
+      subject: 'Reset your Grow More password',
       text: `Use this token to reset your password (valid for 1 hour): ${rawToken}`,
     });
 

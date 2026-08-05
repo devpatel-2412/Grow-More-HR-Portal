@@ -88,12 +88,10 @@ export const router = createBrowserRouter([
             children: [
               { path: '/attendance', element: lazyRoute(<AttendancePage />) },
               { path: '/leave', element: lazyRoute(<LeavePage />) },
-              { path: '/leave/approvals', element: lazyRoute(<LeaveApprovalsPage />) },
               { path: '/projects', element: lazyRoute(<ProjectsPage />) },
               { path: '/projects/:id', element: lazyRoute(<ProjectDetailPage />) },
               { path: '/time-tracking', element: lazyRoute(<TimeTrackingPage />) },
               { path: '/work-reports', element: lazyRoute(<WorkReportsPage />) },
-              { path: '/work-reports/review', element: lazyRoute(<WorkReportReviewPage />) },
               { path: '/payslips', element: lazyRoute(<MyPayslipsPage />) },
               { path: '/employees', element: lazyRoute(<EmployeesPage />) },
               { path: '/employees/:id', element: lazyRoute(<EmployeeDetailPage />) },
@@ -107,6 +105,13 @@ export const router = createBrowserRouter([
               { path: '/organization/chart', element: lazyRoute(<OrgChartPage />) },
               { path: '/sops', element: lazyRoute(<SopsPage />) },
               { path: '/sops/:id', element: lazyRoute(<SopDetailPage />) },
+            ],
+          },
+          {
+            element: <RequireRole allow={['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'RECRUITER', 'FINANCE']} />,
+            children: [
+              { path: '/leave/approvals', element: lazyRoute(<LeaveApprovalsPage />) },
+              { path: '/work-reports/review', element: lazyRoute(<WorkReportReviewPage />) },
             ],
           },
           {

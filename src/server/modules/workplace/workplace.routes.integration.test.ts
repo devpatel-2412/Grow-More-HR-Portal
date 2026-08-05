@@ -207,26 +207,35 @@ describe('Knowledge base', () => {
 });
 
 describe('Documents', () => {
-  it('lets any employee read but only DOCUMENT_MANAGE holders upload or delete', async () => {
+  // Regression note: this test previously asserted a plain employee's own upload was 403. That
+  // was stale — DOCUMENT_UPLOAD_SELF (granted to EMPLOYEE and PROJECT_MANAGER) intentionally lets
+  // any staff member upload their own documents; only DOCUMENT_MANAGE-gated actions (delete,
+  // archive, restore) are restricted to a smaller set of roles.
+  it('lets any employee read and upload their own documents, but only DOCUMENT_MANAGE holders delete', async () => {
     const { res: signupRes, domain } = await signupTenant();
     const adminToken = signupRes.body.data.accessToken;
     const me = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${adminToken}`);
     const worker = await createEmployeeAccount(me.body.data.tenant.id, domain);
 
-    const forbiddenRes = await request(app)
+    const workerUploadRes = await request(app)
       .post('/api/v1/documents')
       .set('Authorization', `Bearer ${worker.token}`)
       .send({ name: 'Policy.pdf', fileUrl: 'https://files.example.com/policy.pdf' });
-    expect(forbiddenRes.status).toBe(403);
+    expect(workerUploadRes.status).toBe(201);
 
     const uploadRes = await request(app)
       .post('/api/v1/documents')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Policy.pdf', folderPath: '/hr', fileUrl: 'https://files.example.com/policy.pdf' });
+      .send({ name: 'Handbook.pdf', folderPath: '/hr', fileUrl: 'https://files.example.com/handbook.pdf' });
     expect(uploadRes.status).toBe(201);
 
     const readRes = await request(app).get('/api/v1/documents').set('Authorization', `Bearer ${worker.token}`);
-    expect(readRes.body.data).toHaveLength(1);
+    expect(readRes.body.data).toHaveLength(2);
+
+    const forbiddenDeleteRes = await request(app)
+      .delete(`/api/v1/documents/${uploadRes.body.data.id}`)
+      .set('Authorization', `Bearer ${worker.token}`);
+    expect(forbiddenDeleteRes.status).toBe(403);
   });
 
   it('replaces a file as a new version, then archives and restores the document', async () => {

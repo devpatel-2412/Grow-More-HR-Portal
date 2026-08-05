@@ -61,7 +61,7 @@ function OrgChartNode({ node }: { node: OrgNode }) {
 }
 
 export function OrgChartPage() {
-  const { data, isLoading, isError, refetch } = useEmployees({ page: 1, limit: 500 });
+  const { data, isLoading, isError, refetch } = useEmployees({ page: 1, limit: 100 });
   const roots = useMemo(() => buildTree(data?.data ?? []), [data]);
 
   return (

@@ -73,7 +73,7 @@ function TeamForm({ team, onDone }: { team?: TeamRecord; onDone: () => void }) {
   const updateMutation = useUpdateTeam();
   const isEdit = !!team;
   const { data: branchPage } = useBranches({ page: 1, limit: 100 });
-  const { data: employeePage } = useEmployees({ page: 1, limit: 200 });
+  const { data: employeePage } = useEmployees({ page: 1, limit: 100 });
 
   const {
     register,

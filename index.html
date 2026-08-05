@@ -2,9 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>business-os</title>
+    <title>Grow More</title>
+    <!-- Paints the correct brand background before any bundled CSS/JS loads, so the preloader's
+         first frame never flashes white (or the wrong theme) on a cold load. -->
+    <style>
+      html, body { background: #f8fafc; margin: 0; }
+      @media (prefers-color-scheme: dark) {
+        html, body { background: #0a0f0d; }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

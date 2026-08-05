@@ -12,7 +12,7 @@ export interface StatCardProps {
 
 const TONE_CLASS: Record<NonNullable<StatCardProps['tone']>, string> = {
   default: 'text-[var(--foreground)]',
-  success: 'text-emerald-500',
+  success: 'text-green-600',
   danger: 'text-[var(--destructive)]',
 };
 

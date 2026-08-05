@@ -26,7 +26,10 @@ function makeDeps(inviteOverrides: Partial<Record<string, unknown>> = {}, client
     findByTokenHash: vi.fn().mockResolvedValue(makeInvite(inviteOverrides)),
     markAccepted: vi.fn().mockResolvedValue(undefined),
   };
-  const employeeRepository = { create: vi.fn().mockResolvedValue({ id: 'emp-1' }) };
+  const employeeRepository = {
+    create: vi.fn().mockResolvedValue({ id: 'emp-1' }),
+    findByUserId: vi.fn().mockResolvedValue(null),
+  };
   const clientRepository = {};
   const contactRepository = { findByClientAndEmail: vi.fn(), create: vi.fn() };
   return { repository, inviteRepository, employeeRepository, clientRepository, contactRepository };
@@ -49,6 +52,13 @@ describe('UserService.acceptInvite', () => {
       await build(deps).acceptInvite({ token: 'raw-token', password: 'CorrectPassword123', firstName: 'Ada', lastName: 'Lovelace' });
       expect(deps.employeeRepository.create).toHaveBeenCalledOnce();
     }
+  });
+
+  it('does not create a second EmployeeProfile when an admin already created one while the invite was pending', async () => {
+    const deps = makeDeps({ role: 'EMPLOYEE' });
+    deps.employeeRepository.findByUserId.mockResolvedValue({ id: 'emp-preexisting' } as never);
+    await build(deps).acceptInvite({ token: 'raw-token', password: 'CorrectPassword123', firstName: 'Ada', lastName: 'Lovelace' });
+    expect(deps.employeeRepository.create).not.toHaveBeenCalled();
   });
 
   it('does not create an EmployeeProfile for a CANDIDATE-role invite — no candidate portal exists yet', async () => {

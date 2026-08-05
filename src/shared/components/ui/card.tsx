@@ -2,7 +2,7 @@ import * as React from 'react';
 import { cn } from '../../utils/cn';
 
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('glass-panel rounded-2xl p-6 shadow-2xl', className)} {...props} />;
+  return <div className={cn('glass-panel rounded-2xl p-6', className)} {...props} />;
 }
 
 export function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
@@ -13,7 +13,7 @@ export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHead
   return (
     <h1
       className={cn(
-        'bg-gradient-to-r from-indigo-200 via-slate-100 to-indigo-200 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent',
+        'text-3xl font-extrabold tracking-tight text-[var(--foreground)]',
         className,
       )}
       {...props}

@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Outlet, Navigate, useNavigate, useLocation, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Receipt, FolderKanban, LogOut, Sparkles, Sun, Moon, Menu } from 'lucide-react';
+import { LayoutDashboard, Receipt, FolderKanban, LogOut, Sun, Moon, Menu } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useTheme } from '../../lib/theme';
 import { Button } from '../ui/button';
+import { Logo } from '../ui/logo';
+import { APP_NAME } from '../../config/brand';
 import { cn } from '../../utils/cn';
 
 const navLinkClasses = ({ isActive }: { isActive: boolean }) =>
   cn(
-    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+    'flex items-center gap-3 rounded-xl border-l-2 py-2 pl-2.5 pr-3 text-sm font-medium transition-colors',
     isActive
-      ? 'bg-[var(--muted)] text-[var(--foreground)]'
-      : 'text-[var(--muted-foreground)] hover:bg-[var(--muted)]/60 hover:text-[var(--foreground)]',
+      ? 'border-[var(--primary)] bg-[var(--primary-light)] text-[var(--primary)]'
+      : 'border-transparent text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]',
   );
 
 /** Only reachable by CLIENT-role logins — a completely separate, much smaller shell than AppShell since a customer has no employee profile and no business viewing staff-facing modules. */
@@ -45,7 +47,7 @@ export function ClientPortalShell() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[var(--background)]">
+    <div className="flex h-screen overflow-hidden bg-[var(--background)]">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-[var(--primary)] focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
@@ -63,21 +65,19 @@ export function ClientPortalShell() {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--card)] transition-transform duration-200 ease-in-out lg:static lg:z-20 lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex h-screen w-64 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--card)] transition-transform duration-200 ease-in-out lg:static lg:z-20 lg:translate-x-0',
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <div className="flex items-center gap-3 border-b border-[var(--border)] p-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-indigo-500 to-pink-500 shadow-lg">
-            <Sparkles className="h-4 w-4 text-white" aria-hidden="true" />
-          </div>
+        <div className="flex shrink-0 items-center gap-3 border-b border-[var(--border)] p-6">
+          <Logo className="h-8 w-8 shrink-0 shadow-lg" />
           <div>
-            <h2 className="text-sm font-extrabold tracking-tight text-[var(--foreground)]">{tenant?.name ?? 'Business OS'}</h2>
+            <h2 className="text-sm font-extrabold tracking-tight text-[var(--foreground)]">{tenant?.name ?? APP_NAME}</h2>
             <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Client Portal</span>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1 px-4 py-6" aria-label="Primary">
+        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-4 py-6" aria-label="Primary">
           <NavLink to="/portal" end className={navLinkClasses}>
             <LayoutDashboard className="h-4 w-4" />
             Overview
@@ -92,7 +92,7 @@ export function ClientPortalShell() {
           </NavLink>
         </nav>
 
-        <div className="flex items-center justify-between border-t border-[var(--border)] p-4">
+        <div className="flex shrink-0 items-center justify-between border-t border-[var(--border)] p-4">
           <div className="overflow-hidden">
             <h4 className="truncate text-xs font-bold text-[var(--foreground)]">{user?.email}</h4>
             <p className="truncate text-[10px] text-[var(--muted-foreground)]">Client</p>
@@ -108,14 +108,14 @@ export function ClientPortalShell() {
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center gap-3 border-b border-[var(--border)] bg-[var(--card)] p-4 lg:hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="flex shrink-0 items-center gap-3 border-b border-[var(--border)] bg-[var(--card)] p-4 lg:hidden">
           <Button variant="ghost" size="icon" onClick={() => setMobileNavOpen(true)} aria-label="Open navigation menu">
             <Menu className="h-5 w-5" />
           </Button>
-          <span className="text-sm font-bold text-[var(--foreground)]">{tenant?.name ?? 'Business OS'}</span>
+          <span className="text-sm font-bold text-[var(--foreground)]">{tenant?.name ?? APP_NAME}</span>
         </div>
-        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-8 focus:outline-none">
+        <main id="main-content" tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto p-8 focus:outline-none">
           <Outlet />
         </main>
       </div>

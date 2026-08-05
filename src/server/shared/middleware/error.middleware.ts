@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { Prisma } from '@prisma/client';
 import { AppError } from '../errors/app-error.js';
 import { logger } from '../logger.js';
 
@@ -14,6 +15,18 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     }
     res.status(err.statusCode).json({
       error: { code: err.code, message: err.message, details: err.details },
+    });
+    return;
+  }
+
+  // Fallback for a unique-constraint violation a service forgot to pre-check with a friendly
+  // ConflictError — still a real 409 the client can act on, not an opaque 500. The offending
+  // field names are in `err.meta.target`, but that's an internal column list, not user-facing
+  // copy, so this stays generic rather than leaking schema details.
+  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+    logger.warn({ err, requestId: req.id }, 'Unhandled unique-constraint violation');
+    res.status(409).json({
+      error: { code: 'CONFLICT', message: 'A record with this value already exists.' },
     });
     return;
   }

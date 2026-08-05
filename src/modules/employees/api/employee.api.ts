@@ -20,4 +20,7 @@ export const employeeApi = {
     id: string,
     values: Omit<Partial<UpdateEmployeeFormValues>, 'branchId' | 'teamId'> & { branchId?: string | null; teamId?: string | null },
   ) => api.patch<EmployeeListItem>(`/employees/${id}`, { ...values, phone: values.phone || undefined }),
+  getMe: () => api.get<EmployeeListItem>('/employees/me'),
+  updateProfile: (values: { phone?: string; address?: string; emergencyContact?: string }) =>
+    api.patch<EmployeeListItem>('/employees/me/profile', values),
 };

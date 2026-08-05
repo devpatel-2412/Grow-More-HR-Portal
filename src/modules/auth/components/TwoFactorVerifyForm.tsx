@@ -1,6 +1,6 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { twoFactorVerifySchema, type TwoFactorVerifyFormValues } from '../schemas/auth.schemas';
 import { use2FAVerify } from '../hooks/use2FAVerify';
 import { useAuth } from '../context/AuthContext';
@@ -11,8 +11,11 @@ import { InlineFormError } from '../../../shared/components/feedback/ErrorState'
 
 export function TwoFactorVerifyForm({ challengeToken }: { challengeToken: string }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setSession } = useAuth();
   const verifyMutation = use2FAVerify();
+  const redirectTo = (location.state as { redirectTo?: string } | null)?.redirectTo;
+  const returnTo = redirectTo?.startsWith('/') ? redirectTo : '/';
   const {
     control,
     handleSubmit,
@@ -27,7 +30,7 @@ export function TwoFactorVerifyForm({ challengeToken }: { challengeToken: string
     try {
       const result = await verifyMutation.mutateAsync(values);
       setSession(result.accessToken, result.user);
-      navigate('/', { replace: true });
+      navigate(returnTo, { replace: true });
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Verification failed. Please try again.';
       setError('root', { message });

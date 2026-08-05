@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticateAccessToken } from '../../shared/middleware/auth.middleware.js';
-import { requirePermission } from '../../shared/middleware/rbac.middleware.js';
+import { requirePermission, requireAnyPermission } from '../../shared/middleware/rbac.middleware.js';
 import { validate } from '../../shared/middleware/validate.middleware.js';
 import { PERMISSIONS } from '../../shared/permissions/permissions.js';
 import { asyncHandler } from '../../shared/utils/async-handler.js';
@@ -32,7 +32,7 @@ payrollRouter.use(authenticateAccessToken);
 
 // Every employee can read their own payslips; the service narrows the scope for anyone
 // without PAYROLL_READ_TENANT.
-payrollRouter.get('/payslips', validate({ query: listPayrollItemsQuerySchema }), asyncHandler(listPayslips));
+payrollRouter.get('/payslips', requireAnyPermission(PERMISSIONS.PAYROLL_READ_TENANT, PERMISSIONS.PAYSLIP_READ_SELF), validate({ query: listPayrollItemsQuerySchema }), asyncHandler(listPayslips));
 
 payrollRouter.post(
   '/salary-structures',

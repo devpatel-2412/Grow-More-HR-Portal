@@ -7,6 +7,8 @@ export interface EmployeeListItem {
   firstName: string;
   lastName: string;
   phone: string | null;
+  address: string | null;
+  emergencyContact: string | null;
   department: string;
   designation: string;
   dateOfJoining: string;

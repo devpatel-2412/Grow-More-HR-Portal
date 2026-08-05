@@ -12,7 +12,7 @@ import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
 import type { LeadRecord } from '../types/crm.types';
 
 export function LeadsPage() {
-  const { data, isLoading, isError, refetch } = useLeads({ page: 1, limit: 200 });
+  const { data, isLoading, isError, refetch } = useLeads({ page: 1, limit: 100 });
   const [convertingLead, setConvertingLead] = useState<LeadRecord | undefined>();
 
   const leads = data?.data ?? [];

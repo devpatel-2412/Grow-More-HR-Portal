@@ -14,6 +14,10 @@ export class EmployeeRepository {
     return prisma.employeeProfile.findUnique({ where: { userId } });
   }
 
+  findByTenantAndEmployeeId(tenantId: string, employeeId: string) {
+    return prisma.employeeProfile.findUnique({ where: { tenantId_employeeId: { tenantId, employeeId } } });
+  }
+
   update(id: string, data: Prisma.EmployeeProfileUpdateInput) {
     return prisma.employeeProfile.update({ where: { id }, data });
   }

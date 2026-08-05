@@ -26,7 +26,7 @@ export function InputOTPSlot({ index, className, ...props }: React.ComponentProp
   return (
     <div
       className={cn(
-        'relative flex h-12 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--input)] text-lg font-semibold text-[var(--foreground)] transition-all',
+        'relative flex h-12 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--input)] text-lg font-semibold text-[var(--foreground)] transition-all',
         isActive && 'z-10 border-[var(--primary)] ring-1 ring-[var(--primary)]',
         className,
       )}

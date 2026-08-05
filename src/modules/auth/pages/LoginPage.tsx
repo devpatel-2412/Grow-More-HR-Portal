@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
-import { Sparkles } from 'lucide-react';
 import { LoginForm } from '../components/LoginForm';
 import { Card, CardHeader, CardTitle, CardDescription } from '../../../shared/components/ui/card';
 import { AuthLayout } from '../../../shared/components/layout/AuthLayout';
+import { Logo } from '../../../shared/components/ui/logo';
+import { APP_NAME } from '../../../shared/config/brand';
 
 export function LoginPage() {
   return (
@@ -12,10 +13,8 @@ export function LoginPage() {
 
       <Card className="relative z-10 w-full max-w-md">
         <CardHeader>
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500 to-pink-500 shadow-lg shadow-indigo-500/20">
-            <Sparkles className="h-6 w-6 text-white" aria-hidden="true" />
-          </div>
-          <CardTitle>Business OS</CardTitle>
+          <Logo className="mb-3 h-12 w-12 shadow-lg shadow-(--primary)/20" />
+          <CardTitle>{APP_NAME}</CardTitle>
           <CardDescription>Enterprise Operations &amp; Automation</CardDescription>
         </CardHeader>
         <LoginForm />

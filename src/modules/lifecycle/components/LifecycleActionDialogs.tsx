@@ -172,7 +172,7 @@ export function TransferEmployeeDialog({ employeeId, employeeName }: { employeeI
   const mutation = useTransferEmployee(employeeId);
   const { data: branchPage } = useBranches({ page: 1, limit: 100 });
   const { data: teamPage } = useTeams({ page: 1, limit: 100 });
-  const { data: employeePage } = useEmployees({ page: 1, limit: 200 });
+  const { data: employeePage } = useEmployees({ page: 1, limit: 100 });
   const {
     register,
     control,

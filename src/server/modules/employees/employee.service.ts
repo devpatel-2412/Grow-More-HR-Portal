@@ -4,7 +4,12 @@ import { ConflictError, NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
 import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
 import type { z } from 'zod';
-import type { createEmployeeProfileSchema, updateEmployeeProfileSchema, listEmployeesQuerySchema } from './employee.validators.js';
+import {
+  createEmployeeProfileSchema,
+  updateEmployeeProfileSchema,
+  listEmployeesQuerySchema,
+  selfUpdateEmployeeSchema,
+} from './employee.validators.js';
 import type { RequestContext } from '../tenants/tenant.service.js';
 
 const SORTABLE_FIELDS = ['firstName', 'lastName', 'department', 'dateOfJoining', 'createdAt'] as const;
@@ -21,6 +26,9 @@ export class EmployeeService {
 
     const existingProfile = await this.repository.findByUserId(input.userId);
     if (existingProfile) throw new ConflictError('This user already has an employee profile');
+
+    const existingEmployeeId = await this.repository.findByTenantAndEmployeeId(tenantId, input.employeeId);
+    if (existingEmployeeId) throw new ConflictError(`Employee ID "${input.employeeId}" is already in use`);
 
     const profile = await this.repository.create({
       user: { connect: { id: input.userId } },
@@ -100,6 +108,30 @@ export class EmployeeService {
     });
 
     return profile;
+  }
+
+  async updateSelf(userId: string, input: z.infer<typeof selfUpdateEmployeeSchema>, ctx: RequestContext = {}) {
+    const profile = await this.getByUserId(userId);
+    if (!profile) throw new NotFoundError('Employee profile not found for this user');
+
+    const updated = await this.repository.update(profile.id, {
+      phone: input.phone,
+      address: input.address,
+      emergencyContact: input.emergencyContact,
+    });
+
+    await auditLogService.record({
+      tenantId: profile.tenantId,
+      actorUserId: ctx.actorUserId,
+      action: 'EMPLOYEE_PROFILE_UPDATED',
+      targetType: 'EmployeeProfile',
+      targetId: profile.id,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+      metadata: { ...input, selfService: true },
+    });
+
+    return updated;
   }
 
   async list(tenantId: string, query: z.infer<typeof listEmployeesQuerySchema>) {

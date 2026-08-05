@@ -13,7 +13,7 @@ export const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      'flex h-10 w-full items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--input)] px-4 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50',
+      'flex h-10 w-full items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--input)] px-4 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50',
       className,
     )}
     {...props}
@@ -30,7 +30,7 @@ export function SelectContent({ className, children, ...props }: React.Component
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
-        className={cn('glass-panel z-50 max-h-64 overflow-y-auto rounded-lg bg-[var(--card)] p-1 shadow-2xl', className)}
+        className={cn('glass-panel z-50 max-h-64 overflow-y-auto rounded-xl bg-[var(--card)] p-1', className)}
         position="popper"
         sideOffset={4}
         {...props}

@@ -1,10 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  --color-brand-primary: #6366f1;
-  --color-brand-secondary: #ec4899;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+  --color-brand-primary: #16a34a;
+  --color-brand-secondary: #5eead4;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -23,56 +23,69 @@
   --color-destructive-foreground: var(--destructive-foreground);
 }
 
-/* Dark is this app's default aesthetic; light is the explicit opt-out. */
+/* Premium light SaaS surface is this app's default; dark is the explicit opt-in. */
 :root,
+:root[data-theme='light'] {
+  --background: #f8fafc;
+  --foreground: #111827;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --border: #e5e7eb;
+  --input: #ffffff;
+  --ring: #16a34a;
+  --primary: #16a34a;
+  --primary-hover: #15803d;
+  --primary-light: #dcfce7;
+  --primary-dark: #14532d;
+  --primary-foreground: #ffffff;
+  --secondary: #0ea5e9;
+  --secondary-foreground: #ffffff;
+  --muted: #f1f5f9;
+  --muted-foreground: #6b7280;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+}
+
 :root[data-theme='dark'] {
-  --background: #030712;
-  --foreground: #f8fafc;
-  --card: rgba(15, 23, 42, 0.45);
-  --card-foreground: #f8fafc;
+  --background: #0a0f0d;
+  --foreground: #f1f5f9;
+  --card: #12181a;
+  --card-foreground: #f1f5f9;
   --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(15, 23, 42, 0.6);
-  --ring: #6366f1;
-  --primary: #6366f1;
-  --primary-foreground: #f8fafc;
-  --secondary: #ec4899;
-  --secondary-foreground: #f8fafc;
+  --input: rgba(255, 255, 255, 0.04);
+  --ring: #22c55e;
+  --primary: #22c55e;
+  --primary-hover: #4ade80;
+  --primary-light: rgba(34, 197, 94, 0.15);
+  --primary-dark: #14532d;
+  --primary-foreground: #052e16;
+  --secondary: #38bdf8;
+  --secondary-foreground: #052e16;
   --muted: rgba(148, 163, 184, 0.12);
   --muted-foreground: #94a3b8;
   --destructive: #f87171;
   --destructive-foreground: #450a0a;
 }
 
-:root[data-theme='light'] {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --border: rgba(15, 23, 42, 0.1);
-  --input: #ffffff;
-  --ring: #6366f1;
-  --primary: #6366f1;
-  --primary-foreground: #f8fafc;
-  --secondary: #ec4899;
-  --secondary-foreground: #f8fafc;
-  --muted: rgba(15, 23, 42, 0.05);
-  --muted-foreground: #475569;
-  --destructive: #dc2626;
-  --destructive-foreground: #fef2f2;
-}
-
-@media (prefers-color-scheme: light) {
+@media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    --background: #f8fafc;
-    --foreground: #0f172a;
-    --card: #ffffff;
-    --card-foreground: #0f172a;
-    --border: rgba(15, 23, 42, 0.1);
-    --input: #ffffff;
-    --muted: rgba(15, 23, 42, 0.05);
-    --muted-foreground: #475569;
-    --destructive: #dc2626;
-    --destructive-foreground: #fef2f2;
+    --background: #0a0f0d;
+    --foreground: #f1f5f9;
+    --card: #12181a;
+    --card-foreground: #f1f5f9;
+    --border: rgba(255, 255, 255, 0.08);
+    --input: rgba(255, 255, 255, 0.04);
+    --ring: #22c55e;
+    --primary: #22c55e;
+    --primary-hover: #4ade80;
+    --primary-light: rgba(34, 197, 94, 0.15);
+    --primary-foreground: #052e16;
+    --secondary: #38bdf8;
+    --secondary-foreground: #052e16;
+    --muted: rgba(148, 163, 184, 0.12);
+    --muted-foreground: #94a3b8;
+    --destructive: #f87171;
+    --destructive-foreground: #450a0a;
   }
 }
 
@@ -95,53 +108,58 @@ body {
   }
 }
 
-/* Custom Scrollbar for Notion-like clean aesthetics */
+/* Custom scrollbar — themed via tokens so it reads correctly in both light and dark */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.3);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--muted-foreground);
 }
 
-/* Glassmorphism utility card styles */
+/* Premium card surface: soft shadow, minimal border — no heavy glassmorphism blur */
 .glass-panel {
   background: var(--card);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 8px 24px rgba(17, 24, 39, 0.06);
 }
 
 .glass-panel-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-panel-hover:hover {
-  border-color: rgba(99, 102, 241, 0.4);
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
+  border-color: rgba(22, 163, 74, 0.35);
+  box-shadow: 0 12px 24px rgba(22, 163, 74, 0.12);
   transform: translateY(-2px);
 }
 
 .glow-btn {
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+  background: var(--primary);
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(20, 83, 45, 0.15);
 }
 
 .glow-btn:hover:not(:disabled) {
-  opacity: 0.95;
-  box-shadow: 0 4px 25px rgba(168, 85, 247, 0.5);
-  transform: scale(1.02);
+  background: var(--primary-hover);
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.28);
+  transform: translateY(-1px);
+}
+
+.glow-btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .glow-btn:disabled {
@@ -151,6 +169,6 @@ body {
 
 /* Dot Grid Pattern for modern dashboard backdrop */
 .dot-grid {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-image: radial-gradient(var(--border) 1px, transparent 1px);
   background-size: 24px 24px;
 }

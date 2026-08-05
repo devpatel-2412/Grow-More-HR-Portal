@@ -9,8 +9,9 @@ import {
   updateEmployeeProfileSchema,
   listEmployeesQuerySchema,
   employeeIdParamSchema,
+  selfUpdateEmployeeSchema,
 } from './employee.validators.js';
-import { createEmployee, getEmployee, getMyEmployeeProfile, updateEmployee, listEmployees } from './employee.controller.js';
+import { createEmployee, getEmployee, getMyEmployeeProfile, updateMyEmployeeProfile, updateEmployee, listEmployees } from './employee.controller.js';
 import { createChecklistItemSchema } from '../lifecycle/checklist.validators.js';
 import { listChecklist, createChecklistItem } from '../lifecycle/checklist.controller.js';
 import {
@@ -36,7 +37,13 @@ export const employeeRouter = Router();
 employeeRouter.use(authenticateAccessToken);
 
 // Specific path before the ":id" param route so "me" is never captured as an id.
-employeeRouter.get('/me', asyncHandler(getMyEmployeeProfile));
+employeeRouter.get('/me', requirePermission(PERMISSIONS.EMPLOYEE_READ_SELF), asyncHandler(getMyEmployeeProfile));
+employeeRouter.patch(
+  '/me/profile',
+  requirePermission(PERMISSIONS.EMPLOYEE_UPDATE_SELF),
+  validate({ body: selfUpdateEmployeeSchema }),
+  asyncHandler(updateMyEmployeeProfile),
+);
 
 employeeRouter.post(
   '/',

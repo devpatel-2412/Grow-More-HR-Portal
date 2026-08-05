@@ -586,12 +586,14 @@ model EmployeeProfile {
   user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenantId      String
   tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  employeeId    String            @unique // e.g. EMP-2026-001
+  employeeId    String            // e.g. EMP-2026-001 — unique per tenant, not globally (see @@unique below)
   firstName     String
   lastName      String
   phone         String?
   department    String
   designation   String
+  address       String?
+  emergencyContact String?
   dateOfJoining DateTime
   dateOfBirth   DateTime?
   status        EmployeeStatus    @default(ONBOARDING)
@@ -643,6 +645,7 @@ model EmployeeProfile {
   ownedSops       Sop[]         @relation("SopOwner")
   sopRevisions    SopRevision[]
 
+  @@unique([tenantId, employeeId])
   @@index([tenantId])
   @@index([tenantId, department])
   @@index([managerId])

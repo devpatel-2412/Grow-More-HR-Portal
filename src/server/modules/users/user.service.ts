@@ -59,7 +59,7 @@ export class UserService {
 
     await emailService.send({
       to: input.email,
-      subject: "You've been invited to Business OS",
+      subject: "You've been invited to Grow More",
       text: `You've been invited to join. Use this token to accept and set your password: ${rawToken}`,
     });
 
@@ -110,17 +110,25 @@ export class UserService {
       // CANDIDATE has no profile record to create yet either — it isn't exposed in the invite
       // UI (see UserRole.CANDIDATE in schema.prisma), but a raw API call could still set it, so
       // this stays explicit rather than falling through to an EmployeeProfile that's wrong for it.
-      await this.employeeRepository.create({
-        user: { connect: { id: user.id } },
-        tenant: { connect: { id: invite.tenantId } },
-        employeeId: `EMP-${new Date().getFullYear()}-${user.id.slice(0, 6).toUpperCase()}`,
-        firstName: input.firstName,
-        lastName: input.lastName,
-        department: 'Unassigned',
-        designation: 'Team Member',
-        dateOfJoining: new Date(),
-        status: 'ACTIVE',
-      });
+      //
+      // An admin may have already filled in a real department/designation/employee ID for this
+      // person via the Employees module while their invite was still pending — check first so
+      // acceptance doesn't clobber that with placeholder values (and doesn't hit the DB's
+      // one-profile-per-user constraint).
+      const existingProfile = await this.employeeRepository.findByUserId(user.id);
+      if (!existingProfile) {
+        await this.employeeRepository.create({
+          user: { connect: { id: user.id } },
+          tenant: { connect: { id: invite.tenantId } },
+          employeeId: `EMP-${new Date().getFullYear()}-${user.id.slice(0, 6).toUpperCase()}`,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          department: 'Unassigned',
+          designation: 'Team Member',
+          dateOfJoining: new Date(),
+          status: 'ACTIVE',
+        });
+      }
     }
 
     await this.inviteRepository.markAccepted(invite.id);

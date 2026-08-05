@@ -11,6 +11,9 @@ import { Card } from '../../../shared/components/ui/card';
 import { ErrorState } from '../../../shared/components/feedback/ErrorState';
 import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
 import { cn } from '../../../shared/utils/cn';
+import { ProfileEditForm } from '../components/ProfileEditForm';
+import { Button } from '../../../shared/components/ui/button';
+import { Pencil } from 'lucide-react';
 
 const TABS = ['overview', 'checklist', 'lifecycle', 'fnf'] as const;
 type Tab = (typeof TABS)[number];
@@ -22,6 +25,8 @@ export function EmployeeDetailPage() {
   const [tab, setTab] = useState<Tab>('overview');
   const { data: employee, isLoading, isError, refetch } = useEmployee(id);
   const canManage = !!user && ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'].includes(user.role);
+  const isSelf = user?.sub === employee?.userId;
+  const [isEditing, setIsEditing] = useState(false);
 
   if (isLoading) {
     return (
@@ -78,16 +83,43 @@ export function EmployeeDetailPage() {
 
       <Card className="p-0">
         {tab === 'overview' && (
-          <dl className="grid grid-cols-2 gap-4 p-4 text-sm">
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Phone</dt>
-              <dd className="text-[var(--foreground)]">{employee.phone ?? '—'}</dd>
+          <div className="p-4 space-y-4">
+            <div className="flex justify-end">
+              {isSelf && !isEditing && (
+                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit Profile
+                </Button>
+              )}
             </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Date of joining</dt>
-              <dd className="text-[var(--foreground)]">{new Date(employee.dateOfJoining).toLocaleDateString()}</dd>
-            </div>
-          </dl>
+            
+            {isEditing && isSelf ? (
+              <ProfileEditForm 
+                employee={employee} 
+                onSuccess={() => { setIsEditing(false); refetch(); }} 
+                onCancel={() => setIsEditing(false)} 
+              />
+            ) : (
+              <dl className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Phone</dt>
+                  <dd className="text-[var(--foreground)]">{employee.phone ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Date of joining</dt>
+                  <dd className="text-[var(--foreground)]">{new Date(employee.dateOfJoining).toLocaleDateString()}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Address</dt>
+                  <dd className="text-[var(--foreground)]">{employee.address ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Emergency Contact</dt>
+                  <dd className="text-[var(--foreground)]">{employee.emergencyContact ?? '—'}</dd>
+                </div>
+              </dl>
+            )}
+          </div>
         )}
         {tab === 'checklist' && <ChecklistPanel employeeId={id} canManage={canManage} />}
         {tab === 'lifecycle' && (

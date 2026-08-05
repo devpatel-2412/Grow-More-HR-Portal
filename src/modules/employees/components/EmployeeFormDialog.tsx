@@ -62,7 +62,11 @@ export function EmployeeFormDialog(props: CreateModeProps | EditModeProps) {
 
 function CreateEmployeeForm({ existingEmployeeUserIds, onDone }: { existingEmployeeUserIds: string[]; onDone: () => void }) {
   const createMutation = useCreateEmployee();
-  const { data: usersData } = useUsers({ page: 1, limit: 100, status: 'ACTIVE' });
+  // Deliberately no status filter: a just-invited user is `PENDING_INVITE` (not yet `ACTIVE`)
+  // until they accept, but that's exactly who this dialog is for — letting an admin fill in
+  // department/designation/employee ID/joining date right away instead of waiting on them to
+  // log in first. acceptInvite() skips its own profile-creation step if one already exists.
+  const { data: usersData } = useUsers({ page: 1, limit: 100 });
   const eligibleUsers = (usersData?.data ?? []).filter((u) => !existingEmployeeUserIds.includes(u.id));
 
   const {

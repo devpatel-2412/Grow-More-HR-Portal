@@ -1,6 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { loginSchema, type LoginFormValues } from '../schemas/auth.schemas';
 import { useLogin } from '../hooks/useLogin';
 import { useAuth } from '../context/AuthContext';
@@ -12,8 +12,12 @@ import { InlineFormError } from '../../../shared/components/feedback/ErrorState'
 
 export function LoginForm() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setSession } = useAuth();
   const loginMutation = useLogin();
+  // Only ever follow a same-origin path ProtectedRoute itself set — never trust it further than that.
+  const redirectTo = (location.state as { redirectTo?: string } | null)?.redirectTo;
+  const returnTo = redirectTo?.startsWith('/') ? redirectTo : '/';
   const {
     register,
     handleSubmit,
@@ -25,11 +29,11 @@ export function LoginForm() {
     try {
       const result = await loginMutation.mutateAsync(values);
       if (result.requiresTwoFactor) {
-        navigate('/two-factor', { state: { challengeToken: result.challengeToken } });
+        navigate('/two-factor', { state: { challengeToken: result.challengeToken, redirectTo } });
         return;
       }
       setSession(result.accessToken, result.user);
-      navigate('/', { replace: true });
+      navigate(returnTo, { replace: true });
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Unable to sign in. Please try again.';
       setError('root', { message });

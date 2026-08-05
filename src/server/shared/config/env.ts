@@ -4,7 +4,11 @@ import { z } from 'zod';
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(5000),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  CORS_ORIGIN: z.string().url(),
+  // Comma-separated list of allowed browser origins, e.g. "http://localhost:3000,http://127.0.0.1:3000".
+  // Kept as a list (not a single URL) so dev environments reachable under more than one hostname
+  // don't silently break — a mismatched single static value here breaks credentialed cookie
+  // requests for every hostname except the one it happens to match.
+  CORS_ORIGIN: z.string().min(1, 'CORS_ORIGIN is required'),
 
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
 
@@ -14,7 +18,7 @@ const envSchema = z.object({
   JWT_REFRESH_TTL_REMEMBER_ME: z.string().default('30d'),
 
   TWO_FA_ENCRYPTION_KEY: z.string().min(1, 'TWO_FA_ENCRYPTION_KEY is required'),
-  TWO_FA_ISSUER: z.string().default('Business OS'),
+  TWO_FA_ISSUER: z.string().default('Grow More'),
 
   REFRESH_COOKIE_NAME: z.string().default('refresh_token'),
   REFRESH_COOKIE_DOMAIN: z.string().optional().default(''),
@@ -46,3 +50,4 @@ function loadEnv(): Env {
 export const env = loadEnv();
 export const isProduction = env.NODE_ENV === 'production';
 export const isTest = env.NODE_ENV === 'test';
+export const corsOrigins = env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean);

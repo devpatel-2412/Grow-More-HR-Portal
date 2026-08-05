@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticateAccessToken } from '../../shared/middleware/auth.middleware.js';
-import { requirePermission } from '../../shared/middleware/rbac.middleware.js';
+import { requirePermission, requireAnyPermission } from '../../shared/middleware/rbac.middleware.js';
 import { validate } from '../../shared/middleware/validate.middleware.js';
 import { PERMISSIONS } from '../../shared/permissions/permissions.js';
 import { asyncHandler } from '../../shared/utils/async-handler.js';
@@ -20,19 +20,24 @@ export const attendanceRouter = Router();
 
 attendanceRouter.use(authenticateAccessToken);
 
-attendanceRouter.post('/punch-in', validate({ body: punchInSchema }), asyncHandler(punchIn));
-attendanceRouter.post('/punch-out', asyncHandler(punchOut));
-attendanceRouter.post('/break/start', asyncHandler(startBreak));
-attendanceRouter.post('/break/end', asyncHandler(endBreak));
-attendanceRouter.get('/today', asyncHandler(getToday));
+const self = requirePermission(PERMISSIONS.ATTENDANCE_SELF);
+const read = requireAnyPermission(PERMISSIONS.ATTENDANCE_READ_TENANT, PERMISSIONS.ATTENDANCE_SELF);
+
+attendanceRouter.post('/punch-in', self, validate({ body: punchInSchema }), asyncHandler(punchIn));
+attendanceRouter.post('/punch-out', self, asyncHandler(punchOut));
+attendanceRouter.post('/break/start', self, asyncHandler(startBreak));
+attendanceRouter.post('/break/end', self, asyncHandler(endBreak));
+attendanceRouter.get('/today', self, asyncHandler(getToday));
 
 attendanceRouter.post(
   '/regularization',
+  requirePermission(PERMISSIONS.ATTENDANCE_REGULARIZATION_CREATE),
   validate({ body: requestRegularizationSchema }),
   asyncHandler(requestRegularization),
 );
 attendanceRouter.get(
   '/regularization',
+  read,
   validate({ query: listRegularizationsQuerySchema }),
   asyncHandler(listRegularizations),
 );
@@ -43,10 +48,10 @@ attendanceRouter.patch(
   asyncHandler(reviewRegularization),
 );
 
-attendanceRouter.get('/', validate({ query: listAttendanceQuerySchema }), asyncHandler(listAttendance));
+attendanceRouter.get('/', read, validate({ query: listAttendanceQuerySchema }), asyncHandler(listAttendance));
 attendanceRouter.get(
   '/:id',
-  requirePermission(PERMISSIONS.ATTENDANCE_READ_TENANT),
+  read,
   validate({ params: attendanceIdParamSchema }),
   asyncHandler(getAttendance),
 );

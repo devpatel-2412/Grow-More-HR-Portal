@@ -19,7 +19,6 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [sessionUser, setSessionUser] = useState<AuthUser | null>(null);
-  const [hasSession, setHasSession] = useState(false);
 
   const meQuery = useQuery({
     queryKey: ['auth', 'me'],
@@ -28,23 +27,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     enabled: !sessionUser, // once login/verify sets the user directly, no need to refetch
   });
 
+  // `isAuthenticated` is derived directly from `sessionUser`/`meQuery.data` in the same render —
+  // deliberately NOT a separate state variable synced via its own effect. A synced boolean lags
+  // one render behind the query result, and in that gap `isLoading` had already flipped to false
+  // while the derived flag was still false, so ProtectedRoute saw "done loading, not authenticated"
+  // for one tick on every session restore and bounced an actually-valid session to /login.
   useEffect(() => {
     registerAuthExpiredHandler(() => {
       setSessionUser(null);
-      setHasSession(false);
       queryClient.setQueryData(['auth', 'me'], null);
     });
   }, [queryClient]);
 
-  useEffect(() => {
-    if (meQuery.data) setHasSession(true);
-    if (meQuery.isError) setHasSession(false);
-  }, [meQuery.data, meQuery.isError]);
-
   function setSession(accessToken: string, user: AuthUser) {
     setAccessToken(accessToken);
     setSessionUser(user);
-    setHasSession(true);
   }
 
   async function logout() {
@@ -53,7 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setAccessToken(null);
       setSessionUser(null);
-      setHasSession(false);
       queryClient.clear();
     }
   }
@@ -62,11 +58,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const profile = meQuery.data?.profile ?? null;
   const tenant = meQuery.data?.tenant ?? null;
   const isLoading = !sessionUser && meQuery.isLoading;
+  const isAuthenticated = !!sessionUser || !!meQuery.data;
 
   return (
-    <AuthContext.Provider
-      value={{ user, profile, tenant, isLoading, isAuthenticated: hasSession && !!user, setSession, logout }}
-    >
+    <AuthContext.Provider value={{ user, profile, tenant, isLoading, isAuthenticated, setSession, logout }}>
       {children}
     </AuthContext.Provider>
   );

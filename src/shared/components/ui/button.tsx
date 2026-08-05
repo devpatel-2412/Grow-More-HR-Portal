@@ -5,12 +5,13 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-all disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-[var(--background)]',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-all disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-[var(--background)]',
   {
     variants: {
       variant: {
-        default: 'glow-btn text-white',
-        outline: 'border border-[var(--border)] bg-transparent text-[var(--foreground)] hover:bg-[var(--muted)]',
+        default: 'glow-btn text-[var(--primary-foreground)]',
+        outline:
+          'border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:border-[var(--primary)] hover:text-[var(--primary)]',
         ghost: 'bg-transparent text-[var(--foreground)] hover:bg-[var(--muted)]',
         destructive: 'bg-[var(--destructive)] text-[var(--destructive-foreground)] hover:opacity-90',
         link: 'text-[var(--primary)] underline-offset-4 hover:underline',

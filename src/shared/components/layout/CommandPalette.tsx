@@ -10,6 +10,14 @@ function isMac(): boolean {
   return typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
 }
 
+const OPEN_EVENT = 'command-palette:open';
+
+/** Lets any component (e.g. the header's search field) open the palette without CommandPalette
+ * having to lift its open state into a shared context. */
+export function openCommandPalette(): void {
+  window.dispatchEvent(new Event(OPEN_EVENT));
+}
+
 /**
  * Global Ctrl+K / Cmd+K launcher — searches the same NAV_ITEMS list the sidebar renders from,
  * pre-filtered to whatever the current role can actually see (never offers a destination that
@@ -42,8 +50,15 @@ export function CommandPalette() {
         setOpen((prev) => !prev);
       }
     }
+    function onOpenRequest() {
+      setOpen(true);
+    }
     document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    window.addEventListener(OPEN_EVENT, onOpenRequest);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener(OPEN_EVENT, onOpenRequest);
+    };
   }, []);
 
   useEffect(() => {
@@ -85,7 +100,7 @@ export function CommandPalette() {
             e.preventDefault();
             inputRef.current?.focus();
           }}
-          className="glass-panel fixed top-24 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 rounded-2xl bg-[var(--card)] shadow-2xl focus:outline-none"
+          className="glass-panel fixed top-24 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 rounded-2xl bg-[var(--card)] focus:outline-none"
         >
           <DialogPrimitive.Title className="sr-only">Command palette</DialogPrimitive.Title>
           <DialogPrimitive.Description className="sr-only">

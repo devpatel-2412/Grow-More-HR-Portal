@@ -26,6 +26,12 @@ export const updateEmployeeProfileSchema = z.object({
   teamId: z.string().uuid().nullable().optional(),
 });
 
+export const selfUpdateEmployeeSchema = z.object({
+  phone: z.string().max(30).optional(),
+  address: z.string().max(250).optional(),
+  emergencyContact: z.string().max(100).optional(),
+});
+
 export const listEmployeesQuerySchema = paginationQuerySchema.extend({
   department: z.string().optional(),
   status: z.string().optional(),
