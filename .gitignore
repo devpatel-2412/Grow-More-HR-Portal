@@ -30,3 +30,6 @@ dist-ssr
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Local-disk stand-in for cloud storage, used only when SUPABASE_URL is unset (see storage.service.ts)
+.local-storage/

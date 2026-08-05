@@ -66,16 +66,19 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
 async function rawRequest(path: string, options: RequestOptions = {}): Promise<{ status: number; payload: unknown }> {
   const { body, _isRetry, headers, ...rest } = options;
   const isAuthEndpoint = path.startsWith('/auth/login') || path.startsWith('/auth/refresh') || path.startsWith('/auth/signup');
+  // A FormData body (file uploads) must NOT be JSON-stringified or given an explicit Content-Type
+  // — the browser sets `multipart/form-data; boundary=...` itself, and overriding it breaks parsing.
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
 
   const res = await fetch(`${API_BASE}${path}`, {
     ...rest,
     credentials: 'include',
     headers: {
-      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(body !== undefined && !isFormData ? { 'Content-Type': 'application/json' } : {}),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...headers,
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body === undefined ? undefined : isFormData ? (body as FormData) : JSON.stringify(body),
   });
 
   if (res.status === 401 && !_isRetry && !isAuthEndpoint) {

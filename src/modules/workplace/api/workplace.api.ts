@@ -35,16 +35,51 @@ export const kbApi = {
   remove: (id: string) => api.delete<void>(`/kb-articles/${id}`),
 };
 
+export interface UploadDocumentPayload {
+  files: File[];
+  category?: string;
+  folderPath: string;
+  isDigitallySigned: boolean;
+  relatedEntityType?: string;
+  relatedEntityId?: string;
+}
+
 export const documentApi = {
-  upload: (payload: { name: string; category?: string; folderPath: string; fileUrl: string; isDigitallySigned: boolean }) =>
-    api.post<DocumentRecord>('/documents', payload),
-  list: (query: { page: number; limit: number; folderPath?: string; category?: string; search?: string; archived?: boolean }) =>
-    api.getPaginated<DocumentRecord>('/documents', query),
+  upload: (payload: UploadDocumentPayload) => {
+    const { files, ...meta } = payload;
+    const formData = new FormData();
+    // The filename is passed explicitly rather than relying on FormData defaulting it from
+    // `file.name` — that default doesn't reliably survive every environment this runs through.
+    files.forEach((file) => formData.append('files', file, file.name));
+    if (meta.category) formData.append('category', meta.category);
+    formData.append('folderPath', meta.folderPath);
+    formData.append('isDigitallySigned', String(meta.isDigitallySigned));
+    if (meta.relatedEntityType) formData.append('relatedEntityType', meta.relatedEntityType);
+    if (meta.relatedEntityId) formData.append('relatedEntityId', meta.relatedEntityId);
+    return api.post<DocumentRecord[]>('/documents', formData);
+  },
+  list: (query: {
+    page: number;
+    limit: number;
+    folderPath?: string;
+    category?: string;
+    search?: string;
+    archived?: boolean;
+    relatedEntityType?: string;
+    relatedEntityId?: string;
+  }) => api.getPaginated<DocumentRecord>('/documents', query),
   remove: (id: string) => api.delete<void>(`/documents/${id}`),
   archive: (id: string) => api.post<DocumentRecord>(`/documents/${id}/archive`),
   restore: (id: string) => api.post<DocumentRecord>(`/documents/${id}/restore`),
-  replaceFile: (id: string, fileUrl: string) => api.post<DocumentRecord>(`/documents/${id}/replace`, { fileUrl }),
+  replaceFile: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    return api.post<DocumentRecord>(`/documents/${id}/replace`, formData);
+  },
   listVersions: (id: string) => api.get<DocumentVersionRecord[]>(`/documents/${id}/versions`),
+  getDownloadUrl: (id: string) => api.get<{ url: string; fileName: string }>(`/documents/${id}/download`),
+  getVersionDownloadUrl: (id: string, versionId: string) =>
+    api.get<{ url: string; fileName: string }>(`/documents/${id}/versions/${versionId}/download`),
 };
 
 export const assetApi = {

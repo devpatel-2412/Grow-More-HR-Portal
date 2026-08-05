@@ -211,6 +211,11 @@ describe('Documents', () => {
   // was stale — DOCUMENT_UPLOAD_SELF (granted to EMPLOYEE and PROJECT_MANAGER) intentionally lets
   // any staff member upload their own documents; only DOCUMENT_MANAGE-gated actions (delete,
   // archive, restore) are restricted to a smaller set of roles.
+  //
+  // These now exercise the real multipart upload pipeline end-to-end, including the local-disk
+  // StorageService fallback that's active whenever SUPABASE_URL isn't set (true for this test
+  // run) — a real file is written, a real signed-style download URL is minted, and it's fetched
+  // back through the dedicated local-storage route.
   it('lets any employee read and upload their own documents, but only DOCUMENT_MANAGE holders delete', async () => {
     const { res: signupRes, domain } = await signupTenant();
     const adminToken = signupRes.body.data.accessToken;
@@ -220,22 +225,61 @@ describe('Documents', () => {
     const workerUploadRes = await request(app)
       .post('/api/v1/documents')
       .set('Authorization', `Bearer ${worker.token}`)
-      .send({ name: 'Policy.pdf', fileUrl: 'https://files.example.com/policy.pdf' });
+      .field('folderPath', '/')
+      .attach('files', Buffer.from('%PDF-1.4 fake policy contents'), 'policy.pdf');
     expect(workerUploadRes.status).toBe(201);
+    expect(workerUploadRes.body.data).toHaveLength(1);
+    expect(workerUploadRes.body.data[0]).toMatchObject({ name: 'policy.pdf', version: 1 });
+    expect(workerUploadRes.body.data[0].storageKey).toBeTruthy();
 
+    // Multiple files in one request — one SecureDocument per file, sharing the batch's metadata.
     const uploadRes = await request(app)
       .post('/api/v1/documents')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Handbook.pdf', folderPath: '/hr', fileUrl: 'https://files.example.com/handbook.pdf' });
+      .field('folderPath', '/hr')
+      .field('category', 'HR')
+      .attach('files', Buffer.from('handbook contents'), 'handbook.pdf')
+      .attach('files', Buffer.from('org chart contents'), 'org-chart.png');
     expect(uploadRes.status).toBe(201);
+    expect(uploadRes.body.data).toHaveLength(2);
+    const handbookId = uploadRes.body.data.find((d: { name: string }) => d.name === 'handbook.pdf').id;
 
     const readRes = await request(app).get('/api/v1/documents').set('Authorization', `Bearer ${worker.token}`);
-    expect(readRes.body.data).toHaveLength(2);
+    expect(readRes.body.data).toHaveLength(3);
+
+    // Download mints a fresh signed-style URL and the file is actually fetchable through it.
+    const downloadRes = await request(app)
+      .get(`/api/v1/documents/${handbookId}/download`)
+      .set('Authorization', `Bearer ${worker.token}`);
+    expect(downloadRes.status).toBe(200);
+    expect(downloadRes.body.data.url).toMatch(/^\/api\/v1\/local-storage\//);
+
+    const fetchedFile = await request(app).get(downloadRes.body.data.url);
+    expect(fetchedFile.status).toBe(200);
+    expect(fetchedFile.text).toBe('handbook contents');
+
+    // An unsigned/tampered request to the same route is rejected.
+    const tamperedRes = await request(app).get('/api/v1/local-storage/some-other-key?expires=9999999999999&signature=nope');
+    expect(tamperedRes.status).toBe(403);
 
     const forbiddenDeleteRes = await request(app)
-      .delete(`/api/v1/documents/${uploadRes.body.data.id}`)
+      .delete(`/api/v1/documents/${handbookId}`)
       .set('Authorization', `Bearer ${worker.token}`);
     expect(forbiddenDeleteRes.status).toBe(403);
+  });
+
+  it('rejects a file type outside the allow-list with a clean 400, not a crash', async () => {
+    const { res: signupRes } = await signupTenant();
+    const adminToken = signupRes.body.data.accessToken;
+
+    const res = await request(app)
+      .post('/api/v1/documents')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .field('folderPath', '/')
+      .attach('files', Buffer.from('#!/bin/sh\necho hi'), { filename: 'script.sh', contentType: 'application/x-sh' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toMatch(/unsupported file type/i);
   });
 
   it('replaces a file as a new version, then archives and restores the document', async () => {
@@ -247,33 +291,46 @@ describe('Documents', () => {
     const uploadRes = await request(app)
       .post('/api/v1/documents')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Handbook.pdf', category: 'HR', folderPath: '/hr', fileUrl: 'https://files.example.com/handbook-v1.pdf' });
-    const documentId = uploadRes.body.data.id;
-    expect(uploadRes.body.data.version).toBe(1);
+      .field('folderPath', '/hr')
+      .field('category', 'HR')
+      .attach('files', Buffer.from('handbook v1'), 'handbook.pdf');
+    const documentId = uploadRes.body.data[0].id;
+    expect(uploadRes.body.data[0].version).toBe(1);
 
     // A plain employee cannot replace the file.
     const forbiddenReplace = await request(app)
       .post(`/api/v1/documents/${documentId}/replace`)
       .set('Authorization', `Bearer ${worker.token}`)
-      .send({ fileUrl: 'https://files.example.com/handbook-sneaky.pdf' });
+      .attach('file', Buffer.from('sneaky replacement'), 'handbook.pdf');
     expect(forbiddenReplace.status).toBe(403);
 
     const replaceRes = await request(app)
       .post(`/api/v1/documents/${documentId}/replace`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ fileUrl: 'https://files.example.com/handbook-v2.pdf' });
+      .attach('file', Buffer.from('handbook v2'), 'handbook.pdf');
     expect(replaceRes.status).toBe(200);
     expect(replaceRes.body.data.version).toBe(2);
-    expect(replaceRes.body.data.fileUrl).toBe('https://files.example.com/handbook-v2.pdf');
 
-    // Full version history is preserved, most recent first.
+    // Full version history is preserved, most recent first, and each version is independently downloadable.
     const versionsRes = await request(app)
       .get(`/api/v1/documents/${documentId}/versions`)
       .set('Authorization', `Bearer ${worker.token}`);
     expect(versionsRes.status).toBe(200);
     expect(versionsRes.body.data).toHaveLength(2);
-    expect(versionsRes.body.data[0]).toMatchObject({ version: 2, fileUrl: 'https://files.example.com/handbook-v2.pdf' });
-    expect(versionsRes.body.data[1]).toMatchObject({ version: 1, fileUrl: 'https://files.example.com/handbook-v1.pdf' });
+    expect(versionsRes.body.data[0]).toMatchObject({ version: 2 });
+    expect(versionsRes.body.data[1]).toMatchObject({ version: 1 });
+
+    const v1DownloadRes = await request(app)
+      .get(`/api/v1/documents/${documentId}/versions/${versionsRes.body.data[1].id}/download`)
+      .set('Authorization', `Bearer ${worker.token}`);
+    const v1Fetch = await request(app).get(v1DownloadRes.body.data.url);
+    expect(v1Fetch.text).toBe('handbook v1');
+
+    const v2DownloadRes = await request(app)
+      .get(`/api/v1/documents/${documentId}/versions/${versionsRes.body.data[0].id}/download`)
+      .set('Authorization', `Bearer ${worker.token}`);
+    const v2Fetch = await request(app).get(v2DownloadRes.body.data.url);
+    expect(v2Fetch.text).toBe('handbook v2');
 
     // Archiving removes it from the default list but it's still findable via ?archived=true.
     const archiveRes = await request(app)
@@ -302,6 +359,14 @@ describe('Documents', () => {
 
     const restoredListRes = await request(app).get('/api/v1/documents').set('Authorization', `Bearer ${worker.token}`);
     expect(restoredListRes.body.data).toHaveLength(1);
+
+    // Deleting the document also cleans up both versions' files from storage.
+    const deleteRes = await request(app)
+      .delete(`/api/v1/documents/${documentId}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(deleteRes.status).toBe(204);
+    const postDeleteFetch = await request(app).get(v2DownloadRes.body.data.url);
+    expect(postDeleteFetch.status).toBe(404);
   });
 });
 

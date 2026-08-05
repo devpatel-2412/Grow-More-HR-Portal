@@ -1,6 +1,11 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Runtime queries go through Supabase's connection pooler (pgbouncer, port 6543) — fine for
+  // app traffic, but pooled connections don't support the advisory locks Prisma's migration
+  // engine needs. directUrl (port 5432, unpooled) is used automatically for migrate/db-push
+  // only; nothing else changes. Locally, both can point at the same docker-compose Postgres.
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -124,6 +129,7 @@ enum AuditAction {
   KB_ARTICLE_UPDATED
   KB_ARTICLE_DELETED
   DOCUMENT_UPLOADED
+  DOCUMENT_DOWNLOADED
   DOCUMENT_DELETED
   DOCUMENT_VERSION_REPLACED
   DOCUMENT_ARCHIVED
@@ -1203,15 +1209,19 @@ model TaskComment {
 }
 
 model TaskAttachment {
-  id        String   @id @default(uuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  taskId    String
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  fileName  String
-  fileUrl   String
-  addedById String
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  taskId     String
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fileName   String
+  /** Legacy pasted-link attachments only — null once uploaded through the real storage pipeline. */
+  fileUrl    String?
+  storageKey String?
+  fileSize   Int?
+  mimeType   String?
+  addedById  String
+  createdAt  DateTime @default(now())
 
   @@index([taskId])
 }
@@ -1515,6 +1525,16 @@ model TicketComment {
   @@index([ticketId])
 }
 
+/** Future-ready hook for an actual antivirus scan step — no scanner is wired in yet, so every
+ * real upload lands as SKIPPED. Modelled now so adding a scanner later is a worker + a status
+ * flip, not a schema change. */
+enum DocumentScanStatus {
+  PENDING
+  CLEAN
+  FLAGGED
+  SKIPPED
+}
+
 model SecureDocument {
   id                String           @id @default(uuid())
   tenantId          String
@@ -1522,7 +1542,22 @@ model SecureDocument {
   name              String
   category          String?
   folderPath        String           @default("/")
-  fileUrl           String
+  /** Legacy pasted-link documents only — null for anything uploaded through the real storage
+   * pipeline, which uses `storageKey` instead. Never write both on the same row. */
+  fileUrl           String?
+  /** Object key in the configured StorageService bucket. Set only for real uploads; the
+   * download endpoint mints a fresh short-lived signed URL from this on every request rather
+   * than persisting one, so the bucket is never exposed directly. */
+  storageKey        String?
+  fileSize          Int?
+  mimeType          String?
+  scanStatus        DocumentScanStatus @default(SKIPPED)
+  /** Generic linkage to the record this document belongs to (e.g. "EMPLOYEE"/employeeProfile.id,
+   * "LEAVE_REQUEST"/leaveRequest.id, "VENDOR"/vendor.id) — kept as a loose type+id pair rather
+   * than a dozen nullable foreign keys, since new attachment points are expected to keep being
+   * added across modules. Null for general, unlinked company documents. */
+  relatedEntityType String?
+  relatedEntityId   String?
   version           Int              @default(1)
   expiresAt         DateTime?
   isDigitallySigned Boolean          @default(false)
@@ -1536,6 +1571,7 @@ model SecureDocument {
   @@index([tenantId, folderPath])
   @@index([tenantId, archived])
   @@index([tenantId, category])
+  @@index([tenantId, relatedEntityType, relatedEntityId])
 }
 
 /** Immutable snapshot of one prior file behind a SecureDocument — created on every upload and every replace, so "current" is just the highest `version` row and nothing is ever overwritten in place. */
@@ -1546,7 +1582,10 @@ model DocumentVersion {
   documentId   String
   document     SecureDocument   @relation(fields: [documentId], references: [id], onDelete: Cascade)
   version      Int
-  fileUrl      String
+  fileUrl      String?
+  storageKey   String?
+  fileSize     Int?
+  mimeType     String?
   uploadedById String?
   uploadedBy   EmployeeProfile? @relation(fields: [uploadedById], references: [id])
   createdAt    DateTime         @default(now())

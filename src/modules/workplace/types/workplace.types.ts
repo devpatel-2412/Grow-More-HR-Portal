@@ -50,7 +50,13 @@ export interface DocumentRecord {
   name: string;
   category: string | null;
   folderPath: string;
-  fileUrl: string;
+  /** Legacy pasted-link documents only. Real uploads use `storageKey` instead — see fileSize/mimeType. */
+  fileUrl: string | null;
+  storageKey: string | null;
+  fileSize: number | null;
+  mimeType: string | null;
+  relatedEntityType: string | null;
+  relatedEntityId: string | null;
   version: number;
   expiresAt: string | null;
   isDigitallySigned: boolean;
@@ -63,7 +69,10 @@ export interface DocumentRecord {
 export interface DocumentVersionRecord {
   id: string;
   version: number;
-  fileUrl: string;
+  fileUrl: string | null;
+  storageKey: string | null;
+  fileSize: number | null;
+  mimeType: string | null;
   createdAt: string;
   uploadedBy: { firstName: string; lastName: string } | null;
 }
