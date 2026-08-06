@@ -6,6 +6,7 @@ import { hashPassword, sha256, generateOpaqueToken } from '../../shared/utils/ha
 import { ConflictError, NotFoundError, UnauthorizedError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
 import { emailService } from '../../shared/email/email.service.js';
+import { env } from '../../shared/config/env.js';
 import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
 import type { RequestContext } from '../tenants/tenant.service.js';
 import type { UserRole, UserStatus } from '@prisma/client';
@@ -57,10 +58,11 @@ export class UserService {
       expiresAt: new Date(Date.now() + INVITE_TTL_MS),
     });
 
+    const inviteLink = `${env.APP_URL}/invite/accept?token=${rawToken}`;
     await emailService.send({
       to: input.email,
       subject: "You've been invited to Grow More",
-      text: `You've been invited to join. Use this token to accept and set your password: ${rawToken}`,
+      text: `You've been invited to join. Click the link below to set your password and activate your account:\n\n${inviteLink}\n\nThis link expires in 7 days.`,
     });
 
     await auditLogService.record({

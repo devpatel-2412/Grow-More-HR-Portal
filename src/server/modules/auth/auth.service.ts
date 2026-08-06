@@ -344,10 +344,11 @@ export class AuthService {
       data: { userId: user.id, tokenHash: sha256(rawToken), expiresAt: new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS) },
     });
 
+    const resetLink = `${env.APP_URL}/reset-password?token=${rawToken}`;
     await emailService.send({
       to: user.email,
       subject: 'Reset your Grow More password',
-      text: `Use this token to reset your password (valid for 1 hour): ${rawToken}`,
+      text: `Click the link below to reset your password. This link is valid for 1 hour:\n\n${resetLink}`,
     });
 
     await auditLogService.record({
