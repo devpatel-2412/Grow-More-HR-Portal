@@ -7,7 +7,7 @@ import { startScheduledJobs } from './jobs/scheduler.js';
 const app = createApp();
 
 const server = app.listen(env.PORT, () => {
-  logger.info(`Grow More API listening on http://localhost:${env.PORT}`);
+  logger.info(`Grow More API listening on port ${env.PORT}`);
   startScheduledJobs();
 });
 

@@ -12,13 +12,14 @@ An enterprise Business Operating System (HRMS + ERP + CRM + ATS + Project Manage
 ## Quickstart
 
 ```bash
-docker compose up -d postgres
-cp .env.example .env   # then fill in real secrets — see docs/module-1-foundation/environment-variables.md
+cp .env.example .env   # fill in your Supabase connection strings and secrets — see docs/module-1-foundation/environment-variables.md
 npm install
 npm run prisma:generate
-npm run prisma:migrate
 npm run dev             # API on :5000, client on :5173 (proxied, same-origin)
 ```
+
+Dev and production share one Supabase Postgres project — there's no local database to install or
+run. `npm run build` (and Render's build step) applies any pending migrations automatically.
 
 Full setup, testing, and production deployment steps: [`docs/module-1-foundation/deployment.md`](./docs/module-1-foundation/deployment.md).
 
@@ -38,6 +39,6 @@ reference, environment variables, deployment, and folder structure:
 | `npm start` | Run the built production server |
 | `npm test` | Backend unit tests (mocked, no DB) |
 | `npm run test:client` | Frontend component tests (jsdom + msw) |
-| `npm run test:integration` | Full-stack HTTP tests — requires a running, migrated Postgres |
+| `npm run test:integration` | Full-stack HTTP tests — requires `DATABASE_URL`/`DIRECT_URL` pointed at the isolated `schema=test` (see [`deployment.md`](./docs/module-1-foundation/deployment.md)) |
 | `npm run typecheck:server` / `typecheck:client` | Type-check without emitting |
-| `npm run prisma:migrate` | Apply schema changes locally (`prisma migrate dev`) |
+| `npm run prisma:migrate` | Author a new migration (`prisma migrate dev`) — run against `schema=test`, never `public` |

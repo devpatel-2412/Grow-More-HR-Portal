@@ -8,6 +8,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  build: {
+    outDir: 'dist/client',
+  },
   server: {
     port: 3000,
     proxy: {

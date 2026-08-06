@@ -1,9 +1,9 @@
 {
   "buildCommand": "npm run build:client",
-  "outputDirectory": "dist",
+  "outputDirectory": "dist/client",
   "framework": null,
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://REPLACE_WITH_YOUR_RAILWAY_URL.up.railway.app/api/:path*" },
+    { "source": "/api/:path*", "destination": "https://grow-more-hr-portal.onrender.com/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
