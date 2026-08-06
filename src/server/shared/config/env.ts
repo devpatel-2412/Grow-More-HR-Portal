@@ -10,6 +10,11 @@ const envSchema = z.object({
   // requests for every hostname except the one it happens to match.
   CORS_ORIGIN: z.string().min(1, 'CORS_ORIGIN is required'),
 
+  // The single canonical frontend origin — used only to build clickable links in outbound emails
+  // (invite, password reset), since the backend has no other way to know where the SPA is hosted.
+  // Defaults to the Vite dev server so those flows work locally with zero extra setup.
+  APP_URL: z.string().min(1).default('http://localhost:3000'),
+
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
 
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
