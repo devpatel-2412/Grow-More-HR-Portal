@@ -32,6 +32,7 @@ import {
   Truck,
   Package,
   BookMarked,
+  MonitorSmartphone,
 } from 'lucide-react';
 import type { UserRole } from '../../modules/auth/types/auth.types';
 
@@ -96,5 +97,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Inventory', path: '/inventory', icon: Package, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
 
   { label: 'Audit Log', path: '/audit-log', icon: ScrollText, allow: ['SUPER_ADMIN', 'ADMIN'] },
+  { label: 'Sessions', path: '/sessions', icon: MonitorSmartphone, allow: ['SUPER_ADMIN', 'ADMIN'] },
   { label: 'Settings', path: '/settings', icon: Settings, allow: ['SUPER_ADMIN', 'ADMIN'] },
 ];

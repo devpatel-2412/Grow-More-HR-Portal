@@ -110,6 +110,9 @@ export const PERMISSIONS = {
   AUDIT_READ: 'audit:read',
 
   DASHBOARD_READ_TENANT: 'dashboard:read:tenant',
+
+  /** View the tenant-wide active-sessions dashboard and force-logout a user or the whole tenant */
+  SESSION_MANAGE: 'session:manage',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -185,6 +188,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     PERMISSIONS.SOP_READ,
     PERMISSIONS.AUDIT_READ,
     PERMISSIONS.DASHBOARD_READ_TENANT,
+    PERMISSIONS.SESSION_MANAGE,
   ],
   HR_MANAGER: [
     PERMISSIONS.USER_INVITE,

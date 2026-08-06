@@ -13,6 +13,7 @@ export interface AccessTokenPayload {
 export interface TwoFactorChallengePayload {
   sub: string; // userId
   type: 'two_factor_challenge';
+  rememberMe: boolean;
 }
 
 export function signAccessToken(payload: AccessTokenPayload): string {
@@ -24,8 +25,8 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
 }
 
 /** Short-lived token identifying a user who passed step 1 (password) but still owes a TOTP code. Not a session credential. */
-export function signTwoFactorChallengeToken(userId: string): string {
-  const payload: TwoFactorChallengePayload = { sub: userId, type: 'two_factor_challenge' };
+export function signTwoFactorChallengeToken(userId: string, rememberMe: boolean): string {
+  const payload: TwoFactorChallengePayload = { sub: userId, type: 'two_factor_challenge', rememberMe };
   return jwt.sign(payload, env.JWT_ACCESS_SECRET, { expiresIn: '5m' });
 }
 

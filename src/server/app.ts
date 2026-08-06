@@ -40,6 +40,7 @@ import { sopRouter } from './modules/sop/sop.routes.js';
 import { clientPortalRouter } from './modules/client-portal/client-portal.routes.js';
 import { dashboardRouter } from './modules/dashboard/dashboard.routes.js';
 import { notificationRouter } from './modules/notifications/notification.routes.js';
+import { sessionRouter } from './modules/sessions/session.routes.js';
 
 export function createApp() {
   const app = express();
@@ -78,6 +79,7 @@ export function createApp() {
   app.use('/api/v1/employees', employeeRouter);
   app.use('/api/v1/tenants', tenantRouter);
   app.use('/api/v1/audit-logs', auditRouter);
+  app.use('/api/v1/sessions', sessionRouter);
   app.use('/api/v1/attendance', attendanceRouter);
   app.use('/api/v1/leave', leaveRouter);
   app.use('/api/v1/projects', projectRouter);

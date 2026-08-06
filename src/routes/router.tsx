@@ -21,6 +21,7 @@ const UsersPage = lazy(() => import('../modules/users/pages/UsersPage').then((m)
 const EmployeesPage = lazy(() => import('../modules/employees/pages/EmployeesPage').then((m) => ({ default: m.EmployeesPage })));
 const EmployeeDetailPage = lazy(() => import('../modules/employees/pages/EmployeeDetailPage').then((m) => ({ default: m.EmployeeDetailPage })));
 const TenantSettingsPage = lazy(() => import('../modules/tenants/pages/TenantSettingsPage').then((m) => ({ default: m.TenantSettingsPage })));
+const SessionsPage = lazy(() => import('../modules/sessions/pages/SessionsPage').then((m) => ({ default: m.SessionsPage })));
 const AuditLogPage = lazy(() => import('../modules/audit/pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
 const AttendancePage = lazy(() => import('../modules/attendance/pages/AttendancePage').then((m) => ({ default: m.AttendancePage })));
 const RegularizationsPage = lazy(() => import('../modules/attendance/pages/RegularizationsPage').then((m) => ({ default: m.RegularizationsPage })));
@@ -131,6 +132,7 @@ export const router = createBrowserRouter([
             children: [
               { path: '/audit-log', element: lazyRoute(<AuditLogPage />) },
               { path: '/settings', element: lazyRoute(<TenantSettingsPage />) },
+              { path: '/sessions', element: lazyRoute(<SessionsPage />) },
             ],
           },
           {

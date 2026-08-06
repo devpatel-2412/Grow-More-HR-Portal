@@ -20,13 +20,15 @@ function requestMeta(req: Request) {
   return { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
 }
 
-function setRefreshCookie(res: Response, token: string, expiresAt: Date) {
+// When rememberMe is false, omitting `expires` makes this a true browser-session cookie —
+// it disappears when the browser closes, regardless of the refresh token's own server-side TTL.
+function setRefreshCookie(res: Response, token: string, expiresAt: Date, rememberMe: boolean) {
   res.cookie(env.REFRESH_COOKIE_NAME, token, {
     httpOnly: true,
     secure: isProduction,
     sameSite: 'strict',
     domain: env.REFRESH_COOKIE_DOMAIN || undefined,
-    expires: expiresAt,
+    expires: rememberMe ? expiresAt : undefined,
     path: '/api/v1/auth',
   });
 }
@@ -42,7 +44,7 @@ function readRefreshCookie(req: Request): string | undefined {
 export async function signup(req: Request, res: Response): Promise<void> {
   const body = req.body as z.infer<typeof signupSchema>;
   const result = await authService.signup(body, requestMeta(req));
-  setRefreshCookie(res, result.refreshToken, result.refreshTokenExpiresAt);
+  setRefreshCookie(res, result.refreshToken, result.refreshTokenExpiresAt, result.rememberMe);
   sendCreated(res, { accessToken: result.accessToken, user: result.user });
 }
 
@@ -55,14 +57,14 @@ export async function login(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  setRefreshCookie(res, result.refreshToken, result.refreshTokenExpiresAt);
+  setRefreshCookie(res, result.refreshToken, result.refreshTokenExpiresAt, result.rememberMe);
   sendOk(res, { requiresTwoFactor: false, accessToken: result.accessToken, user: result.user });
 }
 
 export async function verifyTwoFactor(req: Request, res: Response): Promise<void> {
   const body = req.body as z.infer<typeof twoFactorVerifySchema>;
   const result = await authService.verifyTwoFactorChallenge(body, requestMeta(req));
-  setRefreshCookie(res, result.refreshToken, result.refreshTokenExpiresAt);
+  setRefreshCookie(res, result.refreshToken, result.refreshTokenExpiresAt, result.rememberMe);
   sendOk(res, { accessToken: result.accessToken, user: result.user });
 }
 
@@ -71,7 +73,7 @@ export async function refresh(req: Request, res: Response): Promise<void> {
   if (!rawToken) throw new UnauthorizedError('No session cookie present');
 
   const result = await authService.refresh(rawToken, requestMeta(req));
-  setRefreshCookie(res, result.refreshToken, result.refreshTokenExpiresAt);
+  setRefreshCookie(res, result.refreshToken, result.refreshTokenExpiresAt, result.rememberMe);
   sendOk(res, { accessToken: result.accessToken, user: result.user });
 }
 

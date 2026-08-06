@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
 import { setAccessToken, registerAuthExpiredHandler } from '../../../shared/lib/api-client';
+import { broadcastLogout, subscribeToLogout } from '../../../shared/lib/session-broadcast';
 import type { AuthUser, EmployeeProfile, Tenant } from '../types/auth.types';
 
 interface AuthContextValue {
@@ -37,6 +38,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSessionUser(null);
       queryClient.setQueryData(['auth', 'me'], null);
     });
+    // A logout (explicit or inactivity-triggered) in another same-origin tab lands here — clear
+    // local state only, don't re-call the server (the tab that acted already did, and the refresh
+    // token it revoked is shared across every tab via the one httpOnly cookie).
+    return subscribeToLogout(() => {
+      setAccessToken(null);
+      setSessionUser(null);
+      queryClient.setQueryData(['auth', 'me'], null);
+    });
   }, [queryClient]);
 
   function setSession(accessToken: string, user: AuthUser) {
@@ -51,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccessToken(null);
       setSessionUser(null);
       queryClient.clear();
+      broadcastLogout();
     }
   }
 
