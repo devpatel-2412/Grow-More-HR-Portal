@@ -1,11 +1,10 @@
 /**
  * Full HTTP integration tests against the real Express app + a real Postgres database.
  *
- * Requires DATABASE_URL (see vitest.config.ts) to point at a reachable Postgres instance
- * with the Module 1 schema already migrated (`npm run prisma:migrate`). Run via:
- *   docker compose up -d postgres
- *   DATABASE_URL=postgresql://business_os:business_os_dev_password@localhost:5432/business_os_test npx prisma migrate deploy
- *   npx vitest run src/server/modules/auth/auth.routes.integration.test.ts
+ * Requires DATABASE_URL (see vitest.integration.config.ts) to point at the isolated `test`
+ * schema in Supabase — never `public`, since these tests truncate tables between runs. See
+ * "Running tests" in docs/module-1-foundation/deployment.md for the one-time schema setup. Run via:
+ *   DATABASE_URL="<Supabase DATABASE_URL>&schema=test" npx vitest run src/server/modules/auth/auth.routes.integration.test.ts
  *
  * Not run as part of the default `npm test` unit suite — see package.json's `test:integration` script.
  */
