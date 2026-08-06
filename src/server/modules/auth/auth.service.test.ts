@@ -121,6 +121,31 @@ describe('AuthService.login', () => {
       ForbiddenError,
     );
   });
+
+  it('creates the token with rememberMe: false when unchecked', async () => {
+    const { userRepository, tenantRepository, refreshTokenRepository } = makeMockRepos();
+    const service = new AuthService(userRepository as never, tenantRepository as never, refreshTokenRepository as never);
+
+    await service.login({ email: 'admin@acme.com', password: 'CorrectPassword123', rememberMe: false }, {});
+
+    expect(refreshTokenRepository.create).toHaveBeenCalledWith(expect.objectContaining({ rememberMe: false }));
+  });
+
+  it('honors rememberMe: true and uses the tenant-configured rememberMeDurationDays for the expiry', async () => {
+    const { userRepository, tenantRepository, refreshTokenRepository } = makeMockRepos();
+    tenantRepository.findById.mockResolvedValue({ rememberMeDurationDays: 45 });
+    const service = new AuthService(userRepository as never, tenantRepository as never, refreshTokenRepository as never);
+
+    const result = await service.login({ email: 'admin@acme.com', password: 'CorrectPassword123', rememberMe: true }, {});
+
+    expect(result.requiresTwoFactor).toBe(false);
+    if (result.requiresTwoFactor) throw new Error('expected tokens, not a 2FA challenge');
+    expect(result.rememberMe).toBe(true);
+    const expectedExpiry = Date.now() + 45 * 24 * 60 * 60 * 1000;
+    expect(result.refreshTokenExpiresAt.getTime()).toBeGreaterThan(expectedExpiry - 5000);
+    expect(result.refreshTokenExpiresAt.getTime()).toBeLessThan(expectedExpiry + 5000);
+    expect(refreshTokenRepository.create).toHaveBeenCalledWith(expect.objectContaining({ rememberMe: true }));
+  });
 });
 
 describe('AuthService.verifyTwoFactorChallenge', () => {
@@ -129,7 +154,7 @@ describe('AuthService.verifyTwoFactorChallenge', () => {
     const { userRepository, tenantRepository, refreshTokenRepository } = makeMockRepos(user);
     vi.spyOn(twoFactorService, 'verifyCode').mockReturnValue(true);
     const service = new AuthService(userRepository as never, tenantRepository as never, refreshTokenRepository as never);
-    const challengeToken = signTwoFactorChallengeToken(user.id);
+    const challengeToken = signTwoFactorChallengeToken(user.id, false);
 
     const result = await service.verifyTwoFactorChallenge({ challengeToken, code: '123456' }, {});
 
@@ -142,7 +167,7 @@ describe('AuthService.verifyTwoFactorChallenge', () => {
     const { userRepository, tenantRepository, refreshTokenRepository } = makeMockRepos(user);
     vi.spyOn(twoFactorService, 'verifyCode').mockReturnValue(false);
     const service = new AuthService(userRepository as never, tenantRepository as never, refreshTokenRepository as never);
-    const challengeToken = signTwoFactorChallengeToken(user.id);
+    const challengeToken = signTwoFactorChallengeToken(user.id, false);
 
     await expect(service.verifyTwoFactorChallenge({ challengeToken, code: '000000' }, {})).rejects.toThrow(UnauthorizedError);
   });
@@ -154,6 +179,25 @@ describe('AuthService.verifyTwoFactorChallenge', () => {
     await expect(service.verifyTwoFactorChallenge({ challengeToken: 'not-a-real-token', code: '123456' }, {})).rejects.toThrow(
       UnauthorizedError,
     );
+  });
+
+  it('carries the rememberMe choice from the initial login through to the completed session', async () => {
+    const user = makeUser({ is2FAEnabled: true, twoFactorSecret: 'encrypted-secret' });
+    const { userRepository, tenantRepository, refreshTokenRepository } = makeMockRepos(user);
+    vi.spyOn(twoFactorService, 'verifyCode').mockReturnValue(true);
+    const service = new AuthService(userRepository as never, tenantRepository as never, refreshTokenRepository as never);
+
+    const loginResult = await service.login({ email: 'admin@acme.com', password: 'CorrectPassword123', rememberMe: true }, {});
+    expect(loginResult.requiresTwoFactor).toBe(true);
+    if (!loginResult.requiresTwoFactor) throw new Error('expected a 2FA challenge');
+
+    const verifyResult = await service.verifyTwoFactorChallenge(
+      { challengeToken: loginResult.challengeToken, code: '123456' },
+      {},
+    );
+
+    expect(verifyResult.rememberMe).toBe(true);
+    expect(refreshTokenRepository.create).toHaveBeenCalledWith(expect.objectContaining({ rememberMe: true }));
   });
 });
 
@@ -213,6 +257,127 @@ describe('AuthService.refresh — rotation and reuse detection', () => {
     const service = new AuthService(userRepository as never, tenantRepository as never, refreshTokenRepository as never);
 
     await expect(service.refresh('expired-token', {})).rejects.toThrow(UnauthorizedError);
+  });
+
+  it('carries rememberMe forward unchanged across rotation', async () => {
+    const { userRepository, tenantRepository, refreshTokenRepository, user } = makeMockRepos();
+    refreshTokenRepository.findByTokenHash.mockResolvedValue({
+      id: 'rt-remember',
+      userId: user.id,
+      familyId: 'family-1',
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+      lastUsedAt: new Date(),
+      createdAt: new Date(),
+      deviceInfo: null,
+      rememberMe: true,
+    });
+    const service = new AuthService(userRepository as never, tenantRepository as never, refreshTokenRepository as never);
+
+    const result = await service.refresh('remember-me-token', {});
+
+    expect(result.rememberMe).toBe(true);
+    expect(refreshTokenRepository.create).toHaveBeenCalledWith(expect.objectContaining({ rememberMe: true }));
+  });
+});
+
+describe('AuthService.refresh — inactivity timeout and force-logout-all', () => {
+  it('rejects and revokes the family once idle time exceeds the tenant-configured timeout', async () => {
+    const { userRepository, tenantRepository, refreshTokenRepository, user } = makeMockRepos();
+    tenantRepository.findById.mockResolvedValue({ sessionTimeoutMinutes: 30, forceLogoutAllAt: null });
+    refreshTokenRepository.findByTokenHash.mockResolvedValue({
+      id: 'rt-idle',
+      userId: user.id,
+      familyId: 'family-1',
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+      lastUsedAt: new Date(Date.now() - 31 * 60_000),
+      createdAt: new Date(Date.now() - 60 * 60_000),
+    });
+    const service = new AuthService(userRepository as never, tenantRepository as never, refreshTokenRepository as never);
+
+    await expect(service.refresh('idle-token', {})).rejects.toThrow(UnauthorizedError);
+    expect(refreshTokenRepository.revokeFamily).toHaveBeenCalledWith('family-1', 'inactivity_timeout');
+  });
+
+  it('allows a refresh within the configured inactivity window', async () => {
+    const { userRepository, tenantRepository, refreshTokenRepository, user } = makeMockRepos();
+    tenantRepository.findById.mockResolvedValue({ sessionTimeoutMinutes: 30, forceLogoutAllAt: null });
+    refreshTokenRepository.findByTokenHash.mockResolvedValue({
+      id: 'rt-active',
+      userId: user.id,
+      familyId: 'family-1',
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+      lastUsedAt: new Date(Date.now() - 5 * 60_000),
+      createdAt: new Date(Date.now() - 60 * 60_000),
+      deviceInfo: null,
+      rememberMe: false,
+    });
+    const service = new AuthService(userRepository as never, tenantRepository as never, refreshTokenRepository as never);
+
+    const result = await service.refresh('active-token', {});
+    expect(result.accessToken).toBeTruthy();
+  });
+
+  it('never times out when sessionTimeoutMinutes is null ("Never Expire")', async () => {
+    const { userRepository, tenantRepository, refreshTokenRepository, user } = makeMockRepos();
+    tenantRepository.findById.mockResolvedValue({ sessionTimeoutMinutes: null, forceLogoutAllAt: null });
+    refreshTokenRepository.findByTokenHash.mockResolvedValue({
+      id: 'rt-old-idle',
+      userId: user.id,
+      familyId: 'family-1',
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+      lastUsedAt: new Date(Date.now() - 999 * 60_000),
+      createdAt: new Date(Date.now() - 1000 * 60_000),
+      deviceInfo: null,
+      rememberMe: false,
+    });
+    const service = new AuthService(userRepository as never, tenantRepository as never, refreshTokenRepository as never);
+
+    const result = await service.refresh('never-expire-token', {});
+    expect(result.accessToken).toBeTruthy();
+  });
+
+  it('rejects a session issued before a tenant-wide force-logout-all', async () => {
+    const { userRepository, tenantRepository, refreshTokenRepository, user } = makeMockRepos();
+    const forceLogoutAt = new Date();
+    tenantRepository.findById.mockResolvedValue({ sessionTimeoutMinutes: null, forceLogoutAllAt: forceLogoutAt });
+    refreshTokenRepository.findByTokenHash.mockResolvedValue({
+      id: 'rt-pre-force-logout',
+      userId: user.id,
+      familyId: 'family-1',
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+      lastUsedAt: new Date(),
+      createdAt: new Date(forceLogoutAt.getTime() - 1000),
+    });
+    const service = new AuthService(userRepository as never, tenantRepository as never, refreshTokenRepository as never);
+
+    await expect(service.refresh('pre-force-logout-token', {})).rejects.toThrow(UnauthorizedError);
+    expect(refreshTokenRepository.revokeFamily).toHaveBeenCalledWith('family-1', 'force_logout_all');
+  });
+
+  it('allows a session issued after a tenant-wide force-logout-all', async () => {
+    const { userRepository, tenantRepository, refreshTokenRepository, user } = makeMockRepos();
+    const forceLogoutAt = new Date(Date.now() - 60_000);
+    tenantRepository.findById.mockResolvedValue({ sessionTimeoutMinutes: null, forceLogoutAllAt: forceLogoutAt });
+    refreshTokenRepository.findByTokenHash.mockResolvedValue({
+      id: 'rt-post-force-logout',
+      userId: user.id,
+      familyId: 'family-1',
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+      lastUsedAt: new Date(),
+      createdAt: new Date(),
+      deviceInfo: null,
+      rememberMe: false,
+    });
+    const service = new AuthService(userRepository as never, tenantRepository as never, refreshTokenRepository as never);
+
+    const result = await service.refresh('post-force-logout-token', {});
+    expect(result.accessToken).toBeTruthy();
   });
 });
 

@@ -12,5 +12,10 @@ export const updateTenantSchema = z.object({
   attendanceBreakOverageExtendsLogout: z.boolean().optional(),
   gstin: z.string().max(20).optional().or(z.literal('')),
   gstStateCode: z.string().length(2).optional().or(z.literal('')),
+  // null explicitly means "never expire due to inactivity" — nullable so it can be sent, not just omitted.
+  sessionTimeoutMinutes: z.number().int().min(1).max(43200).nullable().optional(),
+  sessionWarningMinutes: z.number().int().min(1).max(60).optional(),
+  rememberMeDurationDays: z.number().int().min(1).max(365).optional(),
+  maxConcurrentSessions: z.number().int().min(1).max(1000).nullable().optional(),
 });
 export type UpdateTenantFormValues = z.infer<typeof updateTenantSchema>;

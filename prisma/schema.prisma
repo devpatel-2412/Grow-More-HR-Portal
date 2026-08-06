@@ -51,6 +51,10 @@ enum AuditAction {
   TOKEN_REFRESH
   TOKEN_REVOKE
   TOKEN_REUSE_DETECTED
+  SESSION_TIMEOUT
+  SESSION_FORCE_LOGOUT
+  SESSION_FORCE_LOGOUT_ALL
+  SECURITY_SETTINGS_UPDATED
   PASSWORD_RESET_REQUEST
   PASSWORD_RESET_COMPLETE
   PASSWORD_CHANGE
@@ -437,6 +441,16 @@ model Tenant {
   gstin        String?
   gstStateCode String?
 
+  // Session security policy — same tenant-configurable pattern as attendance/payroll above.
+  // null on sessionTimeoutMinutes means "never expire due to inactivity" (opt-in, not default).
+  sessionTimeoutMinutes  Int?     @default(60)
+  sessionWarningMinutes  Int      @default(2)
+  rememberMeDurationDays Int      @default(30)
+  maxConcurrentSessions  Int?
+  // Bumped to now() by "Force logout all users" — any refresh token issued before this instant
+  // is treated as invalid on its next use, without touching individual token rows.
+  forceLogoutAllAt       DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -534,6 +548,12 @@ model RefreshToken {
   revokedReason     String?
   replacedByTokenId String?
   createdAt         DateTime  @default(now())
+  // Bumped on every successful /auth/refresh — doubles as both "last activity" for the inactivity
+  // timeout backstop and the "Last Activity" column on the session management dashboard.
+  lastUsedAt        DateTime  @default(now())
+  // Carried forward unchanged on every rotation so a session started without "remember me" stays
+  // a true browser-session cookie on every subsequent refresh too, not just the first one.
+  rememberMe        Boolean   @default(false)
 
   @@index([userId])
   @@index([familyId])

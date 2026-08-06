@@ -36,6 +36,14 @@ export function registerAuthExpiredHandler(handler: () => void): void {
   onAuthExpired = handler;
 }
 
+// Registered by useIdleTimer — an authenticated API call counts as user activity for the
+// inactivity timeout, same as a mouse/keyboard/scroll event.
+let onActivity: (() => void) | null = null;
+
+export function registerActivitySignal(handler: (() => void) | null): void {
+  onActivity = handler;
+}
+
 let refreshPromise: Promise<boolean> | null = null;
 
 async function attemptSilentRefresh(): Promise<boolean> {
@@ -80,6 +88,8 @@ async function rawRequest(path: string, options: RequestOptions = {}): Promise<{
     },
     body: body === undefined ? undefined : isFormData ? (body as FormData) : JSON.stringify(body),
   });
+
+  onActivity?.();
 
   if (res.status === 401 && !_isRetry && !isAuthEndpoint) {
     const refreshed = await attemptSilentRefresh();

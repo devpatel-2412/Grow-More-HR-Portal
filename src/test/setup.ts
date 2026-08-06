@@ -19,6 +19,14 @@ Object.defineProperty(window, 'matchMedia', {
   }),
 });
 
+// jsdom doesn't implement the Pointer Events capture APIs or scrollIntoView — Radix UI's Select
+// (and other pointer-driven primitives) call these during open/select interactions and throw
+// without them, regardless of which component under test uses Select.
+window.HTMLElement.prototype.hasPointerCapture ??= () => false;
+window.HTMLElement.prototype.setPointerCapture ??= () => {};
+window.HTMLElement.prototype.releasePointerCapture ??= () => {};
+window.HTMLElement.prototype.scrollIntoView ??= () => {};
+
 beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }));
 afterEach(() => {
   cleanup();

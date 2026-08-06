@@ -128,7 +128,10 @@ export class AuthService {
     }
 
     if (user.is2FAEnabled) {
-      return { requiresTwoFactor: true as const, challengeToken: signTwoFactorChallengeToken(user.id) };
+      return {
+        requiresTwoFactor: true as const,
+        challengeToken: signTwoFactorChallengeToken(user.id, input.rememberMe),
+      };
     }
 
     await this.userRepository.recordLoginSuccess(user.id);
@@ -146,8 +149,11 @@ export class AuthService {
 
   async verifyTwoFactorChallenge(input: z.infer<typeof twoFactorVerifySchema>, meta: RequestMeta) {
     let userId: string;
+    let rememberMe: boolean;
     try {
-      userId = verifyTwoFactorChallengeToken(input.challengeToken).sub;
+      const decoded = verifyTwoFactorChallengeToken(input.challengeToken);
+      userId = decoded.sub;
+      rememberMe = decoded.rememberMe;
     } catch {
       throw new UnauthorizedError('Invalid or expired two-factor challenge');
     }
@@ -188,7 +194,7 @@ export class AuthService {
       ...meta,
     });
 
-    return this.issueSession(user, meta);
+    return this.issueSession(user, meta, rememberMe);
   }
 
   async refresh(rawRefreshToken: string, meta: RequestMeta) {
@@ -217,6 +223,35 @@ export class AuthService {
     const user = await this.userRepository.findById(existing.userId);
     if (!user || user.status !== 'ACTIVE') throw new UnauthorizedError('Account is not active');
 
+    const tenant = await this.tenantRepository.findById(user.tenantId);
+
+    // A tenant-wide "force logout all" bumps forceLogoutAllAt — any token issued before that
+    // instant is treated as invalid on its next use, without having to touch every row up front.
+    if (tenant?.forceLogoutAllAt && existing.createdAt < tenant.forceLogoutAllAt) {
+      await this.refreshTokenRepository.revokeFamily(existing.familyId, 'force_logout_all');
+      throw new UnauthorizedError('Your session was ended by an administrator. Please log in again.');
+    }
+
+    // Inactivity backstop: this fires whenever the client's own idle timer couldn't (a laptop put
+    // to sleep, a suspended background tab) — the very next attempt to refresh after the
+    // configured idle window has elapsed since this token was last used is rejected server-side.
+    // null sessionTimeoutMinutes means the tenant opted into "never expire".
+    if (tenant?.sessionTimeoutMinutes != null) {
+      const idleMs = Date.now() - existing.lastUsedAt.getTime();
+      if (idleMs > tenant.sessionTimeoutMinutes * 60_000) {
+        await this.refreshTokenRepository.revokeFamily(existing.familyId, 'inactivity_timeout');
+        await auditLogService.record({
+          tenantId: user.tenantId,
+          actorUserId: user.id,
+          action: 'SESSION_TIMEOUT',
+          targetType: 'RefreshToken',
+          targetId: existing.id,
+          ...meta,
+        });
+        throw new UnauthorizedError('Session expired due to inactivity. Please log in again.');
+      }
+    }
+
     const rawNewToken = generateOpaqueToken();
     const newTokenHash = sha256(rawNewToken);
     const expiresAt = new Date(Date.now() + parseDurationMs(env.JWT_REFRESH_TTL));
@@ -229,6 +264,7 @@ export class AuthService {
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent,
       expiresAt,
+      rememberMe: existing.rememberMe,
     });
     await this.refreshTokenRepository.revoke(existing.id, 'rotated', newToken.id);
 
@@ -249,7 +285,13 @@ export class AuthService {
       profileId: null,
     });
 
-    return { accessToken, refreshToken: rawNewToken, refreshTokenExpiresAt: expiresAt, user: toPublicUser(user) };
+    return {
+      accessToken,
+      refreshToken: rawNewToken,
+      refreshTokenExpiresAt: expiresAt,
+      rememberMe: existing.rememberMe,
+      user: toPublicUser(user),
+    };
   }
 
   async logout(rawRefreshToken: string | undefined, meta: RequestMeta) {
@@ -415,8 +457,19 @@ export class AuthService {
     rememberMe = false,
   ) {
     const rawRefreshToken = generateOpaqueToken();
-    const ttl = rememberMe ? env.JWT_REFRESH_TTL_REMEMBER_ME : env.JWT_REFRESH_TTL;
-    const expiresAt = new Date(Date.now() + parseDurationMs(ttl));
+    let ttlMs: number;
+    if (rememberMe) {
+      const tenant = await this.tenantRepository.findById(user.tenantId);
+      const days = tenant?.rememberMeDurationDays ?? parseDurationMs(env.JWT_REFRESH_TTL_REMEMBER_ME) / (24 * 60 * 60 * 1000);
+      ttlMs = days * 24 * 60 * 60 * 1000;
+    } else {
+      // Without "remember me" the token itself is still valid for JWT_REFRESH_TTL server-side —
+      // that's just a ceiling. What actually ends the session day-to-day is the cookie having no
+      // persistent expiry (see setRefreshCookie in the controller: a true browser-session cookie,
+      // gone the moment the browser closes) plus the inactivity timeout enforced in refresh().
+      ttlMs = parseDurationMs(env.JWT_REFRESH_TTL);
+    }
+    const expiresAt = new Date(Date.now() + ttlMs);
 
     await this.refreshTokenRepository.create({
       userId: user.id,
@@ -424,6 +477,7 @@ export class AuthService {
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent,
       expiresAt,
+      rememberMe,
     });
 
     const accessToken = signAccessToken({
@@ -439,6 +493,7 @@ export class AuthService {
       accessToken,
       refreshToken: rawRefreshToken,
       refreshTokenExpiresAt: expiresAt,
+      rememberMe,
       user: toPublicUser(user),
     };
   }

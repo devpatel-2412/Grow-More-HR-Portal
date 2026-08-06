@@ -154,6 +154,83 @@ describe('Auth flow — signup, login, me, refresh, logout', () => {
   });
 });
 
+describe('Session cookie persistence — Remember Me', () => {
+  it('sets a true browser-session cookie (no Expires) when Remember Me is unchecked', async () => {
+    const domain = uniqueDomain('acme');
+    const email = `admin-${domain}@acme.com`;
+    await signupTenant({ tenantDomain: domain, email });
+
+    const res = await request(app).post('/api/v1/auth/login').send({ email, password: 'CorrectPassword123', rememberMe: false });
+
+    expect(res.status).toBe(200);
+    const cookie = res.headers['set-cookie'][0];
+    expect(cookie).not.toMatch(/Expires=/i);
+  });
+
+  it('sets a persistent cookie (with Expires) when Remember Me is checked', async () => {
+    const domain = uniqueDomain('acme');
+    const email = `admin-${domain}@acme.com`;
+    await signupTenant({ tenantDomain: domain, email });
+
+    const res = await request(app).post('/api/v1/auth/login').send({ email, password: 'CorrectPassword123', rememberMe: true });
+
+    expect(res.status).toBe(200);
+    const cookie = res.headers['set-cookie'][0];
+    expect(cookie).toMatch(/Expires=/i);
+  });
+
+  it('carries rememberMe forward as a persistent cookie across token rotation', async () => {
+    const domain = uniqueDomain('acme');
+    const email = `admin-${domain}@acme.com`;
+    await signupTenant({ tenantDomain: domain, email });
+    const loginRes = await request(app).post('/api/v1/auth/login').send({ email, password: 'CorrectPassword123', rememberMe: true });
+    const cookie = loginRes.headers['set-cookie'][0];
+
+    const refreshRes = await request(app).post('/api/v1/auth/refresh').set('Cookie', cookie);
+
+    expect(refreshRes.status).toBe(200);
+    expect(refreshRes.headers['set-cookie'][0]).toMatch(/Expires=/i);
+  });
+});
+
+describe('Inactivity timeout enforcement (server-side backstop)', () => {
+  it('rejects /refresh once the session has been idle longer than the tenant-configured timeout', async () => {
+    const { res: signupRes } = await signupTenant();
+    const cookie = signupRes.headers['set-cookie'][0];
+    const accessToken = signupRes.body.data.accessToken;
+
+    const meRes = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${accessToken}`);
+    const tenantId = meRes.body.data.tenant.id;
+
+    await prisma.tenant.update({ where: { id: tenantId }, data: { sessionTimeoutMinutes: 15 } });
+    await prisma.refreshToken.updateMany({
+      where: { userId: signupRes.body.data.user.id },
+      data: { lastUsedAt: new Date(Date.now() - 16 * 60_000) },
+    });
+
+    const refreshRes = await request(app).post('/api/v1/auth/refresh').set('Cookie', cookie);
+    expect(refreshRes.status).toBe(401);
+  });
+
+  it('allows /refresh when idle time is within the configured timeout', async () => {
+    const { res: signupRes } = await signupTenant();
+    const cookie = signupRes.headers['set-cookie'][0];
+    const accessToken = signupRes.body.data.accessToken;
+
+    const meRes = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${accessToken}`);
+    const tenantId = meRes.body.data.tenant.id;
+
+    await prisma.tenant.update({ where: { id: tenantId }, data: { sessionTimeoutMinutes: 60 } });
+    await prisma.refreshToken.updateMany({
+      where: { userId: signupRes.body.data.user.id },
+      data: { lastUsedAt: new Date(Date.now() - 5 * 60_000) },
+    });
+
+    const refreshRes = await request(app).post('/api/v1/auth/refresh').set('Cookie', cookie);
+    expect(refreshRes.status).toBe(200);
+  });
+});
+
 describe('RBAC — role/permission denial', () => {
   it('denies a non-SUPER_ADMIN from listing all tenants', async () => {
     const { res: signupRes } = await signupTenant();

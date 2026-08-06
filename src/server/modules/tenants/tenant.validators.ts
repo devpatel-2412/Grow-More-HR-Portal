@@ -25,6 +25,11 @@ export const updateTenantSchema = z.object({
   attendanceBreakOverageExtendsLogout: z.coerce.boolean().optional(),
   gstin: z.string().max(20).optional(),
   gstStateCode: z.string().length(2).optional(),
+  // null explicitly means "never expire due to inactivity" — nullable() so it can be sent, not just omitted.
+  sessionTimeoutMinutes: z.coerce.number().int().min(1).max(43200).nullable().optional(),
+  sessionWarningMinutes: z.coerce.number().int().min(1).max(60).optional(),
+  rememberMeDurationDays: z.coerce.number().int().min(1).max(365).optional(),
+  maxConcurrentSessions: z.coerce.number().int().min(1).max(1000).nullable().optional(),
 });
 
 export const listTenantsQuerySchema = paginationQuerySchema;

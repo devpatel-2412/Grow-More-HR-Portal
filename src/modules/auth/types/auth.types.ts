@@ -40,6 +40,11 @@ export interface Tenant {
   attendanceBreakOverageExtendsLogout: boolean;
   gstin: string | null;
   gstStateCode: string | null;
+  // null on sessionTimeoutMinutes means "never expire due to inactivity".
+  sessionTimeoutMinutes: number | null;
+  sessionWarningMinutes: number;
+  rememberMeDurationDays: number;
+  maxConcurrentSessions: number | null;
 }
 
 export interface MeResponse {

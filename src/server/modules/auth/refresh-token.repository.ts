@@ -9,6 +9,7 @@ export interface CreateRefreshTokenInput {
   ipAddress?: string | null;
   userAgent?: string | null;
   expiresAt: Date;
+  rememberMe?: boolean;
 }
 
 export class RefreshTokenRepository {
@@ -22,6 +23,7 @@ export class RefreshTokenRepository {
         ipAddress: input.ipAddress,
         userAgent: input.userAgent,
         expiresAt: input.expiresAt,
+        rememberMe: input.rememberMe ?? false,
       },
     });
   }
@@ -50,5 +52,28 @@ export class RefreshTokenRepository {
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date(), revokedReason: reason },
     });
+  }
+
+  /** Every currently-live session across the tenant, newest activity first — the data behind the
+   * session management dashboard. A "session" here is one un-revoked, un-expired refresh token. */
+  findActiveByTenant(tenantId: string) {
+    return prisma.refreshToken.findMany({
+      where: { revokedAt: null, expiresAt: { gt: new Date() }, user: { tenantId } },
+      include: { user: { select: { id: true, email: true, role: true, profile: { select: { firstName: true, lastName: true } } } } },
+      orderBy: { lastUsedAt: 'desc' },
+    });
+  }
+
+  /** Every currently-live session for one user — used both for "my active sessions" (self-service)
+   * and as the target set for a per-user force logout. */
+  findActiveByUser(userId: string) {
+    return prisma.refreshToken.findMany({
+      where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+      orderBy: { lastUsedAt: 'desc' },
+    });
+  }
+
+  findById(id: string) {
+    return prisma.refreshToken.findUnique({ where: { id } });
   }
 }
