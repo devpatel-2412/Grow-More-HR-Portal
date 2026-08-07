@@ -23,6 +23,7 @@ const EmployeeDetailPage = lazy(() => import('../modules/employees/pages/Employe
 const TenantSettingsPage = lazy(() => import('../modules/tenants/pages/TenantSettingsPage').then((m) => ({ default: m.TenantSettingsPage })));
 const SessionsPage = lazy(() => import('../modules/sessions/pages/SessionsPage').then((m) => ({ default: m.SessionsPage })));
 const AuditLogPage = lazy(() => import('../modules/audit/pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
+const RolesPage = lazy(() => import('../modules/rbac/pages/RolesPage').then((m) => ({ default: m.RolesPage })));
 const AttendancePage = lazy(() => import('../modules/attendance/pages/AttendancePage').then((m) => ({ default: m.AttendancePage })));
 const RegularizationsPage = lazy(() => import('../modules/attendance/pages/RegularizationsPage').then((m) => ({ default: m.RegularizationsPage })));
 const LeavePage = lazy(() => import('../modules/leave/pages/LeavePage').then((m) => ({ default: m.LeavePage })));
@@ -133,6 +134,7 @@ export const router = createBrowserRouter([
               { path: '/audit-log', element: lazyRoute(<AuditLogPage />) },
               { path: '/settings', element: lazyRoute(<TenantSettingsPage />) },
               { path: '/sessions', element: lazyRoute(<SessionsPage />) },
+              { path: '/roles', element: lazyRoute(<RolesPage />) },
             ],
           },
           {

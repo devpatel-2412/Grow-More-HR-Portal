@@ -1,7 +1,11 @@
 import { JobPostingRepository, CandidateRepository, InterviewRepository } from './recruitment.repository.js';
 import { EmployeeRepository } from '../employees/employee.repository.js';
+import { TenantRepository } from '../tenants/tenant.repository.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
+import { emailService } from '../../shared/email/email.service.js';
+import { interviewScheduledEmailTemplate } from '../../shared/email/email.templates.js';
+import { logger } from '../../shared/logger.js';
 import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
 
 const JOB_POSTING_SORTABLE_FIELDS = ['title', 'department', 'location', 'status', 'closingDate', 'createdAt'] as const;
@@ -58,6 +62,7 @@ export class RecruitmentService {
     private readonly candidateRepository: CandidateRepository = new CandidateRepository(),
     private readonly interviewRepository: InterviewRepository = new InterviewRepository(),
     private readonly employeeRepository: EmployeeRepository = new EmployeeRepository(),
+    private readonly tenantRepository: TenantRepository = new TenantRepository(),
   ) {}
 
   // ---------------------------------------------------------------- job postings
@@ -239,6 +244,29 @@ export class RecruitmentService {
     });
 
     await this.audit(tenantId, meta, 'INTERVIEW_SCHEDULED', 'Interview', interview.id);
+
+    // Direct send, not via notificationService — a Candidate has no User account/portal to
+    // attach an in-app notification to (see UserRole.CANDIDATE comment in schema.prisma).
+    // Best-effort: the interview is already booked above — a lookup/send hiccup here must not
+    // fail a request whose real work already succeeded.
+    try {
+      const [posting, tenant] = await Promise.all([
+        this.postingRepository.findById(candidate.jobPostingId),
+        this.tenantRepository.findById(tenantId),
+      ]);
+      const { subject, html, text } = interviewScheduledEmailTemplate({
+        candidateName: `${candidate.firstName} ${candidate.lastName}`,
+        jobTitle: posting?.title ?? 'the role',
+        tenantName: tenant?.name ?? 'Grow More',
+        scheduledAt: interview.scheduledAt,
+        mode: interview.mode,
+        location: interview.location ?? undefined,
+      });
+      await emailService.send({ to: candidate.email, subject, html, text, template: 'interview_scheduled', tenantId });
+    } catch (err) {
+      logger.error({ err, candidateId: candidate.id, interviewId: interview.id }, 'Failed to send interview-scheduled email');
+    }
+
     return interview;
   }
 

@@ -4,6 +4,7 @@ import { ConflictError, NotFoundError } from '../../shared/errors/app-error.js';
 
 vi.mock('../audit/audit.service.js', () => ({ auditLogService: { record: vi.fn() } }));
 vi.mock('../../db/prisma.js', () => ({ prisma: { candidate: { count: vi.fn().mockResolvedValue(0) } } }));
+vi.mock('../../shared/email/email.service.js', () => ({ emailService: { send: vi.fn().mockResolvedValue(undefined) } }));
 
 function makeCandidate(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -36,7 +37,7 @@ function makeDeps() {
     findMany: vi.fn(),
   };
   const interviewRepository = {
-    create: vi.fn().mockResolvedValue({ id: 'int-1' }),
+    create: vi.fn().mockResolvedValue({ id: 'int-1', scheduledAt: new Date('2026-08-10T10:00:00Z'), mode: 'VIDEO', location: null }),
     findById: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
@@ -48,7 +49,10 @@ function makeDeps() {
     findById: vi.fn().mockResolvedValue({ id: 'emp-1', tenantId: 'tenant-1' }),
     findByUserId: vi.fn(),
   };
-  return { postingRepository, candidateRepository, interviewRepository, employeeRepository };
+  const tenantRepository = {
+    findById: vi.fn().mockResolvedValue({ id: 'tenant-1', name: 'Acme Inc' }),
+  };
+  return { postingRepository, candidateRepository, interviewRepository, employeeRepository, tenantRepository };
 }
 
 function build(deps: ReturnType<typeof makeDeps>) {
@@ -57,6 +61,7 @@ function build(deps: ReturnType<typeof makeDeps>) {
     deps.candidateRepository as never,
     deps.interviewRepository as never,
     deps.employeeRepository as never,
+    deps.tenantRepository as never,
   );
 }
 

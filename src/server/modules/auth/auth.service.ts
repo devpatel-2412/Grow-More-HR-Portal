@@ -9,6 +9,7 @@ import { ConflictError, UnauthorizedError, NotFoundError, ForbiddenError } from 
 import { auditLogService } from '../audit/audit.service.js';
 import { twoFactorService } from '../two-factor/two-factor.service.js';
 import { emailService } from '../../shared/email/email.service.js';
+import { passwordResetEmailTemplate } from '../../shared/email/email.templates.js';
 import { env } from '../../shared/config/env.js';
 import type { RequestMeta } from './auth.types.js';
 import type { UserRole } from '@prisma/client';
@@ -345,11 +346,8 @@ export class AuthService {
     });
 
     const resetLink = `${env.APP_URL}/reset-password?token=${rawToken}`;
-    await emailService.send({
-      to: user.email,
-      subject: 'Reset your Grow More password',
-      text: `Click the link below to reset your password. This link is valid for 1 hour:\n\n${resetLink}`,
-    });
+    const { subject, html, text } = passwordResetEmailTemplate({ resetLink, validForMinutes: PASSWORD_RESET_TOKEN_TTL_MS / 60_000 });
+    await emailService.send({ to: user.email, subject, html, text, template: 'password_reset', tenantId: user.tenantId });
 
     await auditLogService.record({
       tenantId: user.tenantId,

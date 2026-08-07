@@ -1,7 +1,9 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { UserRole } from '@prisma/client';
 import { ForbiddenError, UnauthorizedError } from '../errors/app-error.js';
-import { roleHasPermission, type Permission } from '../permissions/permissions.js';
+import type { Permission } from '../permissions/permissions.js';
+import { resolveEffectivePermissions } from '../permissions/permission-resolver.service.js';
+import { asyncHandler } from '../utils/async-handler.js';
 
 /** Coarse guard — use sparingly, for the rare check that is genuinely role-shaped (e.g. only SUPER_ADMIN may create tenants). */
 export function requireRole(...roles: UserRole[]) {
@@ -14,25 +16,32 @@ export function requireRole(...roles: UserRole[]) {
   };
 }
 
-/** Primary guard every module should use — resolves the caller's role to a permission set with no DB hit. */
+/**
+ * Primary guard every module should use — resolves the caller's static role permissions plus
+ * whatever the dynamic RBAC tables additionally grant them (see permission-resolver.service.ts).
+ * Async (a cached, short-TTL DB lookup), wrapped in asyncHandler so a rejected lookup still
+ * reaches the centralized error middleware instead of hanging the request.
+ */
 export function requirePermission(permission: Permission) {
-  return (req: Request, _res: Response, next: NextFunction): void => {
+  return asyncHandler(async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     if (!req.user) throw new UnauthorizedError();
-    if (!roleHasPermission(req.user.role, permission)) {
+    const effective = await resolveEffectivePermissions(req.user.sub, req.user.tenantId, req.user.role);
+    if (!effective.has(permission)) {
       throw new ForbiddenError();
     }
     next();
-  };
+  });
 }
 
 export function requireAnyPermission(...permissions: Permission[]) {
-  return (req: Request, _res: Response, next: NextFunction): void => {
+  return asyncHandler(async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     if (!req.user) throw new UnauthorizedError();
-    if (!permissions.some((p) => roleHasPermission(req.user!.role, p))) {
+    const effective = await resolveEffectivePermissions(req.user.sub, req.user.tenantId, req.user.role);
+    if (!permissions.some((p) => effective.has(p))) {
       throw new ForbiddenError();
     }
     next();
-  };
+  });
 }
 
 const EXTERNAL_ROLES: readonly UserRole[] = ['CLIENT', 'CANDIDATE'];

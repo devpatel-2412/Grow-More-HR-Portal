@@ -1,6 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NotificationService } from './notification.service.js';
 import { ForbiddenError, NotFoundError } from '../../shared/errors/app-error.js';
+
+const { emailSend } = vi.hoisted(() => ({ emailSend: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('../../shared/email/email.service.js', () => ({ emailService: { send: emailSend } }));
 
 function makeNotification(overrides: Partial<Record<string, unknown>> = {}) {
   return { id: 'notif-1', tenantId: 'tenant-1', userId: 'user-1', type: 'GENERIC', title: 'Hi', body: 'Body', readAt: null, ...overrides };
@@ -15,12 +18,19 @@ function makeDeps() {
     markRead: vi.fn().mockResolvedValue(makeNotification({ readAt: new Date() })),
     markAllRead: vi.fn().mockResolvedValue({ count: 0 }),
   };
-  return { repository };
+  const userRepository = {
+    findById: vi.fn().mockResolvedValue({ id: 'user-1', email: 'worker@acme.com' }),
+  };
+  return { repository, userRepository };
 }
 
 function build(deps: ReturnType<typeof makeDeps>) {
-  return new NotificationService(deps.repository as never);
+  return new NotificationService(deps.repository as never, deps.userRepository as never);
 }
+
+beforeEach(() => {
+  emailSend.mockClear();
+});
 
 describe('NotificationService.notify', () => {
   it('swallows a repository failure instead of throwing — notifying must never break the caller', async () => {
@@ -39,6 +49,31 @@ describe('NotificationService.notify', () => {
     expect(deps.repository.create).toHaveBeenCalledWith(
       expect.objectContaining({ tenantId: 'tenant-1', userId: 'user-1', type: 'TASK_ASSIGNED' }),
     );
+  });
+
+  it('also emails the target user using the same title/body', async () => {
+    const deps = makeDeps();
+    await build(deps).notify({ tenantId: 'tenant-1', userId: 'user-1', type: 'LEAVE_APPROVED', title: 'Leave approved', body: 'Enjoy your time off.' });
+    expect(emailSend).toHaveBeenCalledWith(
+      expect.objectContaining({ to: 'worker@acme.com', subject: 'Leave approved', template: 'notification_leave_approved', tenantId: 'tenant-1' }),
+    );
+  });
+
+  it('skips the email (but still creates the in-app notification) when the user cannot be found', async () => {
+    const deps = makeDeps();
+    deps.userRepository.findById.mockResolvedValue(null);
+    await build(deps).notify({ tenantId: 'tenant-1', userId: 'ghost', type: 'GENERIC', title: 'Hi', body: 'Body' });
+    expect(deps.repository.create).toHaveBeenCalledOnce();
+    expect(emailSend).not.toHaveBeenCalled();
+  });
+
+  it('still creates the in-app notification even if sending the email throws', async () => {
+    const deps = makeDeps();
+    emailSend.mockRejectedValueOnce(new Error('smtp down'));
+    await expect(
+      build(deps).notify({ tenantId: 'tenant-1', userId: 'user-1', type: 'GENERIC', title: 'Hi', body: 'Body' }),
+    ).resolves.toBeUndefined();
+    expect(deps.repository.create).toHaveBeenCalledOnce();
   });
 });
 

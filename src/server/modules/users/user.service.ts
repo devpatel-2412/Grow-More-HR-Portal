@@ -2,11 +2,14 @@ import { UserRepository } from './user.repository.js';
 import { InviteRepository } from './invite.repository.js';
 import { EmployeeRepository } from '../employees/employee.repository.js';
 import { ClientRepository, ContactRepository } from '../crm/crm.repository.js';
+import { TenantRepository } from '../tenants/tenant.repository.js';
 import { hashPassword, sha256, generateOpaqueToken } from '../../shared/utils/hash.util.js';
 import { ConflictError, NotFoundError, UnauthorizedError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
 import { emailService } from '../../shared/email/email.service.js';
+import { inviteEmailTemplate, welcomeEmailTemplate } from '../../shared/email/email.templates.js';
 import { env } from '../../shared/config/env.js';
+import { logger } from '../../shared/logger.js';
 import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
 import type { RequestContext } from '../tenants/tenant.service.js';
 import type { UserRole, UserStatus } from '@prisma/client';
@@ -23,6 +26,7 @@ export class UserService {
     private readonly employeeRepository: EmployeeRepository = new EmployeeRepository(),
     private readonly clientRepository: ClientRepository = new ClientRepository(),
     private readonly contactRepository: ContactRepository = new ContactRepository(),
+    private readonly tenantRepository: TenantRepository = new TenantRepository(),
   ) {}
 
   async invite(tenantId: string, input: z.infer<typeof inviteUserSchema>, ctx: RequestContext = {}) {
@@ -58,12 +62,23 @@ export class UserService {
       expiresAt: new Date(Date.now() + INVITE_TTL_MS),
     });
 
-    const inviteLink = `${env.APP_URL}/invite/accept?token=${rawToken}`;
-    await emailService.send({
-      to: input.email,
-      subject: "You've been invited to Grow More",
-      text: `You've been invited to join. Click the link below to set your password and activate your account:\n\n${inviteLink}\n\nThis link expires in 7 days.`,
-    });
+    // Best-effort: the invite record is already committed above — a hiccup looking up the
+    // tenant name or sending the email must not fail the request (the admin would see a
+    // confusing 500 despite the invite existing, and a retry would then 409 as "already
+    // pending"). retryFailedEmails picks up a failed send separately.
+    try {
+      const inviteLink = `${env.APP_URL}/invite/accept?token=${rawToken}`;
+      const inviteTenant = await this.tenantRepository.findById(tenantId);
+      const { subject, html, text } = inviteEmailTemplate({
+        tenantName: inviteTenant?.name ?? 'Grow More',
+        role: input.role,
+        inviteLink,
+        expiresInDays: INVITE_TTL_MS / (24 * 60 * 60 * 1000),
+      });
+      await emailService.send({ to: input.email, subject, html, text, template: 'invite', tenantId });
+    } catch (err) {
+      logger.error({ err, tenantId, email: input.email }, 'Failed to send invite email');
+    }
 
     await auditLogService.record({
       tenantId,
@@ -141,6 +156,21 @@ export class UserService {
       targetType: 'User',
       targetId: user.id,
     });
+
+    // Best-effort: account activation has already succeeded and committed above — a hiccup
+    // looking up the tenant name or sending the welcome email must never turn a successful
+    // activation into a failed request.
+    try {
+      const tenant = await this.tenantRepository.findById(invite.tenantId);
+      const { subject, html, text } = welcomeEmailTemplate({
+        firstName: input.firstName,
+        tenantName: tenant?.name ?? 'Grow More',
+        loginLink: `${env.APP_URL}/login`,
+      });
+      await emailService.send({ to: invite.email, subject, html, text, template: 'welcome', tenantId: invite.tenantId });
+    } catch (err) {
+      logger.error({ err, userId: user.id }, 'Failed to send welcome email');
+    }
 
     return activatedUser;
   }

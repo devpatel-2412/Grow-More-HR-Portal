@@ -33,6 +33,7 @@ import {
   Package,
   BookMarked,
   MonitorSmartphone,
+  ShieldCheck,
 } from 'lucide-react';
 import type { UserRole } from '../../modules/auth/types/auth.types';
 
@@ -96,6 +97,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Vendors', path: '/vendors', icon: Truck, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
   { label: 'Inventory', path: '/inventory', icon: Package, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
 
+  { label: 'Roles & Permissions', path: '/roles', icon: ShieldCheck, allow: ['SUPER_ADMIN', 'ADMIN'] },
   { label: 'Audit Log', path: '/audit-log', icon: ScrollText, allow: ['SUPER_ADMIN', 'ADMIN'] },
   { label: 'Sessions', path: '/sessions', icon: MonitorSmartphone, allow: ['SUPER_ADMIN', 'ADMIN'] },
   { label: 'Settings', path: '/settings', icon: Settings, allow: ['SUPER_ADMIN', 'ADMIN'] },

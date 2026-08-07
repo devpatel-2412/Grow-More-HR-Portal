@@ -184,6 +184,14 @@ enum AuditAction {
   SOP_PUBLISHED
   SOP_ARCHIVED
   SOP_DELETED
+  ROLE_CREATED
+  ROLE_UPDATED
+  ROLE_DELETED
+  ROLE_DUPLICATED
+  PERMISSION_ASSIGNED
+  PERMISSION_REMOVED
+  USER_ROLE_ASSIGNED
+  USER_ROLE_REMOVED
 }
 
 enum EmployeeStatus {
@@ -426,14 +434,14 @@ model Tenant {
   // Payroll policy — statutory rates vary by jurisdiction and change year to year, so they are
   // tenant-configurable rather than hardcoded. Defaults follow common Indian statutory rates and
   // MUST be confirmed against the tenant's own jurisdiction before running live payroll.
-  payrollPfEmployeeRate     Float @default(0.12) // 12% of PF-eligible wage
-  payrollPfWageCeiling      Float @default(15000)
-  payrollEsicEmployeeRate   Float @default(0.0075) // 0.75% of gross
-  payrollEsicWageCeiling    Float @default(21000) // ESIC does not apply above this gross
-  payrollProfessionalTax    Float @default(200) // flat monthly amount
-  payrollTdsRate            Float @default(0) // flat fallback; real TDS needs per-employee declarations
-  payrollOvertimeMultiplier Float @default(1.5)
-  payrollWorkingDaysPerMonth Int  @default(26)
+  payrollPfEmployeeRate      Float @default(0.12) // 12% of PF-eligible wage
+  payrollPfWageCeiling       Float @default(15000)
+  payrollEsicEmployeeRate    Float @default(0.0075) // 0.75% of gross
+  payrollEsicWageCeiling     Float @default(21000) // ESIC does not apply above this gross
+  payrollProfessionalTax     Float @default(200) // flat monthly amount
+  payrollTdsRate             Float @default(0) // flat fallback; real TDS needs per-employee declarations
+  payrollOvertimeMultiplier  Float @default(1.5)
+  payrollWorkingDaysPerMonth Int   @default(26)
 
   // GST (Indian tax) registration — optional. When both this and a finance document's
   // placeOfSupplyStateCode are set, tax is split into CGST/SGST (same state) or IGST (different
@@ -443,9 +451,9 @@ model Tenant {
 
   // Session security policy — same tenant-configurable pattern as attendance/payroll above.
   // null on sessionTimeoutMinutes means "never expire due to inactivity" (opt-in, not default).
-  sessionTimeoutMinutes  Int?     @default(60)
-  sessionWarningMinutes  Int      @default(2)
-  rememberMeDurationDays Int      @default(30)
+  sessionTimeoutMinutes  Int?      @default(60)
+  sessionWarningMinutes  Int       @default(2)
+  rememberMeDurationDays Int       @default(30)
   maxConcurrentSessions  Int?
   // Bumped to now() by "Force logout all users" — any refresh token issued before this instant
   // is treated as invalid on its next use, without touching individual token rows.
@@ -454,54 +462,58 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users            User[]
-  employeeProfiles EmployeeProfile[]
-  jobPostings      JobPosting[]
-  assets           Asset[]
-  projects         Project[]
-  clients          ClientPortal[]
-  financeDocs      FinanceDocument[]
-  visitors         Visitor[]
-  bookings         RoomBooking[]
-  kbArticles       KnowledgeBaseArticle[]
-  tickets          Ticket[]
-  documents        SecureDocument[]
-  documentVersions DocumentVersion[]
-  templates        CanvaTemplate[]
-  subscriptions    Subscription[]
-  invites          Invite[]
-  auditLogs        AuditLog[]
-  attendances      Attendance[]
-  regularizations  AttendanceRegularization[]
-  leaveRequests    LeaveRequest[]
-  tasks            Task[]
-  milestones       Milestone[]
-  taskComments     TaskComment[]
-  taskAttachments  TaskAttachment[]
-  dailyWorkReports DailyWorkReport[]
-  timeLogs         TimeLog[]
-  salaryStructures SalaryStructure[]
-  payrollRuns      PayrollRun[]
-  payrollItems     PayrollItem[]
-  candidates       Candidate[]
-  interviews       Interview[]
-  leads            Lead[]
-  clientContacts   ClientContact[]
-  crmActivities    CrmActivity[]
-  ticketComments   TicketComment[]
-  generatedDocuments GeneratedDocument[]
-  announcements    Announcement[]
-  branches         Branch[]
-  teams            Team[]
-  checklistItems   OnboardingChecklistItem[]
-  lifecycleEvents  LifecycleEvent[]
-  fnfSettlements   FnfSettlement[]
-  vendors          Vendor[]
-  inventoryItems   InventoryItem[]
+  users                 User[]
+  employeeProfiles      EmployeeProfile[]
+  jobPostings           JobPosting[]
+  assets                Asset[]
+  projects              Project[]
+  clients               ClientPortal[]
+  financeDocs           FinanceDocument[]
+  visitors              Visitor[]
+  bookings              RoomBooking[]
+  kbArticles            KnowledgeBaseArticle[]
+  tickets               Ticket[]
+  documents             SecureDocument[]
+  documentVersions      DocumentVersion[]
+  templates             CanvaTemplate[]
+  subscriptions         Subscription[]
+  invites               Invite[]
+  auditLogs             AuditLog[]
+  attendances           Attendance[]
+  regularizations       AttendanceRegularization[]
+  leaveRequests         LeaveRequest[]
+  tasks                 Task[]
+  milestones            Milestone[]
+  taskComments          TaskComment[]
+  taskAttachments       TaskAttachment[]
+  dailyWorkReports      DailyWorkReport[]
+  timeLogs              TimeLog[]
+  salaryStructures      SalaryStructure[]
+  payrollRuns           PayrollRun[]
+  payrollItems          PayrollItem[]
+  candidates            Candidate[]
+  interviews            Interview[]
+  leads                 Lead[]
+  clientContacts        ClientContact[]
+  crmActivities         CrmActivity[]
+  ticketComments        TicketComment[]
+  generatedDocuments    GeneratedDocument[]
+  announcements         Announcement[]
+  branches              Branch[]
+  teams                 Team[]
+  checklistItems        OnboardingChecklistItem[]
+  lifecycleEvents       LifecycleEvent[]
+  fnfSettlements        FnfSettlement[]
+  vendors               Vendor[]
+  inventoryItems        InventoryItem[]
   inventoryTransactions InventoryTransaction[]
-  sops             Sop[]
-  sopRevisions     SopRevision[]
-  notifications    Notification[]
+  sops                  Sop[]
+  sopRevisions          SopRevision[]
+  notifications         Notification[]
+  roles                 Role[]
+  departmentPermissions DepartmentPermission[]
+  branchPermissions     BranchPermission[]
+  emailLogs             EmailLog[]
 }
 
 model User {
@@ -528,6 +540,7 @@ model User {
   notifications       Notification[]
   clientProfile       ClientPortal?        @relation(fields: [clientProfileId], references: [id])
   clientProfileId     String?
+  roleAssignments     UserRoleAssignment[]
 
   @@index([tenantId])
   @@index([tenantId, role])
@@ -606,70 +619,146 @@ model AuditLog {
   @@index([action, createdAt])
 }
 
-model EmployeeProfile {
-  id            String            @id @default(uuid())
-  userId        String            @unique
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenantId      String
-  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  employeeId    String            // e.g. EMP-2026-001 — unique per tenant, not globally (see @@unique below)
-  firstName     String
-  lastName      String
-  phone         String?
-  department    String
-  designation   String
-  address       String?
-  emergencyContact String?
-  dateOfJoining DateTime
-  dateOfBirth   DateTime?
-  status        EmployeeStatus    @default(ONBOARDING)
-  qrCodeUrl     String?
-  cardPosterUrl String?
-  managerId     String?
-  manager       EmployeeProfile?  @relation("ManagerToEmployee", fields: [managerId], references: [id])
-  subordinates  EmployeeProfile[] @relation("ManagerToEmployee")
-  branchId      String?
-  branch        Branch?           @relation(fields: [branchId], references: [id])
-  teamId        String?
-  team          Team?             @relation("TeamMembers", fields: [teamId], references: [id])
-  teamsLed      Team[]            @relation("TeamLead")
+/**
+ * Dynamic RBAC layer — purely additive on top of the static UserRole enum + ROLE_PERMISSIONS map
+ * (see src/server/shared/permissions/permissions.ts). A user's effective permissions are the union
+ * of their static role's permissions and whatever these tables grant; neither replaces the other,
+ * and the static map remains the fallback if this layer is ever unreachable. isSystem marks the 7
+ * roles seeded 1:1 from the existing UserRole values (see prisma/seed-rbac.ts) — protected from
+ * deletion so the static roles always have a corresponding, editable, non-destructible row.
+ */
+model Role {
+  id          String    @id @default(uuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  isSystem    Boolean   @default(false)
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  attendance      Attendance[]
-  regularizations AttendanceRegularization[]
-  leaves          LeaveRequest[]
-  leavesToReview  LeaveRequest[]             @relation("LeaveManagerReview")
-  assignedTasks   Task[]
-  taskComments    TaskComment[]
-  payrolls        PayrollItem[]
-  dailyReports    DailyWorkReport[]
-  reviewedReports DailyWorkReport[]          @relation("WorkReportReviewer")
-  timeLogs        TimeLog[]
-  salaryStructures SalaryStructure[]
-  interviewPanels  Interview[]                @relation("InterviewPanel")
-  ownedLeads       Lead[]                     @relation("LeadOwner")
-  managedClients   ClientPortal[]             @relation("ClientAccountManager")
-  crmActivities    CrmActivity[]              @relation("CrmActivityAuthor")
-  createdFinanceDocs FinanceDocument[]
-  recordedFinancePayments FinancePayment[]
-  assets          Asset[]
-  tickets         Ticket[]                   @relation("TicketEmployee")
-  assignedTickets Ticket[]                   @relation("TicketAssignedTo")
-  ticketComments  TicketComment[]
-  bookings        RoomBooking[]
-  articles        KnowledgeBaseArticle[]
-  hostedVisitors  Visitor[]
-  uploadedDocuments SecureDocument[]
-  uploadedDocumentVersions DocumentVersion[]
-  createdTemplates CanvaTemplate[]
-  generatedDocumentsAsSubject GeneratedDocument[] @relation("GeneratedDocumentSubject")
-  generatedDocumentsAsAuthor  GeneratedDocument[] @relation("GeneratedDocumentAuthor")
-  publishedAnnouncements Announcement[]
-  checklistItems  OnboardingChecklistItem[]
-  lifecycleEvents LifecycleEvent[]
-  fnfSettlement   FnfSettlement?
-  inventoryTransactions InventoryTransaction[]
-  ownedSops       Sop[]         @relation("SopOwner")
-  sopRevisions    SopRevision[]
+  permissions RolePermission[]
+  assignments UserRoleAssignment[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model RolePermission {
+  id         String   @id @default(uuid())
+  roleId     String
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission String
+  createdAt  DateTime @default(now())
+
+  @@unique([roleId, permission])
+  @@index([roleId])
+}
+
+model UserRoleAssignment {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId       String
+  role         Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedById String?
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+model DepartmentPermission {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department String
+  permission String
+  createdAt  DateTime @default(now())
+
+  @@unique([tenantId, department, permission])
+  @@index([tenantId, department])
+}
+
+model BranchPermission {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId   String
+  branch     Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  permission String
+  createdAt  DateTime @default(now())
+
+  @@unique([tenantId, branchId, permission])
+  @@index([tenantId, branchId])
+}
+
+model EmployeeProfile {
+  id               String            @id @default(uuid())
+  userId           String            @unique
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId         String
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId       String // e.g. EMP-2026-001 — unique per tenant, not globally (see @@unique below)
+  firstName        String
+  lastName         String
+  phone            String?
+  department       String
+  designation      String
+  address          String?
+  emergencyContact String?
+  dateOfJoining    DateTime
+  dateOfBirth      DateTime?
+  status           EmployeeStatus    @default(ONBOARDING)
+  qrCodeUrl        String?
+  cardPosterUrl    String?
+  managerId        String?
+  manager          EmployeeProfile?  @relation("ManagerToEmployee", fields: [managerId], references: [id])
+  subordinates     EmployeeProfile[] @relation("ManagerToEmployee")
+  branchId         String?
+  branch           Branch?           @relation(fields: [branchId], references: [id])
+  teamId           String?
+  team             Team?             @relation("TeamMembers", fields: [teamId], references: [id])
+  teamsLed         Team[]            @relation("TeamLead")
+
+  attendance                  Attendance[]
+  regularizations             AttendanceRegularization[]
+  leaves                      LeaveRequest[]
+  leavesToReview              LeaveRequest[]             @relation("LeaveManagerReview")
+  assignedTasks               Task[]
+  taskComments                TaskComment[]
+  payrolls                    PayrollItem[]
+  dailyReports                DailyWorkReport[]
+  reviewedReports             DailyWorkReport[]          @relation("WorkReportReviewer")
+  timeLogs                    TimeLog[]
+  salaryStructures            SalaryStructure[]
+  interviewPanels             Interview[]                @relation("InterviewPanel")
+  ownedLeads                  Lead[]                     @relation("LeadOwner")
+  managedClients              ClientPortal[]             @relation("ClientAccountManager")
+  crmActivities               CrmActivity[]              @relation("CrmActivityAuthor")
+  createdFinanceDocs          FinanceDocument[]
+  recordedFinancePayments     FinancePayment[]
+  assets                      Asset[]
+  tickets                     Ticket[]                   @relation("TicketEmployee")
+  assignedTickets             Ticket[]                   @relation("TicketAssignedTo")
+  ticketComments              TicketComment[]
+  bookings                    RoomBooking[]
+  articles                    KnowledgeBaseArticle[]
+  hostedVisitors              Visitor[]
+  uploadedDocuments           SecureDocument[]
+  uploadedDocumentVersions    DocumentVersion[]
+  createdTemplates            CanvaTemplate[]
+  generatedDocumentsAsSubject GeneratedDocument[]        @relation("GeneratedDocumentSubject")
+  generatedDocumentsAsAuthor  GeneratedDocument[]        @relation("GeneratedDocumentAuthor")
+  publishedAnnouncements      Announcement[]
+  checklistItems              OnboardingChecklistItem[]
+  lifecycleEvents             LifecycleEvent[]
+  fnfSettlement               FnfSettlement?
+  inventoryTransactions       InventoryTransaction[]
+  ownedSops                   Sop[]                      @relation("SopOwner")
+  sopRevisions                SopRevision[]
 
   @@unique([tenantId, employeeId])
   @@index([tenantId])
@@ -694,40 +783,44 @@ enum FnfStatus {
 }
 
 model OnboardingChecklistItem {
-  id            String           @id @default(uuid())
-  tenantId      String
-  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  employeeId    String
-  employee      EmployeeProfile  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  label         String
-  isCompleted   Boolean          @default(false)
-  completedAt   DateTime?
-  createdAt     DateTime         @default(now())
+  id          String          @id @default(uuid())
+  tenantId    String
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId  String
+  employee    EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  label       String
+  isCompleted Boolean         @default(false)
+  completedAt DateTime?
+  createdAt   DateTime        @default(now())
 
   @@index([tenantId])
   @@index([employeeId])
 }
 
-/** One row per lifecycle action taken on an employee — the audit trail a promotion/transfer/exit letter is generated from. */
+/**
+ * One row per lifecycle action taken on an employee — the audit trail a promotion/transfer/exit letter is generated from.
+ */
 model LifecycleEvent {
-  id              String             @id @default(uuid())
-  tenantId        String
-  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  employeeId      String
-  employee        EmployeeProfile    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  type            LifecycleEventType
-  effectiveDate   DateTime
-  previousValue   String?
-  newValue        String?
-  notes           String?
-  createdById     String?
-  createdAt       DateTime           @default(now())
+  id            String             @id @default(uuid())
+  tenantId      String
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId    String
+  employee      EmployeeProfile    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type          LifecycleEventType
+  effectiveDate DateTime
+  previousValue String?
+  newValue      String?
+  notes         String?
+  createdById   String?
+  createdAt     DateTime           @default(now())
 
   @@index([tenantId])
   @@index([employeeId, createdAt])
 }
 
-/** One settlement per employee — a re-hire after a prior exit is out of scope, same as elsewhere in this schema. */
+/**
+ * One settlement per employee — a re-hire after a prior exit is out of scope, same as elsewhere in this schema.
+ */
 model FnfSettlement {
   id              String          @id @default(uuid())
   tenantId        String
@@ -760,21 +853,21 @@ enum SopStatus {
 }
 
 model Sop {
-  id          String    @id @default(uuid())
+  id          String           @id @default(uuid())
   tenantId    String
-  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   title       String
   category    String?
   department  String?
-  version     Int       @default(1)
-  status      SopStatus @default(DRAFT)
+  version     Int              @default(1)
+  status      SopStatus        @default(DRAFT)
   body        String
   fileUrl     String?
   ownerId     String?
   owner       EmployeeProfile? @relation("SopOwner", fields: [ownerId], references: [id])
   publishedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   revisions SopRevision[]
 
@@ -782,18 +875,20 @@ model Sop {
   @@index([tenantId, status])
 }
 
-/** A snapshot of a published SOP's body taken just before each subsequent revision overwrites it. */
+/**
+ * A snapshot of a published SOP's body taken just before each subsequent revision overwrites it.
+ */
 model SopRevision {
-  id          String          @id @default(uuid())
+  id          String           @id @default(uuid())
   tenantId    String
-  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   sopId       String
-  sop         Sop             @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  sop         Sop              @relation(fields: [sopId], references: [id], onDelete: Cascade)
   version     Int
   body        String
   changedById String?
   changedBy   EmployeeProfile? @relation(fields: [changedById], references: [id])
-  createdAt   DateTime        @default(now())
+  createdAt   DateTime         @default(now())
 
   @@index([sopId, version])
 }
@@ -849,7 +944,9 @@ model InventoryItem {
   @@index([vendorId])
 }
 
-/** The append-only ledger backing `InventoryItem.quantityOnHand` — the running total is a cache of this history, not the source of truth. */
+/**
+ * The append-only ledger backing `InventoryItem.quantityOnHand` — the running total is a cache of this history, not the source of truth.
+ */
 model InventoryTransaction {
   id            String                   @id @default(uuid())
   tenantId      String
@@ -870,21 +967,22 @@ model InventoryTransaction {
 }
 
 model Branch {
-  id           String            @id @default(uuid())
+  id           String   @id @default(uuid())
   tenantId     String
-  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name         String
   code         String
   address      String?
   city         String?
   state        String?
   country      String?
-  isHeadOffice Boolean           @default(false)
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  isHeadOffice Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  teams     Team[]
-  employees EmployeeProfile[]
+  teams       Team[]
+  employees   EmployeeProfile[]
+  permissions BranchPermission[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -989,7 +1087,9 @@ model LeaveRequest {
   @@index([managerId, status])
 }
 
-/** Per-employee pay components. Effective-dated so a raise never rewrites past payslips. */
+/**
+ * Per-employee pay components. Effective-dated so a raise never rewrites past payslips.
+ */
 model SalaryStructure {
   id            String          @id @default(uuid())
   tenantId      String
@@ -1007,53 +1107,55 @@ model SalaryStructure {
   @@index([employeeId, effectiveFrom])
 }
 
-/** One payroll batch per tenant per month. Groups the generated PayrollItems. */
+/**
+ * One payroll batch per tenant per month. Groups the generated PayrollItems.
+ */
 model PayrollRun {
-  id           String        @id @default(uuid())
-  tenantId     String
-  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  month        Int
-  year         Int
-  status       PayrollStatus @default(DRAFT)
-  totalNet     Float         @default(0)
-  itemCount    Int           @default(0)
+  id            String        @id @default(uuid())
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  month         Int
+  year          Int
+  status        PayrollStatus @default(DRAFT)
+  totalNet      Float         @default(0)
+  itemCount     Int           @default(0)
   processedById String?
-  processedAt  DateTime?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  items        PayrollItem[]
+  processedAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  items         PayrollItem[]
 
   @@unique([tenantId, month, year])
   @@index([tenantId, year, month])
 }
 
 model PayrollItem {
-  id                String          @id @default(uuid())
-  tenantId          String
-  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  payrollRunId      String
-  payrollRun        PayrollRun      @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
-  employeeId        String
-  employee          EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  month             Int
-  year              Int
-  basicSalary       Float
-  hra               Float
-  allowance         Float
-  bonus             Float           @default(0)
-  overtimeHours     Float           @default(0)
-  overtimePay       Float           @default(0)
-  grossSalary       Float
-  pfDeduction       Float
-  esicDeduction     Float
-  tdsDeduction      Float
-  ptDeduction       Float
-  unpaidLeaveDays   Float           @default(0)
-  unpaidLeaveDeduction Float        @default(0)
-  totalDeductions   Float
-  netSalary         Float
-  payslipUrl        String?
-  status            PayrollStatus   @default(DRAFT)
+  id                   String          @id @default(uuid())
+  tenantId             String
+  tenant               Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payrollRunId         String
+  payrollRun           PayrollRun      @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  employeeId           String
+  employee             EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  month                Int
+  year                 Int
+  basicSalary          Float
+  hra                  Float
+  allowance            Float
+  bonus                Float           @default(0)
+  overtimeHours        Float           @default(0)
+  overtimePay          Float           @default(0)
+  grossSalary          Float
+  pfDeduction          Float
+  esicDeduction        Float
+  tdsDeduction         Float
+  ptDeduction          Float
+  unpaidLeaveDays      Float           @default(0)
+  unpaidLeaveDeduction Float           @default(0)
+  totalDeductions      Float
+  netSalary            Float
+  payslipUrl           String?
+  status               PayrollStatus   @default(DRAFT)
 
   @@unique([employeeId, month, year])
   @@index([tenantId, year, month])
@@ -1083,26 +1185,28 @@ model JobPosting {
 }
 
 model Candidate {
-  id           String          @id @default(uuid())
-  tenantId     String
-  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  jobPostingId String
-  jobPosting   JobPosting      @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
-  firstName    String
-  lastName     String
-  email        String
-  phone        String?
-  resumeUrl    String?
-  /** Free-text skills captured at intake. Real resume parsing is a separate concern and is not modelled here. */
-  parsedSkills String?
-  source       String?
-  status       CandidateStatus @default(APPLIED)
-  rating       Int             @default(0)
-  notes        String?
+  id              String          @id @default(uuid())
+  tenantId        String
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobPostingId    String
+  jobPosting      JobPosting      @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
+  firstName       String
+  lastName        String
+  email           String
+  phone           String?
+  resumeUrl       String?
+  /**
+   * Free-text skills captured at intake. Real resume parsing is a separate concern and is not modelled here.
+   */
+  parsedSkills    String?
+  source          String?
+  status          CandidateStatus @default(APPLIED)
+  rating          Int             @default(0)
+  notes           String?
   rejectionReason String?
-  interviews   Interview[]
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  interviews      Interview[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   @@unique([jobPostingId, email])
   @@index([tenantId, status])
@@ -1110,23 +1214,23 @@ model Candidate {
 }
 
 model Interview {
-  id            String           @id @default(uuid())
-  tenantId      String
-  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  candidateId   String
-  candidate     Candidate        @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  interviewerId String?
-  interviewer   EmployeeProfile? @relation("InterviewPanel", fields: [interviewerId], references: [id])
-  scheduledAt   DateTime
-  durationMinutes Int            @default(60)
-  mode          InterviewMode    @default(VIDEO)
-  round         Int              @default(1)
-  location      String?
-  feedback      String?
-  rating        Int?
-  outcome       InterviewOutcome @default(PENDING)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id              String           @id @default(uuid())
+  tenantId        String
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  candidateId     String
+  candidate       Candidate        @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  interviewerId   String?
+  interviewer     EmployeeProfile? @relation("InterviewPanel", fields: [interviewerId], references: [id])
+  scheduledAt     DateTime
+  durationMinutes Int              @default(60)
+  mode            InterviewMode    @default(VIDEO)
+  round           Int              @default(1)
+  location        String?
+  feedback        String?
+  rating          Int?
+  outcome         InterviewOutcome @default(PENDING)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([tenantId, scheduledAt])
   @@index([candidateId])
@@ -1134,20 +1238,20 @@ model Interview {
 }
 
 model Asset {
-  id            String           @id @default(uuid())
-  tenantId      String
-  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  employeeId    String?
-  employee      EmployeeProfile? @relation(fields: [employeeId], references: [id])
-  name          String
-  serialNumber  String
-  type          AssetType
-  status        AssetStatus      @default(AVAILABLE)
-  notes         String?
-  assignedAt    DateTime?
-  purchaseDate  DateTime?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id           String           @id @default(uuid())
+  tenantId     String
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId   String?
+  employee     EmployeeProfile? @relation(fields: [employeeId], references: [id])
+  name         String
+  serialNumber String
+  type         AssetType
+  status       AssetStatus      @default(AVAILABLE)
+  notes        String?
+  assignedAt   DateTime?
+  purchaseDate DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   @@unique([tenantId, serialNumber])
   @@index([tenantId, status])
@@ -1155,18 +1259,18 @@ model Asset {
 }
 
 model Project {
-  id             String        @id @default(uuid())
-  tenantId       String
-  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name           String
-  description    String?
-  startDate      DateTime
-  endDate        DateTime?
-  status         ProjectStatus @default(PLANNING)
-  clientPortalId String?
-  clientPortal   ClientPortal? @relation(fields: [clientPortalId], references: [id])
-  tasks          Task[]
-  milestones     Milestone[]
+  id               String            @id @default(uuid())
+  tenantId         String
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name             String
+  description      String?
+  startDate        DateTime
+  endDate          DateTime?
+  status           ProjectStatus     @default(PLANNING)
+  clientPortalId   String?
+  clientPortal     ClientPortal?     @relation(fields: [clientPortalId], references: [id])
+  tasks            Task[]
+  milestones       Milestone[]
   financeDocuments FinanceDocument[]
 
   @@index([tenantId])
@@ -1235,7 +1339,9 @@ model TaskAttachment {
   taskId     String
   task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   fileName   String
-  /** Legacy pasted-link attachments only — null once uploaded through the real storage pipeline. */
+  /**
+   * Legacy pasted-link attachments only — null once uploaded through the real storage pipeline.
+   */
   fileUrl    String?
   storageKey String?
   fileSize   Int?
@@ -1272,19 +1378,19 @@ model DailyWorkReport {
 }
 
 model TimeLog {
-  id              String        @id @default(uuid())
+  id              String          @id @default(uuid())
   tenantId        String
-  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employeeId      String
   employee        EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   taskId          String?
-  task            Task?         @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  task            Task?           @relation(fields: [taskId], references: [id], onDelete: SetNull)
   description     String?
   startedAt       DateTime
   endedAt         DateTime?
-  durationMinutes Int           @default(0)
-  source          TimeLogSource @default(TIMER)
-  createdAt       DateTime      @default(now())
+  durationMinutes Int             @default(0)
+  source          TimeLogSource   @default(TIMER)
+  createdAt       DateTime        @default(now())
 
   @@index([tenantId, startedAt])
   @@index([employeeId, startedAt])
@@ -1292,28 +1398,28 @@ model TimeLog {
 }
 
 model ClientPortal {
-  id           String            @id @default(uuid())
-  tenantId     String
-  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  companyName  String
-  contactEmail String
-  phone        String?
-  website      String?
-  address      String?
-  industry     String?
-  logoUrl      String?
-  status       ClientStatus      @default(ACTIVE)
+  id               String            @id @default(uuid())
+  tenantId         String
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  companyName      String
+  contactEmail     String
+  phone            String?
+  website          String?
+  address          String?
+  industry         String?
+  logoUrl          String?
+  status           ClientStatus      @default(ACTIVE)
   accountManagerId String?
-  accountManager   EmployeeProfile? @relation("ClientAccountManager", fields: [accountManagerId], references: [id])
-  notes        String?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  projects     Project[]
-  financeDocs  FinanceDocument[]
-  users        User[]
-  contacts     ClientContact[]
-  activities   CrmActivity[]
-  convertedFrom Lead?
+  accountManager   EmployeeProfile?  @relation("ClientAccountManager", fields: [accountManagerId], references: [id])
+  notes            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  projects         Project[]
+  financeDocs      FinanceDocument[]
+  users            User[]
+  contacts         ClientContact[]
+  activities       CrmActivity[]
+  convertedFrom    Lead?
 
   // Scoped per tenant, not globally: two tenants may legitimately deal with the same company.
   @@unique([tenantId, contactEmail])
@@ -1338,26 +1444,28 @@ model ClientContact {
 }
 
 model Lead {
-  id             String       @id @default(uuid())
-  tenantId       String
-  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  companyName    String
-  contactName    String
-  email          String
-  phone          String?
-  source         String?
-  status         LeadStatus   @default(NEW)
-  estimatedValue Float        @default(0)
-  ownerId        String?
-  owner          EmployeeProfile? @relation("LeadOwner", fields: [ownerId], references: [id])
-  notes          String?
-  lostReason     String?
-  /** Set when a WON lead is converted; one-to-one so a lead can never spawn two client records. */
-  convertedClientId String?    @unique
-  convertedClient   ClientPortal? @relation(fields: [convertedClientId], references: [id])
-  activities     CrmActivity[]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id                String           @id @default(uuid())
+  tenantId          String
+  tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  companyName       String
+  contactName       String
+  email             String
+  phone             String?
+  source            String?
+  status            LeadStatus       @default(NEW)
+  estimatedValue    Float            @default(0)
+  ownerId           String?
+  owner             EmployeeProfile? @relation("LeadOwner", fields: [ownerId], references: [id])
+  notes             String?
+  lostReason        String?
+  /**
+   * Set when a WON lead is converted; one-to-one so a lead can never spawn two client records.
+   */
+  convertedClientId String?          @unique
+  convertedClient   ClientPortal?    @relation(fields: [convertedClientId], references: [id])
+  activities        CrmActivity[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   @@unique([tenantId, email])
   @@index([tenantId, status])
@@ -1365,20 +1473,20 @@ model Lead {
 }
 
 model CrmActivity {
-  id          String          @id @default(uuid())
+  id          String           @id @default(uuid())
   tenantId    String
-  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   type        CrmActivityType
   subject     String
   body        String?
   occurredAt  DateTime
   leadId      String?
-  lead        Lead?           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  lead        Lead?            @relation(fields: [leadId], references: [id], onDelete: Cascade)
   clientId    String?
-  client      ClientPortal?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client      ClientPortal?    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   createdById String?
   createdBy   EmployeeProfile? @relation("CrmActivityAuthor", fields: [createdById], references: [id])
-  createdAt   DateTime        @default(now())
+  createdAt   DateTime         @default(now())
 
   @@index([tenantId, occurredAt])
   @@index([leadId])
@@ -1386,37 +1494,41 @@ model CrmActivity {
 }
 
 model FinanceDocument {
-  id             String        @id @default(uuid())
-  tenantId       String
-  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  type           FinanceType
-  /** e.g. INV-2026-0001 — human-facing, sequential per type, unique within the tenant (not globally). */
-  number         String
-  issueDate      DateTime
-  dueDate        DateTime?
-  currency       String        @default("USD")
-  subtotal       Float
-  taxRate        Float         @default(0)
-  taxAmount      Float         @default(0)
-  /** GST split of taxAmount — only populated when both the tenant's gstStateCode and this document's placeOfSupplyStateCode are set. */
+  id                     String            @id @default(uuid())
+  tenantId               String
+  tenant                 Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  type                   FinanceType
+  /**
+   * e.g. INV-2026-0001 — human-facing, sequential per type, unique within the tenant (not globally).
+   */
+  number                 String
+  issueDate              DateTime
+  dueDate                DateTime?
+  currency               String            @default("USD")
+  subtotal               Float
+  taxRate                Float             @default(0)
+  taxAmount              Float             @default(0)
+  /**
+   * GST split of taxAmount — only populated when both the tenant's gstStateCode and this document's placeOfSupplyStateCode are set.
+   */
   placeOfSupplyStateCode String?
-  cgstAmount     Float         @default(0)
-  sgstAmount     Float         @default(0)
-  igstAmount     Float         @default(0)
-  totalAmount    Float
-  amountPaid     Float         @default(0)
-  notes          String?
-  status         FinanceStatus @default(DRAFT)
-  clientPortalId String?
-  clientPortal   ClientPortal? @relation(fields: [clientPortalId], references: [id])
-  projectId      String?
-  project        Project?      @relation(fields: [projectId], references: [id])
-  createdById    String?
-  createdBy      EmployeeProfile? @relation(fields: [createdById], references: [id])
-  lineItems      FinanceLineItem[]
-  payments       FinancePayment[]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  cgstAmount             Float             @default(0)
+  sgstAmount             Float             @default(0)
+  igstAmount             Float             @default(0)
+  totalAmount            Float
+  amountPaid             Float             @default(0)
+  notes                  String?
+  status                 FinanceStatus     @default(DRAFT)
+  clientPortalId         String?
+  clientPortal           ClientPortal?     @relation(fields: [clientPortalId], references: [id])
+  projectId              String?
+  project                Project?          @relation(fields: [projectId], references: [id])
+  createdById            String?
+  createdBy              EmployeeProfile?  @relation(fields: [createdById], references: [id])
+  lineItems              FinanceLineItem[]
+  payments               FinancePayment[]
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
 
   @@unique([tenantId, type, number])
   @@index([tenantId, type, status])
@@ -1424,15 +1536,15 @@ model FinanceDocument {
 }
 
 model FinanceLineItem {
-  id                 String          @id @default(uuid())
-  financeDocumentId  String
-  financeDocument    FinanceDocument @relation(fields: [financeDocumentId], references: [id], onDelete: Cascade)
-  description        String
-  hsnCode            String?
-  quantity           Float           @default(1)
-  unitPrice          Float
-  amount             Float
-  sortOrder          Int             @default(0)
+  id                String          @id @default(uuid())
+  financeDocumentId String
+  financeDocument   FinanceDocument @relation(fields: [financeDocumentId], references: [id], onDelete: Cascade)
+  description       String
+  hsnCode           String?
+  quantity          Float           @default(1)
+  unitPrice         Float
+  amount            Float
+  sortOrder         Int             @default(0)
 
   @@index([financeDocumentId])
 }
@@ -1443,16 +1555,16 @@ model FinanceLineItem {
  * records money that has already changed hands elsewhere (bank transfer, cheque, cash, etc.).
  */
 model FinancePayment {
-  id                 String          @id @default(uuid())
-  financeDocumentId  String
-  financeDocument    FinanceDocument @relation(fields: [financeDocumentId], references: [id], onDelete: Cascade)
-  amount             Float
-  paidAt             DateTime
-  method             String
-  reference          String?
-  recordedById       String?
-  recordedBy         EmployeeProfile? @relation(fields: [recordedById], references: [id])
-  createdAt          DateTime        @default(now())
+  id                String           @id @default(uuid())
+  financeDocumentId String
+  financeDocument   FinanceDocument  @relation(fields: [financeDocumentId], references: [id], onDelete: Cascade)
+  amount            Float
+  paidAt            DateTime
+  method            String
+  reference         String?
+  recordedById      String?
+  recordedBy        EmployeeProfile? @relation(fields: [recordedById], references: [id])
+  createdAt         DateTime         @default(now())
 
   @@index([financeDocumentId])
 }
@@ -1545,9 +1657,11 @@ model TicketComment {
   @@index([ticketId])
 }
 
-/** Future-ready hook for an actual antivirus scan step — no scanner is wired in yet, so every
+/**
+ * Future-ready hook for an actual antivirus scan step — no scanner is wired in yet, so every
  * real upload lands as SKIPPED. Modelled now so adding a scanner later is a worker + a status
- * flip, not a schema change. */
+ * flip, not a schema change.
+ */
 enum DocumentScanStatus {
   PENDING
   CLEAN
@@ -1556,37 +1670,43 @@ enum DocumentScanStatus {
 }
 
 model SecureDocument {
-  id                String           @id @default(uuid())
+  id                String             @id @default(uuid())
   tenantId          String
-  tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name              String
   category          String?
-  folderPath        String           @default("/")
-  /** Legacy pasted-link documents only — null for anything uploaded through the real storage
-   * pipeline, which uses `storageKey` instead. Never write both on the same row. */
+  folderPath        String             @default("/")
+  /**
+   * Legacy pasted-link documents only — null for anything uploaded through the real storage
+   * pipeline, which uses `storageKey` instead. Never write both on the same row.
+   */
   fileUrl           String?
-  /** Object key in the configured StorageService bucket. Set only for real uploads; the
+  /**
+   * Object key in the configured StorageService bucket. Set only for real uploads; the
    * download endpoint mints a fresh short-lived signed URL from this on every request rather
-   * than persisting one, so the bucket is never exposed directly. */
+   * than persisting one, so the bucket is never exposed directly.
+   */
   storageKey        String?
   fileSize          Int?
   mimeType          String?
   scanStatus        DocumentScanStatus @default(SKIPPED)
-  /** Generic linkage to the record this document belongs to (e.g. "EMPLOYEE"/employeeProfile.id,
+  /**
+   * Generic linkage to the record this document belongs to (e.g. "EMPLOYEE"/employeeProfile.id,
    * "LEAVE_REQUEST"/leaveRequest.id, "VENDOR"/vendor.id) — kept as a loose type+id pair rather
    * than a dozen nullable foreign keys, since new attachment points are expected to keep being
-   * added across modules. Null for general, unlinked company documents. */
+   * added across modules. Null for general, unlinked company documents.
+   */
   relatedEntityType String?
   relatedEntityId   String?
-  version           Int              @default(1)
+  version           Int                @default(1)
   expiresAt         DateTime?
-  isDigitallySigned Boolean          @default(false)
-  archived          Boolean          @default(false)
+  isDigitallySigned Boolean            @default(false)
+  archived          Boolean            @default(false)
   archivedAt        DateTime?
   uploadedById      String?
-  uploadedBy        EmployeeProfile? @relation(fields: [uploadedById], references: [id])
+  uploadedBy        EmployeeProfile?   @relation(fields: [uploadedById], references: [id])
   versions          DocumentVersion[]
-  createdAt         DateTime         @default(now())
+  createdAt         DateTime           @default(now())
 
   @@index([tenantId, folderPath])
   @@index([tenantId, archived])
@@ -1594,7 +1714,9 @@ model SecureDocument {
   @@index([tenantId, relatedEntityType, relatedEntityId])
 }
 
-/** Immutable snapshot of one prior file behind a SecureDocument — created on every upload and every replace, so "current" is just the highest `version` row and nothing is ever overwritten in place. */
+/**
+ * Immutable snapshot of one prior file behind a SecureDocument — created on every upload and every replace, so "current" is just the highest `version` row and nothing is ever overwritten in place.
+ */
 model DocumentVersion {
   id           String           @id @default(uuid())
   tenantId     String
@@ -1621,9 +1743,18 @@ enum NotificationType {
   TICKET_ASSIGNED
   DOCUMENT_EXPIRING
   GENERIC
+  LEAVE_REQUESTED
+  PAYSLIP_AVAILABLE
 }
 
-/** In-app notification for a single user login (not per-employee — mirrors AuditLog.actorUserId) — the bell icon in the app shell. */
+enum EmailStatus {
+  SENT
+  FAILED
+}
+
+/**
+ * In-app notification for a single user login (not per-employee — mirrors AuditLog.actorUserId) — the bell icon in the app shell.
+ */
 model Notification {
   id        String           @id @default(uuid())
   tenantId  String
@@ -1633,12 +1764,41 @@ model Notification {
   type      NotificationType
   title     String
   body      String
-  /** Frontend route to navigate to when the notification is clicked, e.g. "/tasks/123" — not a full URL. */
+  /**
+   * Frontend route to navigate to when the notification is clicked, e.g. "/tasks/123" — not a full URL.
+   */
   link      String?
   readAt    DateTime?
   createdAt DateTime         @default(now())
 
   @@index([userId, readAt, createdAt])
+  @@index([tenantId, createdAt])
+}
+
+/**
+ * One row per real send attempt through SmtpEmailService — never written by the dev-console
+ * fallback, since that isn't a real delivery mechanism. tenantId is nullable because some
+ * recipients (e.g. a recruitment candidate) have no tenant-scoped User account to attribute it
+ * to. retryFailedEmails (see jobs/scheduler.ts) re-attempts FAILED rows up to a small cap.
+ */
+model EmailLog {
+  id         String      @id @default(uuid())
+  tenantId   String?
+  tenant     Tenant?     @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  to         String
+  subject    String
+  template   String
+  /** The actual rendered bodies — stored so retryFailedEmails can resend the real content, not
+   * just re-attempt with nothing to send. */
+  html       String?
+  text       String
+  status     EmailStatus
+  error      String?
+  retryCount Int         @default(0)
+  createdAt  DateTime    @default(now())
+  sentAt     DateTime?
+
+  @@index([status, retryCount])
   @@index([tenantId, createdAt])
 }
 
@@ -1649,37 +1809,39 @@ model Notification {
  * numeric x/y fields, not a WYSIWYG canvas; flagged as a deferred enhancement, not an oversight.
  */
 model CanvaTemplate {
-  id            String       @id @default(uuid())
+  id            String              @id @default(uuid())
   tenantId      String
-  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name          String
   type          TemplateType
   backgroundUrl String?
   layoutFields  Json?
   bodyTemplate  String?
   createdById   String?
-  createdBy     EmployeeProfile? @relation(fields: [createdById], references: [id])
+  createdBy     EmployeeProfile?    @relation(fields: [createdById], references: [id])
   documents     GeneratedDocument[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
 
   @@index([tenantId, type])
 }
 
-/** One generated artifact from a template — a snapshot of the filled variables and the rendered output, kept as a record of what was actually issued. */
+/**
+ * One generated artifact from a template — a snapshot of the filled variables and the rendered output, kept as a record of what was actually issued.
+ */
 model GeneratedDocument {
-  id              String          @id @default(uuid())
+  id              String           @id @default(uuid())
   tenantId        String
-  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   templateId      String
-  template        CanvaTemplate   @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  template        CanvaTemplate    @relation(fields: [templateId], references: [id], onDelete: Cascade)
   employeeId      String
-  employee        EmployeeProfile @relation("GeneratedDocumentSubject", fields: [employeeId], references: [id], onDelete: Cascade)
+  employee        EmployeeProfile  @relation("GeneratedDocumentSubject", fields: [employeeId], references: [id], onDelete: Cascade)
   variablesJson   Json
   renderedContent String
   generatedById   String?
   generatedBy     EmployeeProfile? @relation("GeneratedDocumentAuthor", fields: [generatedById], references: [id])
-  createdAt       DateTime        @default(now())
+  createdAt       DateTime         @default(now())
 
   @@index([tenantId, employeeId])
   @@index([templateId])
