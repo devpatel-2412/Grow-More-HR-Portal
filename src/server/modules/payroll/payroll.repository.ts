@@ -108,6 +108,14 @@ export class PayrollItemRepository {
     return prisma.payrollItem.findUnique({ where: { id } });
   }
 
+  /** userId per item, for notifying each employee once their payslip is marked PAID. */
+  findEmployeeUserIdsForRun(payrollRunId: string) {
+    return prisma.payrollItem.findMany({
+      where: { payrollRunId },
+      select: { employee: { select: { userId: true } } },
+    });
+  }
+
   update(id: string, data: Prisma.PayrollItemUpdateInput) {
     return prisma.payrollItem.update({ where: { id }, data });
   }

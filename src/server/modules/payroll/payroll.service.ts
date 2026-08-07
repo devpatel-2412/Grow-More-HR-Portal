@@ -4,6 +4,8 @@ import { TenantRepository } from '../tenants/tenant.repository.js';
 import { calculatePayroll, round2, type PayrollPolicy } from './payroll.calculator.js';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
+import { notificationService } from '../notifications/notification.service.js';
+import { logger } from '../../shared/logger.js';
 import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
 
 const SALARY_STRUCTURE_SORTABLE_FIELDS = ['effectiveFrom', 'basicSalary', 'createdAt'] as const;
@@ -238,6 +240,28 @@ export class PayrollService {
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent,
     });
+
+    if (target === 'PAID') {
+      // Best-effort: the run's status is already committed above — a notification-fetch hiccup
+      // must not turn an already-successful payroll transition into a failed request.
+      try {
+        const items = await this.itemRepository.findEmployeeUserIdsForRun(id);
+        await Promise.all(
+          items.map((item) =>
+            notificationService.notify({
+              tenantId,
+              userId: item.employee.userId,
+              type: 'PAYSLIP_AVAILABLE',
+              title: 'Your payslip is available',
+              body: `Your payslip for ${run.month}/${run.year} has been processed and is ready to view.`,
+              link: '/payslips',
+            }),
+          ),
+        );
+      } catch (err) {
+        logger.error({ err, payrollRunId: id }, 'Failed to notify employees of payslip availability');
+      }
+    }
 
     return updated;
   }

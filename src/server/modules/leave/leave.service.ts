@@ -3,6 +3,7 @@ import { EmployeeRepository } from '../employees/employee.repository.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
 import { notificationService } from '../notifications/notification.service.js';
+import { logger } from '../../shared/logger.js';
 import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
 import { prisma } from '../../db/prisma.js';
 import type { z } from 'zod';
@@ -72,6 +73,25 @@ export class LeaveService {
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent,
     });
+
+    if (profile.managerId) {
+      // Best-effort: the leave request is already committed above.
+      try {
+        const manager = await this.employeeRepository.findById(profile.managerId);
+        if (manager) {
+          await notificationService.notify({
+            tenantId,
+            userId: manager.userId,
+            type: 'LEAVE_REQUESTED',
+            title: 'New leave request awaiting your review',
+            body: `${profile.firstName} ${profile.lastName} requested ${totalDays} day(s) of ${input.leaveType.toLowerCase()} leave.`,
+            link: '/leave/approvals',
+          });
+        }
+      } catch (err) {
+        logger.error({ err, leaveRequestId: record.id }, 'Failed to notify manager of new leave request');
+      }
+    }
 
     return record;
   }
