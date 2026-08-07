@@ -113,11 +113,14 @@ export const PERMISSIONS = {
 
   /** View the tenant-wide active-sessions dashboard and force-logout a user or the whole tenant */
   SESSION_MANAGE: 'session:manage',
+
+  /** Create/edit/delete dynamic roles, assign/remove permissions and department/branch scoping. */
+  ROLE_MANAGE: 'role:manage',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
-const ALL_PERMISSIONS = Object.values(PERMISSIONS) as Permission[];
+export const ALL_PERMISSIONS = Object.values(PERMISSIONS) as Permission[];
 
 /**
  * Default role → permission matrix. SUPER_ADMIN gets every permission unconditionally.
@@ -189,6 +192,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     PERMISSIONS.AUDIT_READ,
     PERMISSIONS.DASHBOARD_READ_TENANT,
     PERMISSIONS.SESSION_MANAGE,
+    PERMISSIONS.ROLE_MANAGE,
   ],
   HR_MANAGER: [
     PERMISSIONS.USER_INVITE,

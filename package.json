@@ -20,7 +20,8 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:db:push": "prisma db push"
+    "prisma:db:push": "prisma db push",
+    "rbac:seed": "tsx prisma/seed-rbac.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",
