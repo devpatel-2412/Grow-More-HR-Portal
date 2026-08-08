@@ -78,6 +78,23 @@ export function inviteEmailTemplate(input: { tenantName: string; role: string; i
   };
 }
 
+export function companyAdminInviteTemplate(input: { tenantName: string; inviteLink: string; expiresInDays: number }): RenderedEmail {
+  const subject = `You've been made administrator of ${input.tenantName}`;
+  return {
+    subject,
+    html: renderLayout({
+      previewText: subject,
+      heading: `Welcome, ${input.tenantName} administrator`,
+      bodyHtml: `<p>A workspace called <strong>${input.tenantName}</strong> has been created for your organization, and you've been made its administrator.</p>
+        <p>Click below to set your password and activate your account. From there you can invite your team, set up departments and branches, and configure your company. This link expires in ${input.expiresInDays} days.</p>`,
+      ctaText: 'Activate your account',
+      ctaLink: input.inviteLink,
+      tenantName: input.tenantName,
+    }),
+    text: `A workspace called ${input.tenantName} has been created for your organization, and you've been made its administrator.\n\nActivate your account and set your password:\n${input.inviteLink}\n\nThis link expires in ${input.expiresInDays} days.`,
+  };
+}
+
 export function passwordResetEmailTemplate(input: { resetLink: string; validForMinutes: number }): RenderedEmail {
   const subject = 'Reset your Grow More password';
   return {

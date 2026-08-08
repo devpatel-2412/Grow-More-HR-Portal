@@ -97,6 +97,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Vendors', path: '/vendors', icon: Truck, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
   { label: 'Inventory', path: '/inventory', icon: Package, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
 
+  { label: 'Companies', path: '/companies', icon: Building2, allow: ['SUPER_ADMIN'] },
   { label: 'Roles & Permissions', path: '/roles', icon: ShieldCheck, allow: ['SUPER_ADMIN', 'ADMIN'] },
   { label: 'Audit Log', path: '/audit-log', icon: ScrollText, allow: ['SUPER_ADMIN', 'ADMIN'] },
   { label: 'Sessions', path: '/sessions', icon: MonitorSmartphone, allow: ['SUPER_ADMIN', 'ADMIN'] },

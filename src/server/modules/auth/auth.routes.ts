@@ -4,7 +4,6 @@ import { validate } from '../../shared/middleware/validate.middleware.js';
 import { asyncHandler } from '../../shared/utils/async-handler.js';
 import { loginLimiter, refreshLimiter, passwordResetLimiter, twoFaVerifyLimiter } from '../../shared/middleware/rate-limit.middleware.js';
 import {
-  signupSchema,
   loginSchema,
   twoFactorVerifySchema,
   passwordResetRequestSchema,
@@ -15,7 +14,6 @@ import {
   loginHistoryQuerySchema,
 } from './auth.validators.js';
 import {
-  signup,
   login,
   verifyTwoFactor,
   refresh,
@@ -33,7 +31,9 @@ import {
 
 export const authRouter = Router();
 
-authRouter.post('/signup', loginLimiter, validate({ body: signupSchema }), asyncHandler(signup));
+// Public registration is intentionally not exposed anywhere: every user is provisioned
+// internally (Super Admin creates a company + invites its first Admin; that Admin/HR invites
+// everyone else) — see TenantService.create() and UserService.invite().
 authRouter.post('/login', loginLimiter, validate({ body: loginSchema }), asyncHandler(login));
 authRouter.post('/2fa/verify', twoFaVerifyLimiter, validate({ body: twoFactorVerifySchema }), asyncHandler(verifyTwoFactor));
 authRouter.post('/refresh', refreshLimiter, asyncHandler(refresh));

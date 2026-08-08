@@ -9,19 +9,6 @@ export const passwordSchema = z
   .regex(/[A-Z]/, 'Password must contain an uppercase letter')
   .regex(/[0-9]/, 'Password must contain a number');
 
-export const signupSchema = z.object({
-  tenantName: z.string().min(2).max(120),
-  tenantDomain: z
-    .string()
-    .min(3)
-    .max(63)
-    .regex(/^[a-z0-9-]+$/, 'Domain may only contain lowercase letters, numbers, and hyphens'),
-  email: z.string().email(),
-  password: passwordSchema,
-  firstName: z.string().min(1).max(80),
-  lastName: z.string().min(1).max(80),
-});
-
 export const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),

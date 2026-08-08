@@ -2,11 +2,14 @@ export type UserRole =
   | 'SUPER_ADMIN'
   | 'ADMIN'
   | 'HR_MANAGER'
+  | 'HR_EXECUTIVE'
   | 'PROJECT_MANAGER'
+  | 'TEAM_LEADER'
   | 'EMPLOYEE'
   | 'CLIENT'
   | 'RECRUITER'
   | 'FINANCE'
+  | 'ACCOUNTS'
   | 'CANDIDATE';
 export type UserStatus = 'PENDING_INVITE' | 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED';
 

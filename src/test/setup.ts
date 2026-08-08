@@ -27,6 +27,14 @@ window.HTMLElement.prototype.setPointerCapture ??= () => {};
 window.HTMLElement.prototype.releasePointerCapture ??= () => {};
 window.HTMLElement.prototype.scrollIntoView ??= () => {};
 
+// jsdom doesn't implement ResizeObserver — Radix UI's Checkbox (useSize) reads it on mount,
+// regardless of which component under test renders one.
+(window as unknown as { ResizeObserver: unknown }).ResizeObserver ??= class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }));
 afterEach(() => {
   cleanup();

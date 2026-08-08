@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   inviteEmailTemplate,
+  companyAdminInviteTemplate,
   passwordResetEmailTemplate,
   welcomeEmailTemplate,
   interviewScheduledEmailTemplate,
@@ -21,6 +22,21 @@ describe('inviteEmailTemplate', () => {
   it('is well-formed and includes the invite link in both html and text', () => {
     const rendered = inviteEmailTemplate({ tenantName: 'Acme Inc', role: 'EMPLOYEE', inviteLink: 'https://app.example.com/invite/accept?token=abc', expiresInDays: 7 });
     expectWellFormed(rendered);
+    expect(rendered.html).toContain('https://app.example.com/invite/accept?token=abc');
+    expect(rendered.text).toContain('https://app.example.com/invite/accept?token=abc');
+    expect(rendered.text).toContain('7 days');
+  });
+});
+
+describe('companyAdminInviteTemplate', () => {
+  it('is well-formed and includes the invite link, company name, and expiry window', () => {
+    const rendered = companyAdminInviteTemplate({
+      tenantName: 'Acme Inc',
+      inviteLink: 'https://app.example.com/invite/accept?token=abc',
+      expiresInDays: 7,
+    });
+    expectWellFormed(rendered);
+    expect(rendered.subject).toContain('Acme Inc');
     expect(rendered.html).toContain('https://app.example.com/invite/accept?token=abc');
     expect(rendered.text).toContain('https://app.example.com/invite/accept?token=abc');
     expect(rendered.text).toContain('7 days');

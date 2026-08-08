@@ -25,7 +25,7 @@ export function EmployeeDetailPage() {
   const [tab, setTab] = useState<Tab>('overview');
   const { data: employee, isLoading, isError, refetch } = useEmployee(id);
   const canManage = !!user && ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'].includes(user.role);
-  const isSelf = user?.sub === employee?.userId;
+  const isSelf = user?.id === employee?.userId;
   const [isEditing, setIsEditing] = useState(false);
 
   if (isLoading) {

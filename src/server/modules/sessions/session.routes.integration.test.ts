@@ -7,6 +7,7 @@ import request from 'supertest';
 import { createApp } from '../../app.js';
 import { prisma } from '../../db/prisma.js';
 import { hashPassword } from '../../shared/utils/hash.util.js';
+import { signupTestTenant } from '../../shared/testing/signup-test-tenant.js';
 
 const app = createApp();
 
@@ -20,26 +21,8 @@ async function resetDatabase() {
   await prisma.tenant.deleteMany();
 }
 
-function uniqueDomain(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-}
-
 async function signupTenant(overrides: Partial<Record<string, string>> = {}, userAgent?: string) {
-  const domain = uniqueDomain('acme');
-  let req = request(app)
-    .post('/api/v1/auth/signup')
-    .send({
-      tenantName: 'Acme Inc',
-      tenantDomain: domain,
-      email: overrides.email ?? `admin-${domain}@acme.com`,
-      password: 'CorrectPassword123',
-      firstName: 'Ada',
-      lastName: 'Admin',
-      ...overrides,
-    });
-  if (userAgent) req = req.set('User-Agent', userAgent);
-  const res = await req;
-  return { res, domain };
+  return signupTestTenant(app, overrides, userAgent);
 }
 
 /** Mirrors the pattern in workplace.routes.integration.test.ts — a genuine EMPLOYEE-role login,

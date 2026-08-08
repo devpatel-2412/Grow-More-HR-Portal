@@ -28,6 +28,10 @@ export const handlers = {
   refreshFails: http.post('/api/v1/auth/refresh', () =>
     HttpResponse.json({ error: { code: 'UNAUTHORIZED', message: 'No session cookie present' } }, { status: 401 }),
   ),
+  invitableRolesSuccess: http.get('/api/v1/users/invitable-roles', () =>
+    HttpResponse.json({ data: { roles: ['ADMIN', 'HR_MANAGER', 'HR_EXECUTIVE', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE', 'RECRUITER', 'FINANCE', 'ACCOUNTS'] } }),
+  ),
+  invitableRolesEmpty: http.get('/api/v1/users/invitable-roles', () => HttpResponse.json({ data: { roles: [] } })),
   inviteUserSuccess: http.post('/api/v1/users/invite', () =>
     HttpResponse.json({ data: { id: 'u2', email: 'new@acme.com', role: 'EMPLOYEE', status: 'PENDING_INVITE' } }, { status: 201 }),
   ),
@@ -270,4 +274,4 @@ export const handlers = {
   ),
 };
 
-export const server = setupServer(handlers.meUnauthenticated, handlers.refreshFails);
+export const server = setupServer(handlers.meUnauthenticated, handlers.refreshFails, handlers.invitableRolesSuccess);

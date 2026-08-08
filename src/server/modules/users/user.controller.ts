@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { userService } from './user.service.js';
-import { sendCreated, sendOk, sendPaginated } from '../../shared/utils/response.util.js';
+import { sendCreated, sendOk, sendPaginated, sendNoContent } from '../../shared/utils/response.util.js';
 import type { z } from 'zod';
 import type {
   inviteUserSchema,
@@ -9,6 +9,7 @@ import type {
   updateUserRoleSchema,
   updateUserStatusSchema,
 } from './user.validators.js';
+import type { PaginationQuery } from '../../shared/utils/pagination.util.js';
 
 function requestContext(req: Request) {
   return { actorUserId: req.user?.sub, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
@@ -16,8 +17,32 @@ function requestContext(req: Request) {
 
 export async function inviteUser(req: Request, res: Response): Promise<void> {
   const body = req.body as z.infer<typeof inviteUserSchema>;
-  const user = await userService.invite(req.user!.tenantId, body, requestContext(req));
+  const user = await userService.invite(req.user!.tenantId, body, req.user!.role, requestContext(req));
   sendCreated(res, { id: user.id, email: user.email, role: user.role, status: user.status });
+}
+
+export async function getInvitableRoles(req: Request, res: Response): Promise<void> {
+  sendOk(res, { roles: userService.invitableRoles(req.user!.role) });
+}
+
+export async function listInvites(req: Request, res: Response): Promise<void> {
+  const query = req.query as unknown as PaginationQuery;
+  const { rows, meta } = await userService.listInvites(req.user!.tenantId, query);
+  sendPaginated(
+    res,
+    rows.map((i) => ({ id: i.id, email: i.email, role: i.role, status: i.status, expiresAt: i.expiresAt, createdAt: i.createdAt })),
+    meta,
+  );
+}
+
+export async function resendInvite(req: Request, res: Response): Promise<void> {
+  const invite = await userService.resendInvite(req.user!.tenantId, req.params.id, requestContext(req));
+  sendOk(res, { id: invite.id, email: invite.email, status: invite.status });
+}
+
+export async function revokeInvite(req: Request, res: Response): Promise<void> {
+  await userService.revokeInvite(req.user!.tenantId, req.params.id, requestContext(req));
+  sendNoContent(res);
 }
 
 export async function acceptInvite(req: Request, res: Response): Promise<void> {

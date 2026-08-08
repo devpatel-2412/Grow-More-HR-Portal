@@ -23,6 +23,8 @@ export const acceptInviteSchema = z.object({
   password: passwordSchema,
   firstName: z.string().min(1).max(80),
   lastName: z.string().min(1).max(80),
+  // The "accept company policy" step — enforced server-side, not just a UI checkbox.
+  acceptedTerms: z.literal(true, 'You must accept the company policy to activate your account'),
 });
 
 export const listUsersQuerySchema = paginationQuerySchema.extend({
@@ -44,4 +46,8 @@ export const userIdParamSchema = z.object({
 
 export const inviteTokenParamSchema = z.object({
   token: z.string().min(1),
+});
+
+export const inviteIdParamSchema = z.object({
+  id: z.string().uuid(),
 });

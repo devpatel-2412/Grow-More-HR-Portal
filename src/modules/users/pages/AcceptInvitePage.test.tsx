@@ -34,6 +34,7 @@ describe('AcceptInvitePage', () => {
     await user.type(screen.getByLabelText(/first name/i), 'Ada');
     await user.type(screen.getByLabelText(/last name/i), 'Admin');
     await user.type(screen.getByLabelText(/^password$/i), 'CorrectPassword123');
+    await user.click(screen.getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: /activate account/i }));
 
     await waitFor(() => {
@@ -49,6 +50,7 @@ describe('AcceptInvitePage', () => {
     await user.type(screen.getByLabelText(/first name/i), 'Ada');
     await user.type(screen.getByLabelText(/last name/i), 'Admin');
     await user.type(screen.getByLabelText(/^password$/i), 'CorrectPassword123');
+    await user.click(screen.getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: /activate account/i }));
 
     expect(await screen.findByText(/invalid or expired invite/i)).toBeInTheDocument();

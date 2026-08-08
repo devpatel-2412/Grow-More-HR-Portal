@@ -11,7 +11,6 @@ import { RequireRole } from '../shared/components/layout/RequireRole';
 import { PageLoadingSkeleton } from '../shared/components/feedback/LoadingSkeleton';
 import { NotFoundPage } from '../shared/components/feedback/NotFoundPage';
 
-const SignupPage = lazy(() => import('../modules/auth/pages/SignupPage').then((m) => ({ default: m.SignupPage })));
 const TwoFactorPage = lazy(() => import('../modules/auth/pages/TwoFactorPage').then((m) => ({ default: m.TwoFactorPage })));
 const ForgotPasswordPage = lazy(() => import('../modules/auth/pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('../modules/auth/pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
@@ -24,6 +23,7 @@ const TenantSettingsPage = lazy(() => import('../modules/tenants/pages/TenantSet
 const SessionsPage = lazy(() => import('../modules/sessions/pages/SessionsPage').then((m) => ({ default: m.SessionsPage })));
 const AuditLogPage = lazy(() => import('../modules/audit/pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
 const RolesPage = lazy(() => import('../modules/rbac/pages/RolesPage').then((m) => ({ default: m.RolesPage })));
+const CompaniesPage = lazy(() => import('../modules/tenants/pages/CompaniesPage').then((m) => ({ default: m.CompaniesPage })));
 const AttendancePage = lazy(() => import('../modules/attendance/pages/AttendancePage').then((m) => ({ default: m.AttendancePage })));
 const RegularizationsPage = lazy(() => import('../modules/attendance/pages/RegularizationsPage').then((m) => ({ default: m.RegularizationsPage })));
 const LeavePage = lazy(() => import('../modules/leave/pages/LeavePage').then((m) => ({ default: m.LeavePage })));
@@ -72,7 +72,6 @@ function lazyRoute(element: React.ReactNode) {
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
-  { path: '/signup', element: lazyRoute(<SignupPage />) },
   { path: '/two-factor', element: lazyRoute(<TwoFactorPage />) },
   { path: '/forgot-password', element: lazyRoute(<ForgotPasswordPage />) },
   { path: '/reset-password', element: lazyRoute(<ResetPasswordPage />) },
@@ -136,6 +135,10 @@ export const router = createBrowserRouter([
               { path: '/sessions', element: lazyRoute(<SessionsPage />) },
               { path: '/roles', element: lazyRoute(<RolesPage />) },
             ],
+          },
+          {
+            element: <RequireRole allow={['SUPER_ADMIN']} />,
+            children: [{ path: '/companies', element: lazyRoute(<CompaniesPage />) }],
           },
           {
             element: <RequireRole allow={['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'RECRUITER']} />,

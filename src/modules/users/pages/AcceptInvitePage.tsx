@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useSearchParams, useNavigate, Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
 import { Label } from '../../../shared/components/ui/label';
+import { Checkbox } from '../../../shared/components/ui/checkbox';
 import { Card, CardHeader, CardTitle, CardDescription } from '../../../shared/components/ui/card';
 import { InlineFormError } from '../../../shared/components/feedback/ErrorState';
 import { AuthLayout } from '../../../shared/components/layout/AuthLayout';
@@ -20,10 +21,14 @@ export function AcceptInvitePage() {
   const acceptMutation = useAcceptInvite();
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
     setError,
-  } = useForm<AcceptInviteFormValues>({ resolver: zodResolver(acceptInviteSchema), defaultValues: { token: token ?? '' } });
+  } = useForm<AcceptInviteFormValues>({
+    resolver: zodResolver(acceptInviteSchema),
+    defaultValues: { token: token ?? '', acceptedTerms: false as unknown as true },
+  });
 
   if (!token) {
     return <Navigate to="/login" replace />;
@@ -68,6 +73,19 @@ export function AcceptInvitePage() {
             <Label htmlFor="password">Password</Label>
             <Input id="password" type="password" autoComplete="new-password" {...register('password')} />
             {errors.password && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.password.message}</p>}
+          </div>
+          <div>
+            <label className="flex items-start gap-2 text-sm text-[var(--foreground)]">
+              <Controller
+                control={control}
+                name="acceptedTerms"
+                render={({ field }) => (
+                  <Checkbox checked={field.value} onCheckedChange={(checked) => field.onChange(checked === true)} className="mt-0.5" />
+                )}
+              />
+              I accept the company policy and terms of use
+            </label>
+            {errors.acceptedTerms && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.acceptedTerms.message}</p>}
           </div>
           <Button type="submit" className="w-full" loading={acceptMutation.isPending}>
             Activate account

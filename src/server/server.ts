@@ -3,12 +3,13 @@ import { env } from './shared/config/env.js';
 import { logger } from './shared/logger.js';
 import { prisma } from './db/prisma.js';
 import { startScheduledJobs } from './jobs/scheduler.js';
+import { bootstrapSuperAdmin } from './jobs/bootstrap-super-admin.js';
 
 const app = createApp();
 
 const server = app.listen(env.PORT, () => {
   logger.info(`Grow More API listening on port ${env.PORT}`);
-  startScheduledJobs();
+  void bootstrapSuperAdmin().finally(() => startScheduledJobs());
 });
 
 async function shutdown(signal: string) {

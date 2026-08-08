@@ -1,9 +1,8 @@
 import { api } from '../../../shared/lib/api-client';
-import type { LoginFormValues, SignupFormValues, TwoFactorVerifyFormValues } from '../schemas/auth.schemas';
+import type { LoginFormValues, TwoFactorVerifyFormValues } from '../schemas/auth.schemas';
 import type { LoginResponse, MeResponse, AuthUser, LoginHistoryEntry } from '../types/auth.types';
 
 export const authApi = {
-  signup: (values: SignupFormValues) => api.post<{ accessToken: string; user: AuthUser }>('/auth/signup', values),
   login: (values: LoginFormValues) => api.post<LoginResponse>('/auth/login', values),
   verifyTwoFactor: (values: TwoFactorVerifyFormValues) =>
     api.post<{ accessToken: string; user: AuthUser }>('/auth/2fa/verify', values),

@@ -15,3 +15,14 @@ export interface InvitedUser {
   role: UserRole;
   status: UserStatus;
 }
+
+export type InviteStatus = 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED';
+
+export interface Invite {
+  id: string;
+  email: string;
+  role: UserRole;
+  status: InviteStatus;
+  expiresAt: string;
+  createdAt: string;
+}
