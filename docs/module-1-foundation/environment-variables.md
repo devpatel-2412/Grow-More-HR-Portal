@@ -19,6 +19,11 @@ refuses to start with a missing or malformed value rather than failing unpredict
 | `REFRESH_COOKIE_NAME` | No (default `refresh_token`) | `refresh_token` | Cookie name for the refresh token. |
 | `REFRESH_COOKIE_DOMAIN` | No (blank) | — | Leave blank for same-origin deployment (the default topology — see the Module 1 README). Only set if the frontend and API are deliberately on different subdomains. |
 | `REDIS_URL` | No (blank) | `redis://...` | Leave blank to use the in-memory rate-limit store (single-instance only). **Must** be set before running more than one API process — see `rate-limit.middleware.ts`. |
+| `GOOGLE_CLIENT_ID` | Production only | `123-abc.apps.googleusercontent.com` | OAuth 2.0 client ID for the Gmail API. All five `GOOGLE_*` vars must be set together — a partial set fails startup validation on purpose. Blank in dev falls back to the console `EmailService`. See [`gmail-api-setup.md`](./gmail-api-setup.md). |
+| `GOOGLE_CLIENT_SECRET` | Production only | — | OAuth 2.0 client secret. Backend-only, never sent to the frontend. |
+| `GOOGLE_REFRESH_TOKEN` | Production only | — | Long-lived token obtained once via the OAuth consent flow; the app exchanges it for short-lived access tokens automatically on every send. |
+| `GOOGLE_REDIRECT_URI` | Production only | `https://developers.google.com/oauthplayground` | Must exactly match a redirect URI registered on the OAuth client in Google Cloud Console. |
+| `GOOGLE_SENDER_EMAIL` | Production only | `no-reply@yourcompany.com` | The Gmail/Workspace mailbox that owns the refresh token — every email is sent `From:` this address. |
 
 ## Generating secrets
 

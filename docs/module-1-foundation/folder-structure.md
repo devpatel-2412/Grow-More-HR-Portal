@@ -24,7 +24,7 @@ src/server/
     utils/         # hash, jwt, pagination, response, encryption, duration, async-handler
     permissions/   # the cross-module permission catalogue
     config/        # env.ts — the single source of truth for process.env
-    email/         # EmailService interface + dev implementation
+    email/         # EmailService interface + Gmail API (OAuth 2.0) and dev-console implementations
     logger.ts
   db/
     prisma.ts      # the one PrismaClient singleton
