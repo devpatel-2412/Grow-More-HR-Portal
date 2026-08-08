@@ -27,6 +27,11 @@ enum UserRole {
   RECRUITER
   FINANCE
   CANDIDATE
+  // Added additively for the enterprise invitation hierarchy — see INVITABLE_ROLES in
+  // permissions.ts for who may invite each of these.
+  HR_EXECUTIVE
+  TEAM_LEADER
+  ACCOUNTS
 }
 
 enum UserStatus {
@@ -192,6 +197,10 @@ enum AuditAction {
   PERMISSION_REMOVED
   USER_ROLE_ASSIGNED
   USER_ROLE_REMOVED
+  USER_INVITE_RESENT
+  USER_INVITE_REVOKED
+  COMPANY_ADMIN_INVITED
+  SUPER_ADMIN_BOOTSTRAPPED
 }
 
 enum EmployeeStatus {
@@ -1788,8 +1797,10 @@ model EmailLog {
   to         String
   subject    String
   template   String
-  /** The actual rendered bodies — stored so retryFailedEmails can resend the real content, not
-   * just re-attempt with nothing to send. */
+  /**
+   * The actual rendered bodies — stored so retryFailedEmails can resend the real content, not
+   * just re-attempt with nothing to send.
+   */
   html       String?
   text       String
   status     EmailStatus

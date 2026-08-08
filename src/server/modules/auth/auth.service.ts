@@ -15,7 +15,6 @@ import type { RequestMeta } from './auth.types.js';
 import type { UserRole } from '@prisma/client';
 import type { z } from 'zod';
 import type {
-  signupSchema,
   loginSchema,
   twoFactorVerifySchema,
   passwordResetRequestSchema,
@@ -40,64 +39,6 @@ export class AuthService {
     private readonly refreshTokenRepository = new RefreshTokenRepository(),
   ) {}
 
-  async signup(input: z.infer<typeof signupSchema>, meta: RequestMeta) {
-    const [existingTenant, existingUser] = await Promise.all([
-      this.tenantRepository.findByDomain(input.tenantDomain),
-      this.userRepository.findByEmail(input.email),
-    ]);
-    if (existingTenant) throw new ConflictError('A tenant with this domain already exists');
-    if (existingUser) throw new ConflictError('An account with this email already exists');
-
-    const passwordHash = hashPassword(input.password);
-
-    const { tenant, user } = await prisma.$transaction(async (tx) => {
-      const tenant = await tx.tenant.create({ data: { name: input.tenantName, domain: input.tenantDomain } });
-      const user = await tx.user.create({
-        data: {
-          email: input.email.toLowerCase(),
-          passwordHash,
-          role: 'ADMIN',
-          status: 'ACTIVE',
-          tenantId: tenant.id,
-        },
-      });
-      await tx.employeeProfile.create({
-        data: {
-          userId: user.id,
-          tenantId: tenant.id,
-          employeeId: `EMP-${new Date().getFullYear()}-${user.id.slice(0, 6).toUpperCase()}`,
-          firstName: input.firstName,
-          lastName: input.lastName,
-          department: 'Executive',
-          designation: 'Administrator',
-          dateOfJoining: new Date(),
-          status: 'ACTIVE',
-        },
-      });
-      return { tenant, user };
-    });
-
-    await auditLogService.record({
-      tenantId: tenant.id,
-      actorUserId: user.id,
-      action: 'TENANT_CREATED',
-      targetType: 'Tenant',
-      targetId: tenant.id,
-      ipAddress: meta.ipAddress,
-      userAgent: meta.userAgent,
-    });
-    await auditLogService.record({
-      tenantId: tenant.id,
-      actorUserId: user.id,
-      action: 'USER_SIGNUP',
-      targetType: 'User',
-      targetId: user.id,
-      ipAddress: meta.ipAddress,
-      userAgent: meta.userAgent,
-    });
-
-    return this.issueSession(user, meta);
-  }
 
   async login(input: z.infer<typeof loginSchema>, meta: RequestMeta) {
     const user = await this.userRepository.findByEmail(input.email);

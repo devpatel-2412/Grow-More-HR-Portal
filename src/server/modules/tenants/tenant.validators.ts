@@ -11,6 +11,12 @@ export const createTenantSchema = z.object({
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   secondaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   font: z.string().min(1).max(60).optional(),
+  // The company's first user — created as a PENDING_INVITE ADMIN and sent an activation email
+  // immediately, same as any other invite (see TenantService.create()). There is no other way
+  // to get a new company its first user, since public registration is permanently closed.
+  adminEmail: z.string().email(),
+  adminFirstName: z.string().min(1).max(80),
+  adminLastName: z.string().min(1).max(80),
 });
 
 export const updateTenantSchema = z.object({

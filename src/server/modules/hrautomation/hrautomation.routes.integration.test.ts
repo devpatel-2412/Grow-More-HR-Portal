@@ -8,6 +8,7 @@ import { createApp } from '../../app.js';
 import { prisma } from '../../db/prisma.js';
 import { hashPassword } from '../../shared/utils/hash.util.js';
 import { emailService } from '../../shared/email/email.service.js';
+import { signupTestTenant } from '../../shared/testing/signup-test-tenant.js';
 
 const app = createApp();
 
@@ -55,21 +56,8 @@ async function resetDatabase() {
   await prisma.tenant.deleteMany();
 }
 
-function uniqueDomain(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-}
-
 async function signupTenant() {
-  const domain = uniqueDomain('acme');
-  const res = await request(app).post('/api/v1/auth/signup').send({
-    tenantName: 'Acme Inc',
-    tenantDomain: domain,
-    email: `admin-${domain}@acme.com`,
-    password: 'CorrectPassword123',
-    firstName: 'Ada',
-    lastName: 'Admin',
-  });
-  return { res, domain };
+  return signupTestTenant(app);
 }
 
 async function createEmployeeAccount(tenantId: string, domain: string, department = 'Engineering') {

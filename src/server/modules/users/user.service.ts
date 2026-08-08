@@ -4,13 +4,14 @@ import { EmployeeRepository } from '../employees/employee.repository.js';
 import { ClientRepository, ContactRepository } from '../crm/crm.repository.js';
 import { TenantRepository } from '../tenants/tenant.repository.js';
 import { hashPassword, sha256, generateOpaqueToken } from '../../shared/utils/hash.util.js';
-import { ConflictError, NotFoundError, UnauthorizedError } from '../../shared/errors/app-error.js';
+import { ConflictError, ForbiddenError, NotFoundError, UnauthorizedError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
 import { emailService } from '../../shared/email/email.service.js';
 import { inviteEmailTemplate, welcomeEmailTemplate } from '../../shared/email/email.templates.js';
 import { env } from '../../shared/config/env.js';
 import { logger } from '../../shared/logger.js';
-import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
+import { buildPaginationMeta, toPrismaOrderBy, toPrismaSkipTake, type PaginationQuery } from '../../shared/utils/pagination.util.js';
+import { INVITABLE_ROLES } from '../../shared/permissions/permissions.js';
 import type { RequestContext } from '../tenants/tenant.service.js';
 import type { UserRole, UserStatus } from '@prisma/client';
 import type { z } from 'zod';
@@ -29,7 +30,11 @@ export class UserService {
     private readonly tenantRepository: TenantRepository = new TenantRepository(),
   ) {}
 
-  async invite(tenantId: string, input: z.infer<typeof inviteUserSchema>, ctx: RequestContext = {}) {
+  async invite(tenantId: string, input: z.infer<typeof inviteUserSchema>, actorRole: UserRole, ctx: RequestContext = {}) {
+    if (!(INVITABLE_ROLES[actorRole] ?? []).includes(input.role)) {
+      throw new ForbiddenError(`Your role cannot invite a user as ${input.role.replace(/_/g, ' ')}`);
+    }
+
     const existingUser = await this.repository.findByEmail(input.email);
     if (existingUser) throw new ConflictError('An account with this email already exists');
 
@@ -155,6 +160,7 @@ export class UserService {
       action: 'USER_INVITE_ACCEPTED',
       targetType: 'User',
       targetId: user.id,
+      metadata: { acceptedTerms: input.acceptedTerms },
     });
 
     // Best-effort: account activation has already succeeded and committed above — a hiccup
@@ -227,6 +233,84 @@ export class UserService {
     });
 
     return user;
+  }
+
+  /** The caller's own allowed invite-target roles — drives the invite dialog's role dropdown so a role without USER_INVITE granted simply sees an empty list rather than a 403 on submit. */
+  invitableRoles(actorRole: UserRole): UserRole[] {
+    return INVITABLE_ROLES[actorRole] ?? [];
+  }
+
+  async listInvites(tenantId: string, query: PaginationQuery) {
+    const { skip, take } = toPrismaSkipTake(query);
+    const { rows, total } = await this.inviteRepository.findManyByTenant(tenantId, skip, take);
+    return { rows, meta: buildPaginationMeta(query.page, query.limit, total) };
+  }
+
+  async resendInvite(tenantId: string, inviteId: string, ctx: RequestContext = {}) {
+    const invite = await this.inviteRepository.findById(inviteId);
+    if (!invite || invite.tenantId !== tenantId) throw new NotFoundError('Invite not found');
+    if (invite.status !== 'PENDING') throw new ConflictError('Only a pending invite can be resent');
+
+    const rawToken = generateOpaqueToken();
+    const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
+    await this.inviteRepository.updateToken(invite.id, sha256(rawToken), expiresAt);
+
+    await auditLogService.record({
+      tenantId,
+      actorUserId: ctx.actorUserId,
+      action: 'USER_INVITE_RESENT',
+      targetType: 'Invite',
+      targetId: invite.id,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+      metadata: { email: invite.email },
+    });
+
+    // Best-effort: the new token is already committed above — a hiccup sending the email must
+    // not fail the request. retryFailedEmails picks up a failed send separately.
+    try {
+      const inviteLink = `${env.APP_URL}/invite/accept?token=${rawToken}`;
+      const inviteTenant = await this.tenantRepository.findById(tenantId);
+      const { subject, html, text } = inviteEmailTemplate({
+        tenantName: inviteTenant?.name ?? 'Grow More',
+        role: invite.role,
+        inviteLink,
+        expiresInDays: INVITE_TTL_MS / (24 * 60 * 60 * 1000),
+      });
+      await emailService.send({ to: invite.email, subject, html, text, template: 'invite', tenantId });
+    } catch (err) {
+      logger.error({ err, tenantId, email: invite.email }, 'Failed to send invite resend email');
+    }
+
+    return invite;
+  }
+
+  async revokeInvite(tenantId: string, inviteId: string, ctx: RequestContext = {}) {
+    const invite = await this.inviteRepository.findById(inviteId);
+    if (!invite || invite.tenantId !== tenantId) throw new NotFoundError('Invite not found');
+    if (invite.status !== 'PENDING') throw new ConflictError('Only a pending invite can be revoked');
+
+    await this.inviteRepository.markRevoked(invite.id);
+
+    // The PENDING_INVITE placeholder account created alongside the invite (see invite() above)
+    // must go too — its still-unique email would otherwise block ever re-inviting this address.
+    const pendingUser = await this.repository.findByEmail(invite.email);
+    if (pendingUser && pendingUser.status === 'PENDING_INVITE' && pendingUser.tenantId === tenantId) {
+      await this.repository.delete(pendingUser.id);
+    }
+
+    await auditLogService.record({
+      tenantId,
+      actorUserId: ctx.actorUserId,
+      action: 'USER_INVITE_REVOKED',
+      targetType: 'Invite',
+      targetId: invite.id,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+      metadata: { email: invite.email },
+    });
+
+    return invite;
   }
 }
 

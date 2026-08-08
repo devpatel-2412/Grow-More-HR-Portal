@@ -73,7 +73,7 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
 
 async function rawRequest(path: string, options: RequestOptions = {}): Promise<{ status: number; payload: unknown }> {
   const { body, _isRetry, headers, ...rest } = options;
-  const isAuthEndpoint = path.startsWith('/auth/login') || path.startsWith('/auth/refresh') || path.startsWith('/auth/signup');
+  const isAuthEndpoint = path.startsWith('/auth/login') || path.startsWith('/auth/refresh');
   // A FormData body (file uploads) must NOT be JSON-stringified or given an explicit Content-Type
   // — the browser sets `multipart/form-data; boundary=...` itself, and overriding it breaks parsing.
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;

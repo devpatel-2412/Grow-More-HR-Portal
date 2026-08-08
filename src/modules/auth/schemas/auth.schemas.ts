@@ -19,20 +19,6 @@ export const loginSchema = z.object({
 });
 export type LoginFormValues = z.infer<typeof loginSchema>;
 
-export const signupSchema = z.object({
-  tenantName: z.string().min(2, 'Organization name is too short').max(120),
-  tenantDomain: z
-    .string()
-    .min(3)
-    .max(63)
-    .regex(/^[a-z0-9-]+$/, 'Lowercase letters, numbers, and hyphens only'),
-  email: z.string().email('Enter a valid email address'),
-  password: passwordSchema,
-  firstName: z.string().min(1, 'Required'),
-  lastName: z.string().min(1, 'Required'),
-});
-export type SignupFormValues = z.infer<typeof signupSchema>;
-
 export const twoFactorVerifySchema = z.object({
   challengeToken: z.string().min(1),
   code: z.string().length(6, 'Enter the 6-digit code'),

@@ -11,8 +11,21 @@ import {
   updateUserRoleSchema,
   updateUserStatusSchema,
   userIdParamSchema,
+  inviteIdParamSchema,
 } from './user.validators.js';
-import { inviteUser, acceptInvite, listUsers, getUser, updateUserRole, updateUserStatus } from './user.controller.js';
+import { paginationQuerySchema } from '../../shared/utils/pagination.util.js';
+import {
+  inviteUser,
+  acceptInvite,
+  listUsers,
+  getUser,
+  updateUserRole,
+  updateUserStatus,
+  getInvitableRoles,
+  listInvites,
+  resendInvite,
+  revokeInvite,
+} from './user.controller.js';
 
 export const userRouter = Router();
 
@@ -26,6 +39,30 @@ userRouter.post(
   requirePermission(PERMISSIONS.USER_INVITE),
   validate({ body: inviteUserSchema }),
   asyncHandler(inviteUser),
+);
+
+// The caller's own allowed invite-target roles — drives the invite dialog's role dropdown.
+userRouter.get('/invitable-roles', requirePermission(PERMISSIONS.USER_INVITE), asyncHandler(getInvitableRoles));
+
+// Invitation history + lifecycle actions. Registered ahead of GET /:id so "/invites" itself
+// isn't swallowed by that param route.
+userRouter.get(
+  '/invites',
+  requirePermission(PERMISSIONS.USER_INVITE),
+  validate({ query: paginationQuerySchema }),
+  asyncHandler(listInvites),
+);
+userRouter.post(
+  '/invites/:id/resend',
+  requirePermission(PERMISSIONS.USER_INVITE),
+  validate({ params: inviteIdParamSchema }),
+  asyncHandler(resendInvite),
+);
+userRouter.post(
+  '/invites/:id/revoke',
+  requirePermission(PERMISSIONS.USER_INVITE),
+  validate({ params: inviteIdParamSchema }),
+  asyncHandler(revokeInvite),
 );
 
 userRouter.get(

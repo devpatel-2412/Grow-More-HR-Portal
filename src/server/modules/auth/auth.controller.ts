@@ -1,11 +1,10 @@
 import type { Request, Response } from 'express';
 import { authService } from './auth.service.js';
-import { sendCreated, sendOk, sendPaginated } from '../../shared/utils/response.util.js';
+import { sendOk, sendPaginated } from '../../shared/utils/response.util.js';
 import { UnauthorizedError } from '../../shared/errors/app-error.js';
 import { env, isProduction } from '../../shared/config/env.js';
 import type { z } from 'zod';
 import type {
-  signupSchema,
   loginSchema,
   twoFactorVerifySchema,
   passwordResetRequestSchema,
@@ -39,13 +38,6 @@ function clearRefreshCookie(res: Response) {
 
 function readRefreshCookie(req: Request): string | undefined {
   return req.cookies?.[env.REFRESH_COOKIE_NAME];
-}
-
-export async function signup(req: Request, res: Response): Promise<void> {
-  const body = req.body as z.infer<typeof signupSchema>;
-  const result = await authService.signup(body, requestMeta(req));
-  setRefreshCookie(res, result.refreshToken, result.refreshTokenExpiresAt, result.rememberMe);
-  sendCreated(res, { accessToken: result.accessToken, user: result.user });
 }
 
 export async function login(req: Request, res: Response): Promise<void> {

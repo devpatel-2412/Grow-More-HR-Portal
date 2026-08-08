@@ -9,8 +9,9 @@ import { createTenant, getTenant, updateTenant, listTenants } from './tenant.con
 
 export const tenantRouter = Router();
 
-// Self-serve tenant onboarding (tenant + first ADMIN user, atomically) lives at POST /api/v1/auth/signup.
-// This endpoint is for SUPER_ADMIN-provisioned tenants only (e.g. platform-managed onboarding, no self-serve admin yet).
+// The only way a new company (and its first user) can ever come into existence — public
+// registration is permanently closed. Creates the Tenant plus a PENDING_INVITE ADMIN who gets an
+// activation email immediately (see TenantService.create()).
 tenantRouter.post(
   '/',
   authenticateAccessToken,

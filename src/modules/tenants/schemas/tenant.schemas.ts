@@ -1,5 +1,18 @@
 import { z } from 'zod';
 
+export const createCompanySchema = z.object({
+  name: z.string().min(2, 'Too short').max(120),
+  domain: z
+    .string()
+    .min(3)
+    .max(63)
+    .regex(/^[a-z0-9-]+$/, 'Lowercase letters, numbers, and hyphens only'),
+  adminEmail: z.string().email('Enter a valid email address'),
+  adminFirstName: z.string().min(1, 'Required').max(80),
+  adminLastName: z.string().min(1, 'Required').max(80),
+});
+export type CreateCompanyFormValues = z.infer<typeof createCompanySchema>;
+
 export const updateTenantSchema = z.object({
   name: z.string().min(2, 'Too short').max(120),
   logoUrl: z.string().url('Enter a valid URL').optional().or(z.literal('')),

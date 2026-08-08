@@ -5,11 +5,14 @@ const ROLE_VARIANT: Record<UserRole, 'info' | 'success' | 'neutral'> = {
   SUPER_ADMIN: 'success',
   ADMIN: 'info',
   HR_MANAGER: 'info',
+  HR_EXECUTIVE: 'info',
   PROJECT_MANAGER: 'info',
+  TEAM_LEADER: 'info',
   EMPLOYEE: 'neutral',
   CLIENT: 'neutral',
   RECRUITER: 'info',
   FINANCE: 'info',
+  ACCOUNTS: 'info',
   CANDIDATE: 'neutral',
 };
 

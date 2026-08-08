@@ -22,6 +22,10 @@ export class UserRepository {
     return prisma.user.update({ where: { id }, data });
   }
 
+  delete(id: string) {
+    return prisma.user.delete({ where: { id } });
+  }
+
   async recordLoginSuccess(id: string) {
     return prisma.user.update({
       where: { id },

@@ -12,6 +12,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../../app.js';
 import { prisma } from '../../db/prisma.js';
+import { signupTestTenant } from '../../shared/testing/signup-test-tenant.js';
 
 const app = createApp();
 
@@ -30,19 +31,7 @@ function uniqueDomain(prefix: string) {
 }
 
 async function signupTenant(overrides: Partial<Record<string, string>> = {}) {
-  const domain = uniqueDomain('acme');
-  const res = await request(app)
-    .post('/api/v1/auth/signup')
-    .send({
-      tenantName: 'Acme Inc',
-      tenantDomain: domain,
-      email: overrides.email ?? `admin-${domain}@acme.com`,
-      password: 'CorrectPassword123',
-      firstName: 'Ada',
-      lastName: 'Admin',
-      ...overrides,
-    });
-  return { res, domain };
+  return signupTestTenant(app, overrides);
 }
 
 beforeAll(async () => {
@@ -58,19 +47,13 @@ beforeEach(async () => {
 });
 
 describe('Auth flow — signup, login, me, refresh, logout', () => {
-  it('signs up a new tenant + admin, returns an access token, and sets a refresh cookie', async () => {
+  it('bootstraps a tenant + admin fixture and returns a working access token + refresh cookie', async () => {
     const { res } = await signupTenant();
 
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(200);
     expect(res.body.data.accessToken).toBeTruthy();
     expect(res.body.data.user.role).toBe('ADMIN');
     expect(res.headers['set-cookie']?.[0]).toMatch(/refresh_token=/);
-  });
-
-  it('rejects signup with a duplicate domain', async () => {
-    const { domain } = await signupTenant();
-    const { res: second } = await signupTenant({ tenantDomain: domain, email: `other-${Date.now()}@acme.com` });
-    expect(second.status).toBe(409);
   });
 
   it('logs in with the created account and fetches /me', async () => {

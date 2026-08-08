@@ -5,11 +5,14 @@ export const USER_ROLES = [
   'SUPER_ADMIN',
   'ADMIN',
   'HR_MANAGER',
+  'HR_EXECUTIVE',
   'PROJECT_MANAGER',
+  'TEAM_LEADER',
   'EMPLOYEE',
   'CLIENT',
   'RECRUITER',
   'FINANCE',
+  'ACCOUNTS',
   'CANDIDATE',
 ] as const;
 // CLIENT is excluded here: it requires a clientPortalId link, which only the "invite portal user"
@@ -19,10 +22,13 @@ export const STAFF_ROLES = [
   'SUPER_ADMIN',
   'ADMIN',
   'HR_MANAGER',
+  'HR_EXECUTIVE',
   'PROJECT_MANAGER',
+  'TEAM_LEADER',
   'EMPLOYEE',
   'RECRUITER',
   'FINANCE',
+  'ACCOUNTS',
 ] as const;
 export const USER_STATUSES = ['PENDING_INVITE', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED'] as const;
 
@@ -37,5 +43,6 @@ export const acceptInviteSchema = z.object({
   password: passwordSchema,
   firstName: z.string().min(1, 'Required').max(80),
   lastName: z.string().min(1, 'Required').max(80),
+  acceptedTerms: z.literal(true, 'You must accept the company policy to activate your account'),
 });
 export type AcceptInviteFormValues = z.infer<typeof acceptInviteSchema>;

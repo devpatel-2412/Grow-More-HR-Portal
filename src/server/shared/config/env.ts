@@ -28,6 +28,12 @@ const envSchema = z.object({
   REFRESH_COOKIE_NAME: z.string().default('refresh_token'),
   REFRESH_COOKIE_DOMAIN: z.string().optional().default(''),
 
+  // One-time bootstrap for the very first SUPER_ADMIN account, since public registration is
+  // permanently closed (see bootstrap-super-admin.ts). Only read on boot when zero SUPER_ADMIN
+  // users exist yet — safe to leave set in Render indefinitely, every later boot is a no-op.
+  BOOTSTRAP_SUPER_ADMIN_EMAIL: z.string().optional().default(''),
+  BOOTSTRAP_SUPER_ADMIN_PASSWORD: z.string().optional().default(''),
+
   REDIS_URL: z.string().optional().default(''),
 
   // SMTP is entirely optional — when SMTP_HOST is unset, EmailService falls back to the

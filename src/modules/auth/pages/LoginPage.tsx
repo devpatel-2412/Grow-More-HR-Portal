@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { LoginForm } from '../components/LoginForm';
 import { Card, CardHeader, CardTitle, CardDescription } from '../../../shared/components/ui/card';
 import { AuthLayout } from '../../../shared/components/layout/AuthLayout';
@@ -18,12 +17,6 @@ export function LoginPage() {
           <CardDescription>Enterprise Operations &amp; Automation</CardDescription>
         </CardHeader>
         <LoginForm />
-        <p className="mt-6 text-center text-xs text-[var(--muted-foreground)]">
-          Don't have a workspace yet?{' '}
-          <Link to="/signup" className="text-[var(--primary)] hover:underline">
-            Create one
-          </Link>
-        </p>
       </Card>
     </AuthLayout>
   );
