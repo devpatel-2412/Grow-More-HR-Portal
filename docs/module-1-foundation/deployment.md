@@ -86,8 +86,10 @@ Before deploying to production:
 - [ ] Set `NODE_ENV=production` on Render.
 - [ ] Generate fresh `JWT_ACCESS_SECRET` and `TWO_FA_ENCRYPTION_KEY` — never reuse dev values.
 - [ ] Set `CORS_ORIGIN` to the real Vercel frontend origin.
-- [ ] Wire a real `EmailService` implementation (SendGrid/SES/etc) — the built-in one throws on
-      startup-adjacent send attempts in production rather than silently dropping invite/reset emails.
+- [ ] Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`, `GOOGLE_REDIRECT_URI`,
+      and `GOOGLE_SENDER_EMAIL` (see `gmail-api-setup.md`) — the built-in Gmail API `EmailService`
+      throws on startup-adjacent send attempts in production rather than silently dropping
+      invite/reset emails if any of these are missing.
 - [ ] Set `REDIS_URL` and switch the rate limiters to a Redis-backed store before running more
       than one API instance — the current limiters use an in-memory, per-process counter.
 - [ ] Set `DATABASE_URL` and `DIRECT_URL` on Render to the Supabase pooler connection strings —
