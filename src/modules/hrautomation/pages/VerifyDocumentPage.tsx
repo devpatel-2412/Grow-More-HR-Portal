@@ -28,7 +28,7 @@ export function VerifyDocumentPage() {
     <div className="flex min-h-screen items-center justify-center bg-[var(--background)] p-6">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex items-center justify-center gap-2">
-          <Logo className="h-8 w-8 shadow-lg" />
+          <Logo className="h-8 w-auto" />
           <span className="text-sm font-extrabold tracking-tight text-[var(--foreground)]">{APP_NAME}</span>
         </div>
 

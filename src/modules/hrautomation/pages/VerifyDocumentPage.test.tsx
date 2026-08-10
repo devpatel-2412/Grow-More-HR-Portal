@@ -5,6 +5,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { VerifyDocumentPage } from './VerifyDocumentPage';
 import { verifyApi } from '../api/hrautomation.api';
 import { ApiError } from '../../../shared/lib/api-client';
+import { ThemeProvider } from '../../../shared/lib/theme';
 
 vi.mock('../api/hrautomation.api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/hrautomation.api')>();
@@ -16,11 +17,13 @@ function renderAt(documentId: string) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[`/verify/${documentId}`]}>
-        <Routes>
-          <Route path="/verify/:id" element={<VerifyDocumentPage />} />
-        </Routes>
-      </MemoryRouter>
+      <ThemeProvider>
+        <MemoryRouter initialEntries={[`/verify/${documentId}`]}>
+          <Routes>
+            <Route path="/verify/:id" element={<VerifyDocumentPage />} />
+          </Routes>
+        </MemoryRouter>
+      </ThemeProvider>
     </QueryClientProvider>,
   );
 }

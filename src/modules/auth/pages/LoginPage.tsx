@@ -9,7 +9,7 @@ export function LoginPage() {
     <AuthLayout>
       <Card className="w-full max-w-md">
         <CardHeader>
-          <Logo className="mb-3 h-12 w-12 shadow-lg shadow-(--primary)/20" />
+          <Logo className="mb-3 h-14 w-auto" />
           <CardTitle>{APP_NAME}</CardTitle>
           <CardDescription>Enterprise Operations &amp; Automation</CardDescription>
         </CardHeader>

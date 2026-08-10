@@ -4,6 +4,7 @@ import { UserRepository } from '../users/user.repository.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
 import { resolveEffectivePermissions, invalidateAllPermissionCache } from '../../shared/permissions/permission-resolver.service.js';
+import { seedSystemRolesForTenant } from './rbac-seed.util.js';
 import type { Permission } from '../../shared/permissions/permissions.js';
 
 export interface RbacRequestContext {
@@ -36,7 +37,21 @@ export class RbacService {
   }
 
   /** Always exactly the 6 fixed system roles (RbacRepository.findRolesByTenant already filters by name). */
+  /**
+   * Always exactly the 5 non-SUPER_ADMIN fixed system roles (SUPER_ADMIN never gets a row — its
+   * access is hardcoded, see permission-resolver.service.ts).
+   *
+   * Auto-heals on read: a tenant created before dynamic RBAC existed (or whose one-off backfill
+   * script was never run) would otherwise have no Role rows at all, and the Roles & Permissions
+   * page would show "hasn't been initialized" for every role instead of a checkbox grid. Calling
+   * the idempotent seed here — the same one TenantService.create() calls for brand new tenants —
+   * fills in only the *missing* roles on every request; it never touches a role that already has a
+   * row, so any permissions a SUPER_ADMIN has already customized (including deliberately clearing
+   * a role down to zero permissions) are left exactly as they are. This is what makes existing
+   * companies self-heal automatically, with no manual `npm run rbac:seed` required in production.
+   */
   async listRoles(tenantId: string) {
+    await seedSystemRolesForTenant(tenantId, this.repository);
     return this.repository.findRolesByTenant(tenantId);
   }
 
