@@ -1,4 +1,4 @@
-# Business OS — Feature Audit
+# Grow More — Feature Audit
 
 **Scanned:** entire repository, current working tree (uncommitted — no git commits exist yet).
 **Method:** direct inspection of `src/server/**`, `src/**` (frontend), and `prisma/schema.prisma` — every route file, page, component, and model enumerated by hand, not inferred from memory.
@@ -125,7 +125,7 @@ No models exist yet for **CRM** (Lead/Deal/Contact/Pipeline) or **Inventory** (S
 
 ---
 
-## Comparison against the Business OS requirements
+## Comparison against the Grow More requirements
 
 The target is: HRMS · ERP · CRM · ATS · Project Mgmt · Task Mgmt · Daily Work Reports · Payroll · Attendance · Leave · Finance · Billing · Client Portal · Helpdesk · Asset Mgmt · Inventory · Knowledge Base · AI Automation · Document Automation · Workflow Automation · Multi-Tenant SaaS · White Label.
 
@@ -228,6 +228,6 @@ Two components are **dead code** (built, never wired up): `RoleGate.tsx` and `Em
 | Scope | Estimate | Basis |
 |---|---|---|
 | **Module 1 (Foundation) itself** | **~85%** | Core auth/RBAC/audit/tenancy is production-solid and tested; the gap is entirely admin-UI screens for features whose APIs already exist (users, invites, tenant settings, audit viewer) |
-| **Full Business OS vision** (all 21+ domains listed in the requirements) | **~4–5%** | 1 of roughly 14 major functional domains has real (backend+frontend) implementation; ~10 more have a reserved DB schema and zero app code; CRM and Inventory have neither |
+| **Full Grow More vision** (all 21+ domains listed in the requirements) | **~4–5%** | 1 of roughly 14 major functional domains has real (backend+frontend) implementation; ~10 more have a reserved DB schema and zero app code; CRM and Inventory have neither |
 
 This is expected and by design at this stage — the project is explicitly being built one module at a time, and Module 1 was scoped as the shared foundation every later module depends on, not as a demo of breadth.

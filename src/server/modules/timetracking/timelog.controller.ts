@@ -1,7 +1,8 @@
 import type { Request, Response } from 'express';
 import { timeLogService } from './timelog.service.js';
 import { sendCreated, sendOk, sendNoContent, sendPaginated } from '../../shared/utils/response.util.js';
-import { roleHasPermission, PERMISSIONS } from '../../shared/permissions/permissions.js';
+import { PERMISSIONS } from '../../shared/permissions/permissions.js';
+import { resolveEffectivePermissions } from '../../shared/permissions/permission-resolver.service.js';
 import type { z } from 'zod';
 import type { startTimerSchema, stopTimerSchema, manualTimeLogSchema, listTimeLogQuerySchema } from './timelog.validators.js';
 
@@ -9,8 +10,9 @@ function requestMeta(req: Request) {
   return { actorUserId: req.user?.sub, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
 }
 
-function canReadTenant(req: Request) {
-  return roleHasPermission(req.user!.role, PERMISSIONS.TIME_LOG_READ_TENANT);
+async function canReadTenant(req: Request): Promise<boolean> {
+  const effective = await resolveEffectivePermissions(req.user!.sub, req.user!.tenantId, req.user!.role);
+  return effective.has(PERMISSIONS.TIME_LOG_READ_TENANT);
 }
 
 export async function startTimer(req: Request, res: Response): Promise<void> {
@@ -37,18 +39,18 @@ export async function createManualLog(req: Request, res: Response): Promise<void
 }
 
 export async function deleteTimeLog(req: Request, res: Response): Promise<void> {
-  await timeLogService.delete(req.user!.sub, req.user!.tenantId, req.params.id, canReadTenant(req), requestMeta(req));
+  await timeLogService.delete(req.user!.sub, req.user!.tenantId, req.params.id, await canReadTenant(req), requestMeta(req));
   sendNoContent(res);
 }
 
 export async function listTimeLogs(req: Request, res: Response): Promise<void> {
   const query = req.query as unknown as z.infer<typeof listTimeLogQuerySchema>;
-  const { rows, meta } = await timeLogService.list(req.user!.tenantId, { userId: req.user!.sub, canReadTenant: canReadTenant(req) }, query);
+  const { rows, meta } = await timeLogService.list(req.user!.tenantId, { userId: req.user!.sub, canReadTenant: await canReadTenant(req) }, query);
   sendPaginated(res, rows, meta);
 }
 
 export async function getTimeSummary(req: Request, res: Response): Promise<void> {
   const query = req.query as unknown as z.infer<typeof listTimeLogQuerySchema>;
-  const summary = await timeLogService.summary(req.user!.tenantId, { userId: req.user!.sub, canReadTenant: canReadTenant(req) }, query);
+  const summary = await timeLogService.summary(req.user!.tenantId, { userId: req.user!.sub, canReadTenant: await canReadTenant(req) }, query);
   sendOk(res, summary);
 }

@@ -12,26 +12,17 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Exactly 6 fixed roles — no custom roles, no additions through the UI. SUPER_ADMIN always has
+// full access (short-circuited in permission-resolver.service.ts, never DB-driven). The other 5
+// roles' access is entirely decided by a SUPER_ADMIN through the Roles & Permissions page and
+// stored in the dynamic Role/RolePermission tables — see permission-resolver.service.ts.
 enum UserRole {
   SUPER_ADMIN
   ADMIN
   HR_MANAGER
   PROJECT_MANAGER
-  EMPLOYEE
-  CLIENT
-  // Added additively — RECRUITER and FINANCE are staff roles scoped to a single module each
-  // (recruitment:*, finance:* respectively) and go through the normal staff invite flow.
-  // CANDIDATE is reserved: it exists so the enum is structurally complete, but there is no
-  // candidate-facing portal yet (see ClientPortalShell for the pattern a future one would
-  // follow), so it is deliberately excluded from the invite UI until that portal is built.
-  RECRUITER
-  FINANCE
-  CANDIDATE
-  // Added additively for the enterprise invitation hierarchy — see INVITABLE_ROLES in
-  // permissions.ts for who may invite each of these.
-  HR_EXECUTIVE
   TEAM_LEADER
-  ACCOUNTS
+  EMPLOYEE
 }
 
 enum UserStatus {
@@ -361,12 +352,6 @@ enum LeadStatus {
   LOST
 }
 
-enum ClientStatus {
-  ACTIVE
-  INACTIVE
-  CHURNED
-}
-
 enum CrmActivityType {
   CALL
   EMAIL
@@ -476,7 +461,6 @@ model Tenant {
   jobPostings           JobPosting[]
   assets                Asset[]
   projects              Project[]
-  clients               ClientPortal[]
   financeDocs           FinanceDocument[]
   visitors              Visitor[]
   bookings              RoomBooking[]
@@ -503,7 +487,6 @@ model Tenant {
   candidates            Candidate[]
   interviews            Interview[]
   leads                 Lead[]
-  clientContacts        ClientContact[]
   crmActivities         CrmActivity[]
   ticketComments        TicketComment[]
   generatedDocuments    GeneratedDocument[]
@@ -547,8 +530,6 @@ model User {
   passwordResetTokens PasswordResetToken[]
   auditLogs           AuditLog[]
   notifications       Notification[]
-  clientProfile       ClientPortal?        @relation(fields: [clientProfileId], references: [id])
-  clientProfileId     String?
   roleAssignments     UserRoleAssignment[]
 
   @@index([tenantId])
@@ -745,7 +726,6 @@ model EmployeeProfile {
   salaryStructures            SalaryStructure[]
   interviewPanels             Interview[]                @relation("InterviewPanel")
   ownedLeads                  Lead[]                     @relation("LeadOwner")
-  managedClients              ClientPortal[]             @relation("ClientAccountManager")
   crmActivities               CrmActivity[]              @relation("CrmActivityAuthor")
   createdFinanceDocs          FinanceDocument[]
   recordedFinancePayments     FinancePayment[]
@@ -1276,8 +1256,6 @@ model Project {
   startDate        DateTime
   endDate          DateTime?
   status           ProjectStatus     @default(PLANNING)
-  clientPortalId   String?
-  clientPortal     ClientPortal?     @relation(fields: [clientPortalId], references: [id])
   tasks            Task[]
   milestones       Milestone[]
   financeDocuments FinanceDocument[]
@@ -1406,75 +1384,24 @@ model TimeLog {
   @@index([taskId])
 }
 
-model ClientPortal {
-  id               String            @id @default(uuid())
-  tenantId         String
-  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  companyName      String
-  contactEmail     String
-  phone            String?
-  website          String?
-  address          String?
-  industry         String?
-  logoUrl          String?
-  status           ClientStatus      @default(ACTIVE)
-  accountManagerId String?
-  accountManager   EmployeeProfile?  @relation("ClientAccountManager", fields: [accountManagerId], references: [id])
-  notes            String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  projects         Project[]
-  financeDocs      FinanceDocument[]
-  users            User[]
-  contacts         ClientContact[]
-  activities       CrmActivity[]
-  convertedFrom    Lead?
-
-  // Scoped per tenant, not globally: two tenants may legitimately deal with the same company.
-  @@unique([tenantId, contactEmail])
-  @@index([tenantId, status])
-}
-
-model ClientContact {
-  id          String       @id @default(uuid())
-  tenantId    String
-  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  clientId    String
-  client      ClientPortal @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  name        String
-  email       String
-  phone       String?
-  designation String?
-  isPrimary   Boolean      @default(false)
-  createdAt   DateTime     @default(now())
-
-  @@unique([clientId, email])
-  @@index([tenantId])
-}
-
 model Lead {
-  id                String           @id @default(uuid())
-  tenantId          String
-  tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  companyName       String
-  contactName       String
-  email             String
-  phone             String?
-  source            String?
-  status            LeadStatus       @default(NEW)
-  estimatedValue    Float            @default(0)
-  ownerId           String?
-  owner             EmployeeProfile? @relation("LeadOwner", fields: [ownerId], references: [id])
-  notes             String?
-  lostReason        String?
-  /**
-   * Set when a WON lead is converted; one-to-one so a lead can never spawn two client records.
-   */
-  convertedClientId String?          @unique
-  convertedClient   ClientPortal?    @relation(fields: [convertedClientId], references: [id])
-  activities        CrmActivity[]
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  id             String           @id @default(uuid())
+  tenantId       String
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  companyName    String
+  contactName    String
+  email          String
+  phone          String?
+  source         String?
+  status         LeadStatus       @default(NEW)
+  estimatedValue Float            @default(0)
+  ownerId        String?
+  owner          EmployeeProfile? @relation("LeadOwner", fields: [ownerId], references: [id])
+  notes          String?
+  lostReason     String?
+  activities     CrmActivity[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   @@unique([tenantId, email])
   @@index([tenantId, status])
@@ -1491,15 +1418,12 @@ model CrmActivity {
   occurredAt  DateTime
   leadId      String?
   lead        Lead?            @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  clientId    String?
-  client      ClientPortal?    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   createdById String?
   createdBy   EmployeeProfile? @relation("CrmActivityAuthor", fields: [createdById], references: [id])
   createdAt   DateTime         @default(now())
 
   @@index([tenantId, occurredAt])
   @@index([leadId])
-  @@index([clientId])
 }
 
 model FinanceDocument {
@@ -1528,8 +1452,6 @@ model FinanceDocument {
   amountPaid             Float             @default(0)
   notes                  String?
   status                 FinanceStatus     @default(DRAFT)
-  clientPortalId         String?
-  clientPortal           ClientPortal?     @relation(fields: [clientPortalId], references: [id])
   projectId              String?
   project                Project?          @relation(fields: [projectId], references: [id])
   createdById            String?
@@ -1541,7 +1463,6 @@ model FinanceDocument {
 
   @@unique([tenantId, type, number])
   @@index([tenantId, type, status])
-  @@index([clientPortalId])
 }
 
 model FinanceLineItem {

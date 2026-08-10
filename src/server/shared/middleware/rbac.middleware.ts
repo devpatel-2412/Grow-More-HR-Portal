@@ -44,17 +44,12 @@ export function requireAnyPermission(...permissions: Permission[]) {
   });
 }
 
-const EXTERNAL_ROLES: readonly UserRole[] = ['CLIENT', 'CANDIDATE'];
-
 /**
- * Blocks a CLIENT or CANDIDATE login (external, non-staff roles) from internal modules that are
- * otherwise gated on nothing but authentication ("any tenant member can read"). Neither role has
- * an employee profile or any business seeing SOPs, vendors, inventory, org structure, the
- * knowledge base, internal documents, or announcements — those endpoints must use this, not just
- * authenticateAccessToken, whenever they don't already require an EMPLOYEE_* / *_MANAGE permission.
+ * Every one of the 6 fixed roles is staff (there is no external/customer-facing role anymore) —
+ * this is now just an authentication check. Kept as a named function rather than inlined at every
+ * call site, since a future external role would only need one place to change.
  */
 export function requireStaff(req: Request, _res: Response, next: NextFunction): void {
   if (!req.user) throw new UnauthorizedError();
-  if (EXTERNAL_ROLES.includes(req.user.role)) throw new ForbiddenError();
   next();
 }

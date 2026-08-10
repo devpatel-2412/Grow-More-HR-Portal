@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import preloaderVideo from '../../../assets/Enhance_the_video_quality_k.mp4';
 import { cn } from '../../utils/cn';
 
-const SESSION_KEY = 'business-os-preloader-shown';
+const SESSION_KEY = 'grow-more-preloader-shown';
 const FADE_MS = 450;
 const MAX_WAIT_MS = 8000;
 

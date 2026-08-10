@@ -1,19 +1,15 @@
-import { useState } from 'react';
 import { Users } from 'lucide-react';
 import { useLeads } from '../hooks/useCrm';
 import { LeadDialog } from '../components/LeadDialog';
 import { LeadPipelineBoard } from '../components/LeadPipelineBoard';
-import { ConvertLeadDialog } from '../components/ConvertLeadDialog';
 import { LeadStatusBadge } from '../components/CrmBadges';
 import { Card } from '../../../shared/components/ui/card';
 import { EmptyState } from '../../../shared/components/feedback/EmptyState';
 import { ErrorState } from '../../../shared/components/feedback/ErrorState';
 import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
-import type { LeadRecord } from '../types/crm.types';
 
 export function LeadsPage() {
   const { data, isLoading, isError, refetch } = useLeads({ page: 1, limit: 100 });
-  const [convertingLead, setConvertingLead] = useState<LeadRecord | undefined>();
 
   const leads = data?.data ?? [];
   const closed = leads.filter((lead) => lead.status === 'WON' || lead.status === 'LOST');
@@ -39,7 +35,7 @@ export function LeadsPage() {
       )}
       {!isLoading && !isError && leads.length > 0 && (
         <>
-          <LeadPipelineBoard leads={leads} onOpenLead={() => {}} onConvert={setConvertingLead} />
+          <LeadPipelineBoard leads={leads} onOpenLead={() => {}} />
 
           {closed.length > 0 && (
             <Card className="space-y-2">
@@ -61,8 +57,6 @@ export function LeadsPage() {
           )}
         </>
       )}
-
-      <ConvertLeadDialog lead={convertingLead} onOpenChange={(open) => !open && setConvertingLead(undefined)} />
     </div>
   );
 }

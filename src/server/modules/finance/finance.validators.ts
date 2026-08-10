@@ -18,7 +18,6 @@ export const createFinanceDocumentSchema = z.object({
   /** 2-digit GST state code of the counterparty — set alongside the tenant's own gstStateCode to split tax into CGST/SGST vs IGST. */
   placeOfSupplyStateCode: z.string().length(2).optional(),
   notes: z.string().max(4000).optional(),
-  clientPortalId: z.string().uuid().optional(),
   projectId: z.string().uuid().optional(),
   lineItems: z.array(lineItemSchema).min(1, 'Add at least one line item'),
 });
@@ -42,7 +41,6 @@ export const recordPaymentSchema = z.object({
 export const listFinanceDocumentsQuerySchema = paginationQuerySchema.extend({
   type: z.nativeEnum(FinanceType).optional(),
   status: z.nativeEnum(FinanceStatus).optional(),
-  clientPortalId: z.string().uuid().optional(),
   projectId: z.string().uuid().optional(),
 });
 

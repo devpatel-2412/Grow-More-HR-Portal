@@ -9,6 +9,7 @@ import { emailService } from '../../shared/email/email.service.js';
 import { companyAdminInviteTemplate } from '../../shared/email/email.templates.js';
 import { env } from '../../shared/config/env.js';
 import { logger } from '../../shared/logger.js';
+import { seedSystemRolesForTenant } from '../rbac/rbac-seed.util.js';
 
 const TENANT_SORTABLE_FIELDS = ['name', 'domain', 'createdAt'] as const;
 const ADMIN_INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -91,6 +92,17 @@ export class TenantService {
       userAgent: ctx.userAgent,
       metadata: { email: adminEmail },
     });
+
+    // Best-effort, same reasoning as the email send below: a brand new tenant should have real,
+    // editable Role rows from day one (see permission-resolver.service.ts's DB-first resolution
+    // for the 5 fixed roles), but a hiccup here must not fail company creation — the resolver's
+    // static fallback keeps the tenant fully usable until this is re-run (npm run rbac:seed is
+    // idempotent) or retried on a later boot.
+    try {
+      await seedSystemRolesForTenant(tenant.id);
+    } catch (err) {
+      logger.error({ err, tenantId: tenant.id }, 'Failed to seed system roles for new tenant');
+    }
 
     // Best-effort: the tenant and the admin's account both already exist and are committed above
     // — a hiccup sending the email must not fail the request or leave the caller unable to tell

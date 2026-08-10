@@ -3,7 +3,8 @@ import { taskService } from './task.service.js';
 import { commentService } from './comment.service.js';
 import { attachmentService } from './attachment.service.js';
 import { sendCreated, sendOk, sendPaginated, sendNoContent } from '../../shared/utils/response.util.js';
-import { roleHasPermission, PERMISSIONS } from '../../shared/permissions/permissions.js';
+import { PERMISSIONS } from '../../shared/permissions/permissions.js';
+import { resolveEffectivePermissions } from '../../shared/permissions/permission-resolver.service.js';
 import type { z } from 'zod';
 import type {
   createTaskSchema,
@@ -30,7 +31,8 @@ export async function getTask(req: Request, res: Response): Promise<void> {
 
 export async function updateTask(req: Request, res: Response): Promise<void> {
   const body = req.body as z.infer<typeof updateTaskSchema>;
-  const hasTaskManage = roleHasPermission(req.user!.role, PERMISSIONS.TASK_MANAGE);
+  const effective = await resolveEffectivePermissions(req.user!.sub, req.user!.tenantId, req.user!.role);
+  const hasTaskManage = effective.has(PERMISSIONS.TASK_MANAGE);
   const task = await taskService.update(req.user!.tenantId, req.user!.sub, hasTaskManage, req.params.id, body, requestMeta(req));
   sendOk(res, task);
 }

@@ -11,7 +11,6 @@ import type {
   AssetStatus,
   VisitorRecord,
   VisitorStatus,
-  RoomBookingRecord,
 } from '../types/workplace.types';
 
 export const ticketApi = {
@@ -99,11 +98,4 @@ export const visitorApi = {
   list: (query: { page: number; limit: number; status?: VisitorStatus }) => api.getPaginated<VisitorRecord>('/visitors', query),
   checkIn: (id: string) => api.post<VisitorRecord>(`/visitors/${id}/check-in`),
   checkOut: (id: string) => api.post<VisitorRecord>(`/visitors/${id}/check-out`),
-};
-
-export const roomBookingApi = {
-  create: (payload: { roomName: string; startTime: string; endTime: string; purpose: string }) =>
-    api.post<RoomBookingRecord>('/room-bookings', payload),
-  list: (query: { page: number; limit: number; roomName?: string }) => api.getPaginated<RoomBookingRecord>('/room-bookings', query),
-  cancel: (id: string) => api.post<RoomBookingRecord>(`/room-bookings/${id}/cancel`),
 };

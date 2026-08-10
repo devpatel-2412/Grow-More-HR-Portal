@@ -10,18 +10,16 @@ import { LEAD_TRANSITIONS, type LeadRecord, type LeadStatus } from '../types/crm
 const BOARD_STAGES: LeadStatus[] = ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL'];
 
 /**
- * The active-funnel board. WON is deliberately not a column here — a lead only reaches WON via
- * conversion (a dedicated dialog, wired by the caller), never a plain stage change, so offering
- * it as a move-to target would promise something the server refuses.
+ * The active-funnel board. WON is deliberately not a column here — a lead only reaches WON
+ * directly from PROPOSAL (see LEAD_TRANSITIONS), never from an earlier stage, so it's offered as
+ * a dedicated action at that stage rather than a column of its own.
  */
 export function LeadPipelineBoard({
   leads,
   onOpenLead,
-  onConvert,
 }: {
   leads: LeadRecord[];
   onOpenLead: (lead: LeadRecord) => void;
-  onConvert: (lead: LeadRecord) => void;
 }) {
   const changeStage = useChangeLeadStage();
 
@@ -69,8 +67,8 @@ export function LeadPipelineBoard({
                       <Button size="sm" variant="ghost" onClick={() => move(lead, 'LOST')}>
                         Mark lost
                       </Button>
-                      <Button size="sm" onClick={() => onConvert(lead)}>
-                        Convert
+                      <Button size="sm" onClick={() => move(lead, 'WON')}>
+                        Mark won
                       </Button>
                     </div>
                   ) : (

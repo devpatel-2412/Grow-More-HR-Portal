@@ -1,7 +1,8 @@
 import type { Request, Response } from 'express';
 import { regularizationService } from './regularization.service.js';
 import { sendCreated, sendOk, sendPaginated } from '../../shared/utils/response.util.js';
-import { roleHasPermission, PERMISSIONS } from '../../shared/permissions/permissions.js';
+import { PERMISSIONS } from '../../shared/permissions/permissions.js';
+import { resolveEffectivePermissions } from '../../shared/permissions/permission-resolver.service.js';
 import type { z } from 'zod';
 import type { requestRegularizationSchema, listRegularizationsQuerySchema, reviewRegularizationSchema } from './attendance.validators.js';
 
@@ -17,7 +18,8 @@ export async function requestRegularization(req: Request, res: Response): Promis
 
 export async function listRegularizations(req: Request, res: Response): Promise<void> {
   const query = req.query as unknown as z.infer<typeof listRegularizationsQuerySchema>;
-  const canReadTenant = roleHasPermission(req.user!.role, PERMISSIONS.ATTENDANCE_REGULARIZATION_APPROVE);
+  const effective = await resolveEffectivePermissions(req.user!.sub, req.user!.tenantId, req.user!.role);
+  const canReadTenant = effective.has(PERMISSIONS.ATTENDANCE_REGULARIZATION_APPROVE);
   const { rows, meta } = await regularizationService.list(req.user!.tenantId, { userId: req.user!.sub, canReadTenant }, query);
   sendPaginated(res, rows, meta);
 }

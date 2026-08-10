@@ -8,6 +8,7 @@ import { useCreateEmployee } from '../hooks/useCreateEmployee';
 import { useUpdateEmployee } from '../hooks/useUpdateEmployee';
 import { useUsers } from '../../users/hooks/useUsers';
 import { useBranches, useTeams } from '../../organization/hooks/useOrganization';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -29,8 +30,13 @@ interface EditModeProps {
 
 export function EmployeeFormDialog(props: CreateModeProps | EditModeProps) {
   const [open, setOpen] = useState(false);
+  // The route already enforces this server-side (403 without it) — hiding the trigger is UX, not
+  // the actual boundary. See the Roles & Permissions page for who currently holds these.
+  const canCreate = useHasPermission('employee:create');
+  const canUpdate = useHasPermission('employee:update');
 
   if (props.mode === 'create') {
+    if (!canCreate) return null;
     return (
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
@@ -45,6 +51,8 @@ export function EmployeeFormDialog(props: CreateModeProps | EditModeProps) {
       </Dialog>
     );
   }
+
+  if (!canUpdate) return null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

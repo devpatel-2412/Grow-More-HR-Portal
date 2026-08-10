@@ -19,7 +19,6 @@ function makeLead(overrides: Partial<LeadRecord> = {}): LeadRecord {
     ownerId: null,
     notes: null,
     lostReason: null,
-    convertedClientId: null,
     createdAt: '2026-07-01T00:00:00.000Z',
     ...overrides,
   };
@@ -34,7 +33,6 @@ describe('LeadPipelineBoard', () => {
           makeLead({ id: 'l2', companyName: 'Initech', status: 'PROPOSAL' }),
         ]}
         onOpenLead={vi.fn()}
-        onConvert={vi.fn()}
       />,
     );
 
@@ -45,28 +43,25 @@ describe('LeadPipelineBoard', () => {
   it('opens a lead when its company name is clicked', async () => {
     const onOpenLead = vi.fn();
     const user = userEvent.setup();
-    renderWithProviders(<LeadPipelineBoard leads={[makeLead()]} onOpenLead={onOpenLead} onConvert={vi.fn()} />);
+    renderWithProviders(<LeadPipelineBoard leads={[makeLead()]} onOpenLead={onOpenLead} />);
 
     await user.click(screen.getByText('Globex'));
     expect(onOpenLead).toHaveBeenCalledWith(expect.objectContaining({ id: 'lead-1' }));
   });
 
-  it('offers Convert instead of a move-to dropdown at the proposal stage', async () => {
-    const onConvert = vi.fn();
-    const user = userEvent.setup();
-    renderWithProviders(
-      <LeadPipelineBoard leads={[makeLead({ status: 'PROPOSAL' })]} onOpenLead={vi.fn()} onConvert={onConvert} />,
-    );
+  it('offers Mark won / Mark lost instead of a move-to dropdown at the proposal stage', () => {
+    renderWithProviders(<LeadPipelineBoard leads={[makeLead({ status: 'PROPOSAL' })]} onOpenLead={vi.fn()} />);
 
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /convert/i }));
-    expect(onConvert).toHaveBeenCalledWith(expect.objectContaining({ status: 'PROPOSAL' }));
+    expect(screen.getByRole('button', { name: /mark won/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /mark lost/i })).toBeInTheDocument();
   });
 
   // Same reasoning as CandidatePipeline.test.tsx: Radix Select cannot open under jsdom, so the
   // legal-moves list is checked against the map the component actually renders from.
-  it('never treats WON as a plain forward move — conversion is the only route there', () => {
-    for (const stage of ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL'] as const) {
+  it('reaches WON only directly from PROPOSAL, never from an earlier stage', () => {
+    expect(LEAD_TRANSITIONS.PROPOSAL).toContain('WON');
+    for (const stage of ['NEW', 'CONTACTED', 'QUALIFIED'] as const) {
       expect(LEAD_TRANSITIONS[stage]).not.toContain('WON');
     }
   });

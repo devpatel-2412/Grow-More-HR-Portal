@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TenantService } from './tenant.service.js';
 
-const { auditRecord, emailSend } = vi.hoisted(() => ({
+const { auditRecord, emailSend, seedSystemRolesForTenant } = vi.hoisted(() => ({
   auditRecord: vi.fn().mockResolvedValue(undefined),
   emailSend: vi.fn().mockResolvedValue(undefined),
+  seedSystemRolesForTenant: vi.fn().mockResolvedValue({ created: [], skipped: [] }),
 }));
 vi.mock('../audit/audit.service.js', () => ({ auditLogService: { record: auditRecord } }));
 vi.mock('../../shared/email/email.service.js', () => ({ emailService: { send: emailSend } }));
+vi.mock('../rbac/rbac-seed.util.js', () => ({ seedSystemRolesForTenant }));
 
 function makeDeps() {
   const repository = {
@@ -39,6 +41,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   auditRecord.mockResolvedValue(undefined);
   emailSend.mockResolvedValue(undefined);
+  seedSystemRolesForTenant.mockResolvedValue({ created: [], skipped: [] });
 });
 
 describe('TenantService.create — company + first admin provisioning', () => {

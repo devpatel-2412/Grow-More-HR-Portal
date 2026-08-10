@@ -1,16 +1,6 @@
-export type UserRole =
-  | 'SUPER_ADMIN'
-  | 'ADMIN'
-  | 'HR_MANAGER'
-  | 'HR_EXECUTIVE'
-  | 'PROJECT_MANAGER'
-  | 'TEAM_LEADER'
-  | 'EMPLOYEE'
-  | 'CLIENT'
-  | 'RECRUITER'
-  | 'FINANCE'
-  | 'ACCOUNTS'
-  | 'CANDIDATE';
+// Exactly 6 fixed roles — no custom roles. SUPER_ADMIN always has full access; the other 5 roles'
+// access is entirely decided by a SUPER_ADMIN through the Roles & Permissions page.
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'HR_MANAGER' | 'PROJECT_MANAGER' | 'TEAM_LEADER' | 'EMPLOYEE';
 export type UserStatus = 'PENDING_INVITE' | 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED';
 
 export interface AuthUser {
@@ -18,6 +8,8 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   status: UserStatus;
+  /** The caller's own effective permission set (resource:action strings) — drives permission-aware UI, e.g. useHasPermission(). */
+  permissions: string[];
 }
 
 export interface EmployeeProfile {

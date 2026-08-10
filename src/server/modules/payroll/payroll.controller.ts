@@ -1,7 +1,8 @@
 import type { Request, Response } from 'express';
 import { payrollService } from './payroll.service.js';
 import { sendCreated, sendOk, sendPaginated } from '../../shared/utils/response.util.js';
-import { roleHasPermission, PERMISSIONS } from '../../shared/permissions/permissions.js';
+import { PERMISSIONS } from '../../shared/permissions/permissions.js';
+import { resolveEffectivePermissions } from '../../shared/permissions/permission-resolver.service.js';
 import type { z } from 'zod';
 import type {
   setSalaryStructureSchema,
@@ -68,7 +69,8 @@ export async function updatePayrollItem(req: Request, res: Response): Promise<vo
 
 export async function listPayslips(req: Request, res: Response): Promise<void> {
   const query = req.query as unknown as z.infer<typeof listPayrollItemsQuerySchema>;
-  const canReadTenant = roleHasPermission(req.user!.role, PERMISSIONS.PAYROLL_READ_TENANT);
+  const effective = await resolveEffectivePermissions(req.user!.sub, req.user!.tenantId, req.user!.role);
+  const canReadTenant = effective.has(PERMISSIONS.PAYROLL_READ_TENANT);
   const { rows, meta } = await payrollService.listItems(
     req.user!.tenantId,
     { userId: req.user!.sub, canReadTenant },

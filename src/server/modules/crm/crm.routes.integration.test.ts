@@ -26,9 +26,7 @@ async function resetDatabase() {
   await prisma.financeLineItem.deleteMany();
   await prisma.financeDocument.deleteMany();
   await prisma.crmActivity.deleteMany();
-  await prisma.clientContact.deleteMany();
   await prisma.lead.deleteMany();
-  await prisma.clientPortal.deleteMany();
   await prisma.interview.deleteMany();
   await prisma.candidate.deleteMany();
   await prisma.jobPosting.deleteMany();
@@ -95,7 +93,7 @@ beforeEach(async () => {
 });
 
 describe('CRM — leads', () => {
-  it('walks a lead through the funnel and converts it into a client', async () => {
+  it('walks a lead through the funnel and wins it directly from the proposal stage', async () => {
     const { res: signupRes } = await signupTenant();
     const adminToken = signupRes.body.data.accessToken;
 
@@ -107,12 +105,12 @@ describe('CRM — leads', () => {
     expect(leadRes.body.data.status).toBe('NEW');
     const leadId = leadRes.body.data.id;
 
-    // Cannot mark WON directly.
-    const wonRes = await request(app)
+    // Cannot win before reaching the proposal stage.
+    const tooEarlyRes = await request(app)
       .patch(`/api/v1/leads/${leadId}/stage`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ status: 'WON' });
-    expect(wonRes.status).toBe(409);
+    expect(tooEarlyRes.status).toBe(409);
 
     for (const stage of ['CONTACTED', 'QUALIFIED', 'PROPOSAL']) {
       const stageRes = await request(app)
@@ -122,28 +120,22 @@ describe('CRM — leads', () => {
       expect(stageRes.status).toBe(200);
     }
 
-    const convertRes = await request(app)
-      .post(`/api/v1/leads/${leadId}/convert`)
+    const wonRes = await request(app)
+      .patch(`/api/v1/leads/${leadId}/stage`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ industry: 'Manufacturing' });
-    expect(convertRes.status).toBe(201);
-    expect(convertRes.body.data.companyName).toBe('Globex');
-    expect(convertRes.body.data.contactEmail).toBe('hank@globex.com');
-    const clientId = convertRes.body.data.id;
+      .send({ status: 'WON' });
+    expect(wonRes.status).toBe(200);
+    expect(wonRes.body.data.status).toBe('WON');
 
-    // Converting twice is rejected.
-    const reconvertRes = await request(app)
-      .post(`/api/v1/leads/${leadId}/convert`)
+    // WON is terminal — cannot move again.
+    const reWinRes = await request(app)
+      .patch(`/api/v1/leads/${leadId}/stage`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({});
-    expect(reconvertRes.status).toBe(409);
-
-    const clientRes = await request(app).get(`/api/v1/clients/${clientId}`).set('Authorization', `Bearer ${adminToken}`);
-    expect(clientRes.status).toBe(200);
-    expect(clientRes.body.data.status).toBe('ACTIVE');
+      .send({ status: 'LOST' });
+    expect(reWinRes.status).toBe(409);
   });
 
-  it('refuses to skip stages and rejects converting too early', async () => {
+  it('refuses to skip stages', async () => {
     const { res: signupRes } = await signupTenant();
     const adminToken = signupRes.body.data.accessToken;
 
@@ -158,12 +150,6 @@ describe('CRM — leads', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ status: 'PROPOSAL' });
     expect(skipRes.status).toBe(409);
-
-    const earlyConvertRes = await request(app)
-      .post(`/api/v1/leads/${leadId}/convert`)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({});
-    expect(earlyConvertRes.status).toBe(409);
   });
 
   it('marks a lead lost with a reason and keeps it terminal', async () => {
@@ -215,84 +201,25 @@ describe('CRM — leads', () => {
   });
 });
 
-describe('CRM — clients and contacts', () => {
-  it('scopes duplicate contact-email checks per tenant, not globally', async () => {
-    const { res: signupA } = await signupTenant();
-    const tokenA = signupA.body.data.accessToken;
-    const { res: signupB } = await signupTenant();
-    const tokenB = signupB.body.data.accessToken;
-
-    // The same contact email at two different tenants must both succeed.
-    const clientA = await request(app)
-      .post('/api/v1/clients')
-      .set('Authorization', `Bearer ${tokenA}`)
-      .send({ companyName: 'Shared Co', contactEmail: 'shared@example.com' });
-    expect(clientA.status).toBe(201);
-
-    const clientB = await request(app)
-      .post('/api/v1/clients')
-      .set('Authorization', `Bearer ${tokenB}`)
-      .send({ companyName: 'Shared Co', contactEmail: 'shared@example.com' });
-    expect(clientB.status).toBe(201);
-
-    // But a duplicate within the same tenant is rejected.
-    const duplicateRes = await request(app)
-      .post('/api/v1/clients')
-      .set('Authorization', `Bearer ${tokenA}`)
-      .send({ companyName: 'Shared Co Again', contactEmail: 'shared@example.com' });
-    expect(duplicateRes.status).toBe(409);
-  });
-
-  it('adds contacts and keeps only one marked primary', async () => {
+describe('CRM — activities', () => {
+  it('logs an activity against a lead and lists it back', async () => {
     const { res: signupRes } = await signupTenant();
     const adminToken = signupRes.body.data.accessToken;
 
-    const clientRes = await request(app)
-      .post('/api/v1/clients')
+    const leadRes = await request(app)
+      .post('/api/v1/leads')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ companyName: 'Acme Client', contactEmail: 'client@example.com' });
-    const clientId = clientRes.body.data.id;
-
-    await request(app)
-      .post(`/api/v1/clients/${clientId}/contacts`)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Alice', email: 'alice@example.com', isPrimary: true });
-    await request(app)
-      .post(`/api/v1/clients/${clientId}/contacts`)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Bob', email: 'bob@example.com', isPrimary: true });
-
-    const detailRes = await request(app).get(`/api/v1/clients/${clientId}`).set('Authorization', `Bearer ${adminToken}`);
-    const primaries = detailRes.body.data.contacts.filter((c: { isPrimary: boolean }) => c.isPrimary);
-    expect(primaries).toHaveLength(1);
-    expect(primaries[0].name).toBe('Bob');
-  });
-
-  it('logs an activity against a client and lists it back', async () => {
-    const { res: signupRes } = await signupTenant();
-    const adminToken = signupRes.body.data.accessToken;
-
-    const clientRes = await request(app)
-      .post('/api/v1/clients')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ companyName: 'Acme Client', contactEmail: 'client2@example.com' });
-    const clientId = clientRes.body.data.id;
+      .send({ companyName: 'Acme Lead', contactName: 'Cara', email: 'cara@acme-lead.com', estimatedValue: 500 });
+    const leadId = leadRes.body.data.id;
 
     const activityRes = await request(app)
       .post('/api/v1/crm-activities')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ type: 'CALL', subject: 'Renewal check-in', occurredAt: '2026-07-29T10:00:00.000Z', clientId });
+      .send({ type: 'CALL', subject: 'Discovery call', occurredAt: '2026-07-29T10:00:00.000Z', leadId });
     expect(activityRes.status).toBe(201);
 
-    // Must be attached to exactly one of lead/client.
-    const bothRes = await request(app)
-      .post('/api/v1/crm-activities')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ type: 'NOTE', subject: 'Bad', occurredAt: '2026-07-29T10:00:00.000Z', clientId, leadId: clientId });
-    expect(bothRes.status).toBe(400);
-
     const listRes = await request(app)
-      .get(`/api/v1/crm-activities?clientId=${clientId}`)
+      .get(`/api/v1/crm-activities?leadId=${leadId}`)
       .set('Authorization', `Bearer ${adminToken}`);
     expect(listRes.body.data).toHaveLength(1);
   });

@@ -6,7 +6,6 @@ import { createBrowserRouter } from 'react-router-dom';
 import { LoginPage } from '../modules/auth/pages/LoginPage';
 import { ProtectedRoute } from '../shared/components/layout/ProtectedRoute';
 import { AppShell } from '../shared/components/layout/AppShell';
-import { ClientPortalShell } from '../shared/components/layout/ClientPortalShell';
 import { RequireRole } from '../shared/components/layout/RequireRole';
 import { PageLoadingSkeleton } from '../shared/components/feedback/LoadingSkeleton';
 import { NotFoundPage } from '../shared/components/feedback/NotFoundPage';
@@ -39,8 +38,6 @@ const MyPayslipsPage = lazy(() => import('../modules/payroll/pages/MyPayslipsPag
 const JobPostingsPage = lazy(() => import('../modules/recruitment/pages/JobPostingsPage').then((m) => ({ default: m.JobPostingsPage })));
 const JobPostingDetailPage = lazy(() => import('../modules/recruitment/pages/JobPostingDetailPage').then((m) => ({ default: m.JobPostingDetailPage })));
 const LeadsPage = lazy(() => import('../modules/crm/pages/LeadsPage').then((m) => ({ default: m.LeadsPage })));
-const ClientsPage = lazy(() => import('../modules/crm/pages/ClientsPage').then((m) => ({ default: m.ClientsPage })));
-const ClientDetailPage = lazy(() => import('../modules/crm/pages/ClientDetailPage').then((m) => ({ default: m.ClientDetailPage })));
 const FinanceDocumentsPage = lazy(() => import('../modules/finance/pages/FinanceDocumentsPage').then((m) => ({ default: m.FinanceDocumentsPage })));
 const FinanceDocumentDetailPage = lazy(() => import('../modules/finance/pages/FinanceDocumentDetailPage').then((m) => ({ default: m.FinanceDocumentDetailPage })));
 const ProfitLossPage = lazy(() => import('../modules/finance/pages/ProfitLossPage').then((m) => ({ default: m.ProfitLossPage })));
@@ -50,7 +47,6 @@ const KnowledgeBasePage = lazy(() => import('../modules/workplace/pages/Knowledg
 const DocumentsPage = lazy(() => import('../modules/workplace/pages/DocumentsPage').then((m) => ({ default: m.DocumentsPage })));
 const AssetsPage = lazy(() => import('../modules/workplace/pages/AssetsPage').then((m) => ({ default: m.AssetsPage })));
 const VisitorsPage = lazy(() => import('../modules/workplace/pages/VisitorsPage').then((m) => ({ default: m.VisitorsPage })));
-const RoomBookingsPage = lazy(() => import('../modules/workplace/pages/RoomBookingsPage').then((m) => ({ default: m.RoomBookingsPage })));
 const TemplatesPage = lazy(() => import('../modules/hrautomation/pages/TemplatesPage').then((m) => ({ default: m.TemplatesPage })));
 const AnnouncementsPage = lazy(() => import('../modules/hrautomation/pages/AnnouncementsPage').then((m) => ({ default: m.AnnouncementsPage })));
 const BranchesPage = lazy(() => import('../modules/organization/pages/BranchesPage').then((m) => ({ default: m.BranchesPage })));
@@ -60,10 +56,6 @@ const VendorsPage = lazy(() => import('../modules/inventory/pages/VendorsPage').
 const InventoryItemsPage = lazy(() => import('../modules/inventory/pages/InventoryItemsPage').then((m) => ({ default: m.InventoryItemsPage })));
 const SopsPage = lazy(() => import('../modules/sop/pages/SopsPage').then((m) => ({ default: m.SopsPage })));
 const SopDetailPage = lazy(() => import('../modules/sop/pages/SopDetailPage').then((m) => ({ default: m.SopDetailPage })));
-const ClientOverviewPage = lazy(() => import('../modules/client-portal/pages/ClientOverviewPage').then((m) => ({ default: m.ClientOverviewPage })));
-const ClientInvoicesPage = lazy(() => import('../modules/client-portal/pages/ClientInvoicesPage').then((m) => ({ default: m.ClientInvoicesPage })));
-const ClientInvoiceDetailPage = lazy(() => import('../modules/client-portal/pages/ClientInvoiceDetailPage').then((m) => ({ default: m.ClientInvoiceDetailPage })));
-const ClientProjectsPage = lazy(() => import('../modules/client-portal/pages/ClientProjectsPage').then((m) => ({ default: m.ClientProjectsPage })));
 const VerifyDocumentPage = lazy(() => import('../modules/hrautomation/pages/VerifyDocumentPage').then((m) => ({ default: m.VerifyDocumentPage })));
 
 function lazyRoute(element: React.ReactNode) {
@@ -85,7 +77,7 @@ export const router = createBrowserRouter([
         children: [
           { path: '/', element: lazyRoute(<DashboardPage />) },
           {
-            element: <RequireRole allow={['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'EMPLOYEE', 'RECRUITER', 'FINANCE']} />,
+            element: <RequireRole allow={['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE']} />,
             children: [
               { path: '/attendance', element: lazyRoute(<AttendancePage />) },
               { path: '/leave', element: lazyRoute(<LeavePage />) },
@@ -101,7 +93,6 @@ export const router = createBrowserRouter([
               { path: '/knowledge-base', element: lazyRoute(<KnowledgeBasePage />) },
               { path: '/documents', element: lazyRoute(<DocumentsPage />) },
               { path: '/assets', element: lazyRoute(<AssetsPage />) },
-              { path: '/room-bookings', element: lazyRoute(<RoomBookingsPage />) },
               { path: '/announcements', element: lazyRoute(<AnnouncementsPage />) },
               { path: '/organization/chart', element: lazyRoute(<OrgChartPage />) },
               { path: '/sops', element: lazyRoute(<SopsPage />) },
@@ -109,52 +100,39 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: <RequireRole allow={['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'RECRUITER', 'FINANCE']} />,
+            element: <RequireRole allow={['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER']} />,
             children: [
               { path: '/leave/approvals', element: lazyRoute(<LeaveApprovalsPage />) },
               { path: '/work-reports/review', element: lazyRoute(<WorkReportReviewPage />) },
-            ],
-          },
-          {
-            element: <RequireRole allow={['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER']} />,
-            children: [{ path: '/attendance/regularizations', element: lazyRoute(<RegularizationsPage />) }],
-          },
-          {
-            element: <RequireRole allow={['SUPER_ADMIN', 'ADMIN', 'FINANCE']} />,
-            children: [
-              { path: '/finance', element: lazyRoute(<FinanceDocumentsPage />) },
-              { path: '/finance/reports/profit-loss', element: lazyRoute(<ProfitLossPage />) },
-              { path: '/finance/:id', element: lazyRoute(<FinanceDocumentDetailPage />) },
+              { path: '/attendance/regularizations', element: lazyRoute(<RegularizationsPage />) },
             ],
           },
           {
             element: <RequireRole allow={['SUPER_ADMIN', 'ADMIN']} />,
             children: [
+              { path: '/finance', element: lazyRoute(<FinanceDocumentsPage />) },
+              { path: '/finance/reports/profit-loss', element: lazyRoute(<ProfitLossPage />) },
+              { path: '/finance/:id', element: lazyRoute(<FinanceDocumentDetailPage />) },
               { path: '/audit-log', element: lazyRoute(<AuditLogPage />) },
               { path: '/settings', element: lazyRoute(<TenantSettingsPage />) },
               { path: '/sessions', element: lazyRoute(<SessionsPage />) },
-              { path: '/roles', element: lazyRoute(<RolesPage />) },
             ],
           },
           {
             element: <RequireRole allow={['SUPER_ADMIN']} />,
-            children: [{ path: '/companies', element: lazyRoute(<CompaniesPage />) }],
-          },
-          {
-            element: <RequireRole allow={['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'RECRUITER']} />,
             children: [
-              { path: '/recruitment', element: lazyRoute(<JobPostingsPage />) },
-              { path: '/recruitment/:id', element: lazyRoute(<JobPostingDetailPage />) },
+              { path: '/companies', element: lazyRoute(<CompaniesPage />) },
+              { path: '/roles', element: lazyRoute(<RolesPage />) },
             ],
           },
           {
             element: <RequireRole allow={['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER']} />,
             children: [
+              { path: '/recruitment', element: lazyRoute(<JobPostingsPage />) },
+              { path: '/recruitment/:id', element: lazyRoute(<JobPostingDetailPage />) },
               { path: '/templates', element: lazyRoute(<TemplatesPage />) },
               { path: '/visitors', element: lazyRoute(<VisitorsPage />) },
               { path: '/crm/leads', element: lazyRoute(<LeadsPage />) },
-              { path: '/crm/clients', element: lazyRoute(<ClientsPage />) },
-              { path: '/crm/clients/:id', element: lazyRoute(<ClientDetailPage />) },
               { path: '/payroll', element: lazyRoute(<PayrollRunsPage />) },
               { path: '/payroll/runs/:id', element: lazyRoute(<PayrollRunDetailPage />) },
               { path: '/users', element: lazyRoute(<UsersPage />) },
@@ -164,15 +142,6 @@ export const router = createBrowserRouter([
               { path: '/inventory', element: lazyRoute(<InventoryItemsPage />) },
             ],
           },
-        ],
-      },
-      {
-        element: <ClientPortalShell />,
-        children: [
-          { path: '/portal', element: lazyRoute(<ClientOverviewPage />) },
-          { path: '/portal/invoices', element: lazyRoute(<ClientInvoicesPage />) },
-          { path: '/portal/invoices/:id', element: lazyRoute(<ClientInvoiceDetailPage />) },
-          { path: '/portal/projects', element: lazyRoute(<ClientProjectsPage />) },
         ],
       },
     ],
