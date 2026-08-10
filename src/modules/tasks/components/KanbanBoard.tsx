@@ -45,7 +45,7 @@ export function KanbanBoard({ tasks, onOpenTask }: { tasks: TaskRecord[]; onOpen
                   role="button"
                   tabIndex={0}
                   aria-label={`Open task ${task.title}`}
-                  className="glass-panel cursor-pointer space-y-2 rounded-xl p-3 transition-colors hover:border-[var(--primary)]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                  className="surface-card cursor-pointer space-y-2 rounded-xl p-3 transition-colors hover:border-[var(--primary)]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                   onClick={() => onOpenTask(task)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {

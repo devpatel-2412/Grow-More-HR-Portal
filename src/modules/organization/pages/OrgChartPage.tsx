@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Network } from 'lucide-react';
 import { useEmployees } from '../../employees/hooks/useEmployees';
 import { Card } from '../../../shared/components/ui/card';
+import { Avatar } from '../../../shared/components/ui/avatar';
 import { EmptyState } from '../../../shared/components/feedback/EmptyState';
 import { ErrorState } from '../../../shared/components/feedback/ErrorState';
 import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
@@ -36,10 +37,7 @@ function OrgChartNode({ node }: { node: OrgNode }) {
   return (
     <li>
       <div className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--muted)] text-xs font-bold text-[var(--foreground)]">
-          {employee.firstName[0]}
-          {employee.lastName[0]}
-        </div>
+        <Avatar name={`${employee.firstName} ${employee.lastName}`} size="sm" />
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-[var(--foreground)]">
             {employee.firstName} {employee.lastName}
@@ -67,7 +65,7 @@ export function OrgChartPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">Org chart</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-[var(--foreground)] sm:text-3xl">Org chart</h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">Reporting structure, built from each employee's manager.</p>
       </div>
 

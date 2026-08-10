@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
@@ -14,10 +14,20 @@ import { AdminKpiDashboard } from '../../dashboard/components/AdminKpiDashboard'
 
 const ADMIN_DASHBOARD_ROLES = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'];
 
+function useClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+}
+
 export function DashboardPage() {
   const { user, profile, tenant, logout } = useAuth();
   const navigate = useNavigate();
   const [loggingOutAll, setLoggingOutAll] = useState(false);
+  const now = useClock();
 
   async function handleLogoutAllDevices() {
     setLoggingOutAll(true);
@@ -37,11 +47,21 @@ export function DashboardPage() {
 
   return (
     <div className={showAdminDashboard ? 'mx-auto max-w-6xl space-y-6' : 'mx-auto max-w-4xl space-y-6'}>
-      <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">
-          Welcome back{profile ? `, ${profile.firstName}` : ''}
-        </h1>
-        <p className="mt-1 text-sm text-[var(--muted-foreground)]">{tenant?.name}</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--foreground)] sm:text-3xl">
+            Welcome back{profile ? `, ${profile.firstName}` : ''}
+          </h1>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">{tenant?.name}</p>
+        </div>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-right shadow-[var(--shadow-card)]">
+          <p className="text-xs text-[var(--muted-foreground)]">
+            {now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+          </p>
+          <p className="text-lg font-bold tabular-nums text-[var(--foreground)]">
+            {now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+          </p>
+        </div>
       </div>
 
       {showAdminDashboard && <AdminKpiDashboard />}

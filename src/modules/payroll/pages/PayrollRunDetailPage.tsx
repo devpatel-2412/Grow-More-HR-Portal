@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowLeft } from 'lucide-react';
 import { usePayrollRun, usePayrollRunTransition } from '../hooks/usePayroll';
 import { useEmployees } from '../../employees/hooks/useEmployees';
 import { PayslipTable } from '../components/PayslipTable';
@@ -11,6 +10,7 @@ import { Card } from '../../../shared/components/ui/card';
 import { Button } from '../../../shared/components/ui/button';
 import { ErrorState } from '../../../shared/components/feedback/ErrorState';
 import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
+import { DetailPageShell } from '../../../shared/components/layout/DetailPageShell';
 
 export function PayrollRunDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -40,26 +40,14 @@ export function PayrollRunDetailPage() {
   if (isError || !run) return <ErrorState description="Failed to load this payroll run." onRetry={() => refetch()} />;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <Link to="/payroll" className="inline-flex items-center gap-1 text-sm text-[var(--muted-foreground)] hover:underline">
-        <ArrowLeft className="h-4 w-4" />
-        All runs
-      </Link>
-
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">
-              {MONTH_NAMES[run.month - 1]} {run.year}
-            </h1>
-            <PayrollStatusBadge status={run.status} />
-          </div>
-          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            {run.itemCount} payslips · total net {formatCurrency(run.totalNet)}
-          </p>
-        </div>
-
-        <div className="flex gap-2">
+    <DetailPageShell
+      maxWidth="6xl"
+      breadcrumb={[{ label: 'Payroll', to: '/payroll' }, { label: `${MONTH_NAMES[run.month - 1]} ${run.year}` }]}
+      title={`${MONTH_NAMES[run.month - 1]} ${run.year}`}
+      badge={<PayrollStatusBadge status={run.status} />}
+      subtitle={`${run.itemCount} payslips · total net ${formatCurrency(run.totalNet)}`}
+      actions={
+        <>
           {run.status === 'DRAFT' && (
             <>
               <Button variant="ghost" onClick={() => act('cancel')} loading={transition.isPending}>
@@ -80,12 +68,12 @@ export function PayrollRunDetailPage() {
               </Button>
             </>
           )}
-        </div>
-      </div>
-
+        </>
+      }
+    >
       <Card>
         <PayslipTable items={run.items ?? []} employeeNames={employeeNames} showEmployee />
       </Card>
-    </div>
+    </DetailPageShell>
   );
 }

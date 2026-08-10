@@ -9,9 +9,7 @@ import { Card } from '../../../shared/components/ui/card';
 import { Button } from '../../../shared/components/ui/button';
 import { Badge } from '../../../shared/components/ui/badge';
 import { PaginationBar } from '../../../shared/components/ui/pagination';
-import { EmptyState } from '../../../shared/components/feedback/EmptyState';
-import { ErrorState } from '../../../shared/components/feedback/ErrorState';
-import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
+import { ListPage } from '../../../shared/components/layout/ListPage';
 
 export function AnnouncementsPage() {
   const pagination = usePagination(20);
@@ -19,6 +17,7 @@ export function AnnouncementsPage() {
   const deleteMutation = useDeleteAnnouncement();
   const { user } = useAuth();
   const canManage = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'HR_MANAGER' || user?.role === 'PROJECT_MANAGER';
+  const state = isLoading ? 'loading' : isError ? 'error' : !data || data.data.length === 0 ? 'empty' : 'ready';
 
   async function remove(id: string) {
     try {
@@ -30,25 +29,17 @@ export function AnnouncementsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">Announcements</h1>
-          <p className="mt-1 text-sm text-[var(--muted-foreground)]">Company-wide and department notices.</p>
-        </div>
-        {canManage && <PublishAnnouncementDialog />}
-      </div>
-
-      {isLoading && (
-        <div className="space-y-2">
-          <Skeleton className="h-24 w-full" />
-        </div>
-      )}
-      {isError && <ErrorState description="Failed to load announcements." onRetry={() => refetch()} />}
-      {!isLoading && !isError && data && data.data.length === 0 && (
-        <EmptyState icon={Megaphone} title="Nothing posted yet" description="Check back later." />
-      )}
-      {!isLoading && !isError && data && data.data.length > 0 && (
+    <ListPage
+      title="Announcements"
+      subtitle="Company-wide and department notices."
+      maxWidth="4xl"
+      wrapContent={false}
+      actions={canManage ? <PublishAnnouncementDialog /> : undefined}
+      state={state}
+      errorProps={{ description: 'Failed to load announcements.', onRetry: () => refetch() }}
+      emptyProps={{ icon: Megaphone, title: 'Nothing posted yet', description: 'Check back later.' }}
+    >
+      {data && (
         <div className="space-y-4">
           {data.data.map((announcement) => (
             <Card key={announcement.id} className="space-y-2">
@@ -74,6 +65,6 @@ export function AnnouncementsPage() {
           <PaginationBar meta={data.meta} onPageChange={pagination.setPage} />
         </div>
       )}
-    </div>
+    </ListPage>
   );
 }

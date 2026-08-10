@@ -105,6 +105,22 @@ export function EmployeeTable({
       selectable
       bulkActions={[{ label: 'Mark offboarding', icon: UserX, onAction: markOffboarding }]}
       exportFilename="employees"
+      mobileCard={(e) => (
+        <div className="flex items-center justify-between gap-3">
+          <Link to={`/employees/${e.id}`} className="min-w-0 hover:underline">
+            <div className="truncate font-semibold text-[var(--foreground)]">
+              {e.firstName} {e.lastName}
+            </div>
+            <div className="truncate text-xs text-[var(--muted-foreground)]">
+              {e.employeeId} · {e.designation} · {e.department}
+            </div>
+            <div className="mt-1">
+              <EmployeeStatusBadge status={e.status} />
+            </div>
+          </Link>
+          <EmployeeFormDialog mode="edit" employee={e} />
+        </div>
+      )}
     />
   );
 }

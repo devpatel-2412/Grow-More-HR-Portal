@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { ArrowLeft, History } from 'lucide-react';
+import { History } from 'lucide-react';
 import { useSop, useUpdateSop, usePublishSop, useArchiveSop, useSopRevisions } from '../hooks/useSop';
 import { useAuth } from '../../auth/context/AuthContext';
 import { SopStatusBadge } from '../components/SopStatusBadge';
@@ -16,6 +16,7 @@ import { InlineFormError } from '../../../shared/components/feedback/ErrorState'
 import { ErrorState } from '../../../shared/components/feedback/ErrorState';
 import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
 import { EmptyState } from '../../../shared/components/feedback/EmptyState';
+import { DetailPageShell } from '../../../shared/components/layout/DetailPageShell';
 
 const bodySchema = z.object({ body: z.string().min(1, 'Required').max(50000) });
 type BodyFormValues = z.infer<typeof bodySchema>;
@@ -82,96 +83,90 @@ export function SopDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <Link to="/sops" className="mb-2 inline-flex items-center gap-1 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
-          <ArrowLeft className="h-3.5 w-3.5" />
-          SOP Library
-        </Link>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">{sop.title}</h1>
-            <SopStatusBadge status={sop.status} />
-          </div>
-          {canManage && (
-            <div className="flex gap-2">
-              {sop.status === 'DRAFT' && (
-                <Button size="sm" onClick={publish} loading={publishMutation.isPending}>
-                  Publish
-                </Button>
-              )}
-              {sop.status === 'PUBLISHED' && (
-                <Button size="sm" variant="outline" onClick={archive} loading={archiveMutation.isPending}>
-                  Archive
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          v{sop.version} · {sop.category ?? 'Uncategorized'} · {sop.department ?? 'All departments'}
-        </p>
-      </div>
-
-      <Card className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-[var(--foreground)]">Procedure</h3>
-          <div className="flex gap-2">
-            {canManage && sop.status !== 'ARCHIVED' && !editing && (
-              <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-                Edit
+    <DetailPageShell
+      maxWidth="3xl"
+      breadcrumb={[{ label: 'SOP Library', to: '/sops' }, { label: sop.title }]}
+      title={sop.title}
+      badge={<SopStatusBadge status={sop.status} />}
+      subtitle={`v${sop.version} · ${sop.category ?? 'Uncategorized'} · ${sop.department ?? 'All departments'}`}
+      actions={
+        canManage ? (
+          <>
+            {sop.status === 'DRAFT' && (
+              <Button size="sm" onClick={publish} loading={publishMutation.isPending}>
+                Publish
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={() => setShowHistory((v) => !v)}>
-              <History className="h-3.5 w-3.5" />
-              History
-            </Button>
-          </div>
-        </div>
-
-        {editing ? (
-          <form onSubmit={handleSubmit(onSaveBody)} className="space-y-3" noValidate>
-            <InlineFormError message={errors.root?.message} />
-            <Textarea rows={14} {...register('body')} />
-            {errors.body && <p className="text-xs text-[var(--destructive)]">{errors.body.message}</p>}
-            <div className="flex gap-2">
-              <Button type="submit" size="sm" loading={updateMutation.isPending}>
-                Save
+            {sop.status === 'PUBLISHED' && (
+              <Button size="sm" variant="outline" onClick={archive} loading={archiveMutation.isPending}>
+                Archive
               </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  reset({ body: sop.body });
-                  setEditing(false);
-                }}
-              >
-                Cancel
+            )}
+          </>
+        ) : undefined
+      }
+    >
+      <div className="space-y-6">
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-[var(--foreground)]">Procedure</h3>
+            <div className="flex gap-2">
+              {canManage && sop.status !== 'ARCHIVED' && !editing && (
+                <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+                  Edit
+                </Button>
+              )}
+              <Button size="sm" variant="ghost" onClick={() => setShowHistory((v) => !v)}>
+                <History className="h-3.5 w-3.5" />
+                History
               </Button>
             </div>
-          </form>
-        ) : (
-          <p className="whitespace-pre-wrap text-sm text-[var(--foreground)]">{sop.body}</p>
-        )}
-      </Card>
+          </div>
 
-      {showHistory && (
-        <Card className="space-y-3">
-          <h3 className="text-sm font-bold text-[var(--foreground)]">Revision history</h3>
-          {(revisions ?? []).length === 0 && (
-            <EmptyState icon={History} title="No prior revisions" description="This SOP hasn't been revised since it was published." />
+          {editing ? (
+            <form onSubmit={handleSubmit(onSaveBody)} className="space-y-3" noValidate>
+              <InlineFormError message={errors.root?.message} />
+              <Textarea rows={14} {...register('body')} />
+              {errors.body && <p className="text-xs text-[var(--destructive)]">{errors.body.message}</p>}
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" loading={updateMutation.isPending}>
+                  Save
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    reset({ body: sop.body });
+                    setEditing(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <p className="whitespace-pre-wrap text-sm text-[var(--foreground)]">{sop.body}</p>
           )}
-          {(revisions ?? []).map((rev) => (
-            <details key={rev.id} className="rounded-lg border border-[var(--border)] p-3">
-              <summary className="cursor-pointer text-sm font-semibold text-[var(--foreground)]">
-                v{rev.version} · {new Date(rev.createdAt).toLocaleString()}
-              </summary>
-              <p className="mt-2 whitespace-pre-wrap text-xs text-[var(--muted-foreground)]">{rev.body}</p>
-            </details>
-          ))}
         </Card>
-      )}
-    </div>
+
+        {showHistory && (
+          <Card className="space-y-3">
+            <h3 className="text-sm font-bold text-[var(--foreground)]">Revision history</h3>
+            {(revisions ?? []).length === 0 && (
+              <EmptyState icon={History} title="No prior revisions" description="This SOP hasn't been revised since it was published." />
+            )}
+            {(revisions ?? []).map((rev) => (
+              <details key={rev.id} className="rounded-lg border border-[var(--border)] p-3">
+                <summary className="cursor-pointer text-sm font-semibold text-[var(--foreground)]">
+                  v{rev.version} · {new Date(rev.createdAt).toLocaleString()}
+                </summary>
+                <p className="mt-2 whitespace-pre-wrap text-xs text-[var(--muted-foreground)]">{rev.body}</p>
+              </details>
+            ))}
+          </Card>
+        )}
+      </div>
+    </DetailPageShell>
   );
 }

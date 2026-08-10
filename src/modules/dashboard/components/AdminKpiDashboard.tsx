@@ -3,6 +3,7 @@ import { Users, UserCheck, Clock, CalendarOff, FolderKanban, ListChecks, Wallet,
 import { useAdminSummary } from '../hooks/useDashboard';
 import { StatCard } from '../../../shared/components/ui/stat-card';
 import { Card } from '../../../shared/components/ui/card';
+import { DonutChart } from '../../../shared/components/charts/DonutChart';
 import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
 import { ErrorState } from '../../../shared/components/feedback/ErrorState';
 
@@ -61,6 +62,19 @@ export function AdminKpiDashboard() {
           sublabel={summary.payroll ? `${summary.payroll.month}/${summary.payroll.year} · ${summary.payroll.status}` : 'No payroll run yet'}
         />
       </div>
+
+      <Card>
+        <h3 className="mb-4 text-sm font-bold text-[var(--foreground)]">Today's attendance</h3>
+        <DonutChart
+          segments={[
+            { label: 'Present', value: summary.attendanceToday.present, colorVar: '--primary' },
+            { label: 'Half day', value: summary.attendanceToday.halfDay, colorVar: '--secondary' },
+            { label: 'Late', value: summary.attendanceToday.late, colorVar: '--warning' },
+            { label: 'On leave', value: summary.attendanceToday.onLeave, colorVar: '--muted-foreground' },
+            { label: 'Absent', value: summary.attendanceToday.absent, colorVar: '--destructive' },
+          ]}
+        />
+      </Card>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card className="space-y-3">

@@ -7,6 +7,7 @@ import { Card } from '../../../shared/components/ui/card';
 import { Input } from '../../../shared/components/ui/input';
 import { Label } from '../../../shared/components/ui/label';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui/table';
+import { BarChart } from '../../../shared/components/charts/BarChart';
 import { EmptyState } from '../../../shared/components/feedback/EmptyState';
 import { ErrorState } from '../../../shared/components/feedback/ErrorState';
 import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
@@ -83,6 +84,17 @@ export function ProfitLossPage() {
               </p>
             </Card>
           </div>
+
+          {report.byMonth.length > 0 && (
+            <Card>
+              <h3 className="mb-4 text-sm font-bold text-[var(--foreground)]">Revenue vs. expenses by month</h3>
+              <BarChart
+                data={report.byMonth.map((row) => ({ label: row.month, value: row.revenue, value2: row.expenses }))}
+                seriesLabels={['Revenue', 'Expenses']}
+                formatValue={(v) => formatMoney(v)}
+              />
+            </Card>
+          )}
 
           <Card>
             {report.byMonth.length === 0 ? (

@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { Search, Menu, Sun, Moon, LogOut } from 'lucide-react';
+import { Search, Menu, LogOut } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
-import { useTheme } from '../../lib/theme';
 import { Button } from '../ui/button';
+import { ThemeToggle } from '../ui/theme-toggle';
+import { Avatar } from '../ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -25,7 +26,6 @@ interface TopHeaderProps {
 /** Persistent top bar for both mobile and desktop — search trigger, notifications, theme, profile. */
 export function TopHeader({ onOpenMobileNav }: TopHeaderProps) {
   const { user, profile, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   async function handleLogout() {
@@ -53,17 +53,11 @@ export function TopHeader({ onOpenMobileNav }: TopHeaderProps) {
 
       <div className="ml-auto flex items-center gap-1">
         <NotificationBell />
-        <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
-          {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </Button>
+        <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="ml-1 flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--muted)] text-xs font-bold text-[var(--foreground)] transition hover:border-[var(--primary)]"
-              aria-label="Account menu"
-            >
-              {(profile?.firstName?.[0] ?? user?.email[0] ?? '?').toUpperCase()}
+            <button type="button" className="ml-1 rounded-full transition hover:opacity-80" aria-label="Account menu">
+              <Avatar name={profile ? `${profile.firstName} ${profile.lastName}` : (user?.email ?? '?')} />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">

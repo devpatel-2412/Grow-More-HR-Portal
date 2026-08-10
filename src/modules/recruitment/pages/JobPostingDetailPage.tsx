@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 import { useJobPosting, useCandidates } from '../hooks/useRecruitment';
 import { CandidateDialog } from '../components/CandidateDialog';
 import { CandidatePipeline } from '../components/CandidatePipeline';
@@ -9,6 +8,7 @@ import { JobPostingStatusBadge, CandidateStatusBadge } from '../components/Recru
 import { Card } from '../../../shared/components/ui/card';
 import { ErrorState } from '../../../shared/components/feedback/ErrorState';
 import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
+import { DetailPageShell } from '../../../shared/components/layout/DetailPageShell';
 
 export function JobPostingDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -23,59 +23,40 @@ export function JobPostingDetailPage() {
   const rejected = candidates.filter((candidate) => candidate.status === 'REJECTED');
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <Link to="/recruitment" className="inline-flex items-center gap-1 text-sm text-[var(--muted-foreground)] hover:underline">
-        <ArrowLeft className="h-4 w-4" />
-        All postings
-      </Link>
+    <>
+      <DetailPageShell
+        maxWidth="6xl"
+        breadcrumb={[{ label: 'Recruitment', to: '/recruitment' }, { label: posting.title }]}
+        title={posting.title}
+        badge={<JobPostingStatusBadge status={posting.status} />}
+        subtitle={`${posting.department} · ${posting.location} · ${posting.openings} ${posting.openings === 1 ? 'opening' : 'openings'}`}
+        actions={id ? <CandidateDialog jobPostingId={id} /> : undefined}
+      >
+        <div className="space-y-6">
+          <CandidatePipeline candidates={candidates} onOpenCandidate={(candidate) => setOpenCandidateId(candidate.id)} />
 
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">{posting.title}</h1>
-            <JobPostingStatusBadge status={posting.status} />
-          </div>
-          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            {posting.department} · {posting.location} · {posting.openings}{' '}
-            {posting.openings === 1 ? 'opening' : 'openings'}
-          </p>
+          {rejected.length > 0 && (
+            <Card className="space-y-2">
+              <h3 className="text-sm font-bold text-[var(--foreground)]">Rejected ({rejected.length})</h3>
+              <ul className="space-y-1">
+                {rejected.map((candidate) => (
+                  <li key={candidate.id} className="flex items-center justify-between text-xs">
+                    <button type="button" onClick={() => setOpenCandidateId(candidate.id)} className="text-[var(--foreground)] hover:underline">
+                      {candidate.firstName} {candidate.lastName}
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[var(--muted-foreground)]">{candidate.rejectionReason ?? 'No reason given'}</span>
+                      <CandidateStatusBadge status={candidate.status} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
         </div>
-        {id && <CandidateDialog jobPostingId={id} />}
-      </div>
+      </DetailPageShell>
 
-      <CandidatePipeline
-        candidates={candidates}
-        onOpenCandidate={(candidate) => setOpenCandidateId(candidate.id)}
-      />
-
-      {rejected.length > 0 && (
-        <Card className="space-y-2">
-          <h3 className="text-sm font-bold text-[var(--foreground)]">Rejected ({rejected.length})</h3>
-          <ul className="space-y-1">
-            {rejected.map((candidate) => (
-              <li key={candidate.id} className="flex items-center justify-between text-xs">
-                <button
-                  type="button"
-                  onClick={() => setOpenCandidateId(candidate.id)}
-                  className="text-[var(--foreground)] hover:underline"
-                >
-                  {candidate.firstName} {candidate.lastName}
-                </button>
-                <div className="flex items-center gap-2">
-                  <span className="text-[var(--muted-foreground)]">{candidate.rejectionReason ?? 'No reason given'}</span>
-                  <CandidateStatusBadge status={candidate.status} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
-
-      <CandidateDetailDrawer
-        candidateId={openCandidateId}
-        open={!!openCandidateId}
-        onOpenChange={(next) => !next && setOpenCandidateId(undefined)}
-      />
-    </div>
+      <CandidateDetailDrawer candidateId={openCandidateId} open={!!openCandidateId} onOpenChange={(next) => !next && setOpenCandidateId(undefined)} />
+    </>
   );
 }

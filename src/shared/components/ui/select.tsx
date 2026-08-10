@@ -30,7 +30,7 @@ export function SelectContent({ className, children, ...props }: React.Component
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
-        className={cn('glass-panel z-50 max-h-64 overflow-y-auto rounded-xl bg-[var(--card)] p-1', className)}
+        className={cn('surface-overlay z-50 max-h-64 overflow-y-auto rounded-xl p-1', className)}
         position="popper"
         sideOffset={4}
         {...props}

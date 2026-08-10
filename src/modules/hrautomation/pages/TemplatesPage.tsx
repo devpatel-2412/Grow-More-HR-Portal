@@ -7,14 +7,11 @@ import { CreateTemplateDialog } from '../components/CreateTemplateDialog';
 import { GenerateDocumentDialog } from '../components/GenerateDocumentDialog';
 import { TEMPLATE_TYPE_LABELS } from '../types/hrautomation.types';
 import { ApiError } from '../../../shared/lib/api-client';
-import { Card } from '../../../shared/components/ui/card';
 import { Button } from '../../../shared/components/ui/button';
 import { Badge } from '../../../shared/components/ui/badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui/table';
 import { PaginationBar } from '../../../shared/components/ui/pagination';
-import { EmptyState } from '../../../shared/components/feedback/EmptyState';
-import { ErrorState } from '../../../shared/components/feedback/ErrorState';
-import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
+import { ListPage } from '../../../shared/components/layout/ListPage';
 import type { TemplateRecord } from '../types/hrautomation.types';
 
 export function TemplatesPage() {
@@ -22,6 +19,7 @@ export function TemplatesPage() {
   const { data, isLoading, isError, refetch } = useTemplates({ page: pagination.page, limit: pagination.limit });
   const deleteMutation = useDeleteTemplate();
   const [generatingTemplate, setGeneratingTemplate] = useState<TemplateRecord | undefined>();
+  const state = isLoading ? 'loading' : isError ? 'error' : !data || data.data.length === 0 ? 'empty' : 'ready';
 
   async function remove(id: string) {
     try {
@@ -33,26 +31,16 @@ export function TemplatesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">Templates</h1>
-          <p className="mt-1 text-sm text-[var(--muted-foreground)]">Posters and letters, filled automatically with employee data.</p>
-        </div>
-        <CreateTemplateDialog />
-      </div>
-
-      <Card>
-        {isLoading && (
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-full" />
-          </div>
-        )}
-        {isError && <ErrorState description="Failed to load templates." onRetry={() => refetch()} />}
-        {!isLoading && !isError && data && data.data.length === 0 && (
-          <EmptyState icon={LayoutTemplate} title="No templates yet" description="Create your first poster or letter." />
-        )}
-        {!isLoading && !isError && data && data.data.length > 0 && (
+    <>
+      <ListPage
+        title="Templates"
+        subtitle="Posters and letters, filled automatically with employee data."
+        actions={<CreateTemplateDialog />}
+        state={state}
+        errorProps={{ description: 'Failed to load templates.', onRetry: () => refetch() }}
+        emptyProps={{ icon: LayoutTemplate, title: 'No templates yet', description: 'Create your first poster or letter.' }}
+      >
+        {data && (
           <div className="space-y-4">
             <Table>
               <TableHeader>
@@ -87,9 +75,9 @@ export function TemplatesPage() {
             <PaginationBar meta={data.meta} onPageChange={pagination.setPage} />
           </div>
         )}
-      </Card>
+      </ListPage>
 
       <GenerateDocumentDialog template={generatingTemplate} onOpenChange={(open) => !open && setGeneratingTemplate(undefined)} />
-    </div>
+    </>
   );
 }

@@ -94,13 +94,13 @@ export function CommandPalette() {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60" />
         <DialogPrimitive.Content
           onOpenAutoFocus={(e) => {
             e.preventDefault();
             inputRef.current?.focus();
           }}
-          className="glass-panel fixed top-24 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 rounded-2xl bg-[var(--card)] focus:outline-none"
+          className="surface-overlay fixed top-24 left-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 rounded-2xl focus:outline-none"
         >
           <DialogPrimitive.Title className="sr-only">Command palette</DialogPrimitive.Title>
           <DialogPrimitive.Description className="sr-only">
