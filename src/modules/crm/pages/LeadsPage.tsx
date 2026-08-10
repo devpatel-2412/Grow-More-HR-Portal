@@ -16,9 +16,9 @@ export function LeadsPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">Leads</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--foreground)] sm:text-3xl">Leads</h1>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">Track prospects from first contact to conversion.</p>
         </div>
         <LeadDialog />

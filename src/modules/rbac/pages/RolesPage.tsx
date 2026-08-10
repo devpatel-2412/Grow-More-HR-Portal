@@ -100,9 +100,9 @@ export function RolesPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">Roles &amp; Permissions</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--foreground)] sm:text-3xl">Roles &amp; Permissions</h1>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
             Super Admin always has full access. For the other 5 roles, decide exactly what they can see and do.
           </p>
@@ -164,7 +164,7 @@ export function RolesPage() {
                 {groupByResource(displayCatalogue).map(([resource, permissions]) => (
                   <div key={resource}>
                     <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">{resource}</div>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
                       {permissions.map((permission) => (
                         <label key={permission} className={cn('flex items-center gap-2 text-sm', isSuperAdmin && 'opacity-70')}>
                           <Checkbox

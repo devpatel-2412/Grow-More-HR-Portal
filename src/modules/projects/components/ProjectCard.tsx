@@ -14,7 +14,7 @@ const STATUS_VARIANT: Record<ProjectStatus, 'success' | 'warning' | 'danger' | '
 export function ProjectCard({ project }: { project: ProjectRecord }) {
   return (
     <Link to={`/projects/${project.id}`}>
-      <Card className="glass-panel-hover h-full">
+      <Card className="surface-card-hover h-full">
         <div className="mb-3 flex items-start justify-between">
           <h3 className="text-sm font-bold text-[var(--foreground)]">{project.name}</h3>
           <Badge variant={STATUS_VARIANT[project.status]}>{project.status.replace('_', ' ')}</Badge>

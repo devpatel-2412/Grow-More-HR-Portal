@@ -45,6 +45,8 @@ export interface NavItem {
   allow?: UserRole[];
   /** Passed through to NavLink's `end` prop — only Dashboard needs an exact match at "/". */
   end?: boolean;
+  /** Sidebar/palette display grouping only — purely presentational, never touches `allow`/route gating. */
+  group?: string;
 }
 
 /**
@@ -58,47 +60,51 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/', icon: LayoutDashboard, end: true },
 
-  { label: 'Attendance', path: '/attendance', icon: Clock, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
-  { label: 'Leave', path: '/leave', icon: CalendarOff, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
-  { label: 'Leave Approvals', path: '/leave/approvals', icon: ClipboardCheck, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER'] },
-  { label: 'Projects', path: '/projects', icon: FolderKanban, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
-  { label: 'Time Tracking', path: '/time-tracking', icon: Timer, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
-  { label: 'Work Reports', path: '/work-reports', icon: NotebookPen, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
-  { label: 'Report Reviews', path: '/work-reports/review', icon: ListChecks, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER'] },
-  { label: 'My Payslips', path: '/payslips', icon: Receipt, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
-  { label: 'Employees', path: '/employees', icon: Contact, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
-  { label: 'Helpdesk', path: '/helpdesk', icon: LifeBuoy, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
-  { label: 'Knowledge Base', path: '/knowledge-base', icon: BookOpen, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
-  { label: 'Documents', path: '/documents', icon: FileText, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
-  { label: 'Assets', path: '/assets', icon: Boxes, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
-  { label: 'Announcements', path: '/announcements', icon: Megaphone, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
-  { label: 'Org Chart', path: '/organization/chart', icon: Network, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
-  { label: 'SOP Library', path: '/sops', icon: BookMarked, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
+  // Work
+  { label: 'Attendance', path: '/attendance', icon: Clock, group: 'Work', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
+  { label: 'Leave', path: '/leave', icon: CalendarOff, group: 'Work', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
+  { label: 'Leave Approvals', path: '/leave/approvals', icon: ClipboardCheck, group: 'Work', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER'] },
+  { label: 'Regularizations', path: '/attendance/regularizations', icon: ClipboardList, group: 'Work', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER'] },
+  { label: 'Projects', path: '/projects', icon: FolderKanban, group: 'Work', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
+  { label: 'Time Tracking', path: '/time-tracking', icon: Timer, group: 'Work', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
+  { label: 'Work Reports', path: '/work-reports', icon: NotebookPen, group: 'Work', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
+  { label: 'Report Reviews', path: '/work-reports/review', icon: ListChecks, group: 'Work', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER'] },
+  { label: 'My Payslips', path: '/payslips', icon: Receipt, group: 'Work', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
 
-  { label: 'Regularizations', path: '/attendance/regularizations', icon: ClipboardList, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER'] },
+  // People
+  { label: 'Employees', path: '/employees', icon: Contact, group: 'People', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
+  { label: 'Team', path: '/users', icon: Users, group: 'People', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
+  { label: 'Org Chart', path: '/organization/chart', icon: Network, group: 'People', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
+  { label: 'Branches', path: '/organization/branches', icon: Building2, group: 'People', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
+  { label: 'Teams', path: '/organization/teams', icon: Users2, group: 'People', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
+  { label: 'Companies', path: '/companies', icon: Building2, group: 'People', allow: ['SUPER_ADMIN'] },
 
   // Finance module stays fully functional for ADMIN — the dedicated FINANCE/ACCOUNTS account
   // types were removed, not the module itself.
-  { label: 'Finance', path: '/finance', icon: FileSpreadsheet, allow: ['SUPER_ADMIN', 'ADMIN'] },
+  { label: 'Finance', path: '/finance', icon: FileSpreadsheet, group: 'Finance', allow: ['SUPER_ADMIN', 'ADMIN'] },
+  { label: 'Payroll', path: '/payroll', icon: Wallet, group: 'Finance', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
 
   // Recruitment module stays fully functional for ADMIN/HR_MANAGER — the dedicated RECRUITER
   // account type was removed, not the module itself.
-  { label: 'Recruitment', path: '/recruitment', icon: BriefcaseBusiness, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
+  { label: 'Recruitment', path: '/recruitment', icon: BriefcaseBusiness, group: 'Recruitment & CRM', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
+  { label: 'Leads', path: '/crm/leads', icon: Handshake, group: 'Recruitment & CRM', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
 
-  { label: 'Templates', path: '/templates', icon: LayoutTemplate, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
-  { label: 'Visitors', path: '/visitors', icon: UserCheck, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
-  { label: 'Leads', path: '/crm/leads', icon: Handshake, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
-  { label: 'Payroll', path: '/payroll', icon: Wallet, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
-  { label: 'Team', path: '/users', icon: Users, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
-  { label: 'Branches', path: '/organization/branches', icon: Building2, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
-  { label: 'Teams', path: '/organization/teams', icon: Users2, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
-  { label: 'Vendors', path: '/vendors', icon: Truck, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
-  { label: 'Inventory', path: '/inventory', icon: Package, allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
+  // Workplace
+  { label: 'Helpdesk', path: '/helpdesk', icon: LifeBuoy, group: 'Workplace', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
+  { label: 'Knowledge Base', path: '/knowledge-base', icon: BookOpen, group: 'Workplace', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
+  { label: 'Documents', path: '/documents', icon: FileText, group: 'Workplace', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
+  { label: 'Assets', path: '/assets', icon: Boxes, group: 'Workplace', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
+  { label: 'Announcements', path: '/announcements', icon: Megaphone, group: 'Workplace', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
+  { label: 'SOP Library', path: '/sops', icon: BookMarked, group: 'Workplace', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] },
+  { label: 'Templates', path: '/templates', icon: LayoutTemplate, group: 'Workplace', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
+  { label: 'Visitors', path: '/visitors', icon: UserCheck, group: 'Workplace', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
+  { label: 'Vendors', path: '/vendors', icon: Truck, group: 'Workplace', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
+  { label: 'Inventory', path: '/inventory', icon: Package, group: 'Workplace', allow: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'] },
 
-  { label: 'Companies', path: '/companies', icon: Building2, allow: ['SUPER_ADMIN'] },
+  // Admin
   // SUPER_ADMIN alone decides the other 5 fixed roles' access — see permissions.ts.
-  { label: 'Roles & Permissions', path: '/roles', icon: ShieldCheck, allow: ['SUPER_ADMIN'] },
-  { label: 'Audit Log', path: '/audit-log', icon: ScrollText, allow: ['SUPER_ADMIN', 'ADMIN'] },
-  { label: 'Sessions', path: '/sessions', icon: MonitorSmartphone, allow: ['SUPER_ADMIN', 'ADMIN'] },
-  { label: 'Settings', path: '/settings', icon: Settings, allow: ['SUPER_ADMIN', 'ADMIN'] },
+  { label: 'Roles & Permissions', path: '/roles', icon: ShieldCheck, group: 'Admin', allow: ['SUPER_ADMIN'] },
+  { label: 'Audit Log', path: '/audit-log', icon: ScrollText, group: 'Admin', allow: ['SUPER_ADMIN', 'ADMIN'] },
+  { label: 'Sessions', path: '/sessions', icon: MonitorSmartphone, group: 'Admin', allow: ['SUPER_ADMIN', 'ADMIN'] },
+  { label: 'Settings', path: '/settings', icon: Settings, group: 'Admin', allow: ['SUPER_ADMIN', 'ADMIN'] },
 ];

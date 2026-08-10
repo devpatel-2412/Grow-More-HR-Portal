@@ -8,14 +8,11 @@ import { DocumentVersionHistoryDialog } from '../components/DocumentVersionHisto
 import { ReplaceDocumentFileDialog } from '../components/ReplaceDocumentFileDialog';
 import { ApiError } from '../../../shared/lib/api-client';
 import { useAuth } from '../../auth/context/AuthContext';
-import { Card } from '../../../shared/components/ui/card';
 import { Button } from '../../../shared/components/ui/button';
 import { Badge } from '../../../shared/components/ui/badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui/table';
 import { PaginationBar } from '../../../shared/components/ui/pagination';
-import { EmptyState } from '../../../shared/components/feedback/EmptyState';
-import { ErrorState } from '../../../shared/components/feedback/ErrorState';
-import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
+import { ListPage } from '../../../shared/components/layout/ListPage';
 import type { DocumentRecord } from '../types/workplace.types';
 
 export function DocumentsPage() {
@@ -34,6 +31,7 @@ export function DocumentsPage() {
   const downloadMutation = useDownloadDocument();
   const { user } = useAuth();
   const canManage = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'HR_MANAGER' || user?.role === 'PROJECT_MANAGER';
+  const state = isLoading ? 'loading' : isError ? 'error' : !data || data.data.length === 0 ? 'empty' : 'ready';
 
   async function remove(id: string) {
     try {
@@ -78,40 +76,31 @@ export function DocumentsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">Documents</h1>
-          <p className="mt-1 text-sm text-[var(--muted-foreground)]">Company files organized by folder, with full version history.</p>
-        </div>
-        {canManage && <UploadDocumentDialog />}
-      </div>
-
-      <div className="flex gap-2">
-        <Button variant={showArchived ? 'outline' : 'default'} size="sm" onClick={() => setShowArchived(false)}>
-          Active
-        </Button>
-        <Button variant={showArchived ? 'default' : 'outline'} size="sm" onClick={() => setShowArchived(true)}>
-          <Archive className="h-3.5 w-3.5" />
-          Archive
-        </Button>
-      </div>
-
-      <Card>
-        {isLoading && (
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-full" />
-          </div>
-        )}
-        {isError && <ErrorState description="Failed to load documents." onRetry={() => refetch()} />}
-        {!isLoading && !isError && data && data.data.length === 0 && (
-          <EmptyState
-            icon={FileText}
-            title={showArchived ? 'Nothing archived' : 'No documents yet'}
-            description={showArchived ? 'Archived documents will show up here.' : 'Add the first one.'}
-          />
-        )}
-        {!isLoading && !isError && data && data.data.length > 0 && (
+    <>
+      <ListPage
+        title="Documents"
+        subtitle="Company files organized by folder, with full version history."
+        actions={canManage ? <UploadDocumentDialog /> : undefined}
+        filters={
+          <>
+            <Button variant={showArchived ? 'outline' : 'default'} size="sm" onClick={() => setShowArchived(false)}>
+              Active
+            </Button>
+            <Button variant={showArchived ? 'default' : 'outline'} size="sm" onClick={() => setShowArchived(true)}>
+              <Archive className="h-3.5 w-3.5" />
+              Archive
+            </Button>
+          </>
+        }
+        state={state}
+        errorProps={{ description: 'Failed to load documents.', onRetry: () => refetch() }}
+        emptyProps={{
+          icon: FileText,
+          title: showArchived ? 'Nothing archived' : 'No documents yet',
+          description: showArchived ? 'Archived documents will show up here.' : 'Add the first one.',
+        }}
+      >
+        {data && (
           <div className="space-y-4">
             <Table>
               <TableHeader>
@@ -167,10 +156,10 @@ export function DocumentsPage() {
             <PaginationBar meta={data.meta} onPageChange={pagination.setPage} />
           </div>
         )}
-      </Card>
+      </ListPage>
 
       <DocumentVersionHistoryDialog document={versionsFor} onOpenChange={(open) => !open && setVersionsFor(undefined)} />
       <ReplaceDocumentFileDialog document={replaceFor} onOpenChange={(open) => !open && setReplaceFor(undefined)} />
-    </div>
+    </>
   );
 }

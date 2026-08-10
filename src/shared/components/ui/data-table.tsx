@@ -47,6 +47,8 @@ export interface DataTableProps<T> {
   /** Presence enables the "Export CSV" button, exporting the currently loaded/visible rows and columns. */
   exportFilename?: string;
   defaultHiddenColumnIds?: string[];
+  /** Opt-in: renders a stacked card per row below `sm` instead of the table (which otherwise falls back to horizontal scroll — still accessible, just not this). */
+  mobileCard?: (row: T) => React.ReactNode;
 }
 
 function nextSort(columnId: string, current: string | undefined): string | undefined {
@@ -66,6 +68,7 @@ export function DataTable<T>({
   bulkActions = [],
   exportFilename,
   defaultHiddenColumnIds = [],
+  mobileCard,
 }: DataTableProps<T>) {
   const columnIds = useMemo(() => columns.map((c) => c.id), [columns]);
   const { isVisible, toggle } = useColumnVisibility(tableId, columnIds, defaultHiddenColumnIds);
@@ -105,7 +108,7 @@ export function DataTable<T>({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-h-8 flex-1 items-center gap-2">
           {selectable && selectedRows.length > 0 && (
             <>
@@ -158,66 +161,84 @@ export function DataTable<T>({
         </div>
       </div>
 
-      <Table>
-        <TableHeader className="sticky top-0 z-10 bg-[var(--card)]">
-          <TableRow>
-            {selectable && (
-              <TableHead className="w-8">
-                <Checkbox
-                  checked={allSelected ? true : someSelected ? 'indeterminate' : false}
-                  indeterminate={someSelected}
-                  onCheckedChange={toggleAll}
-                  aria-label="Select all rows"
-                />
-              </TableHead>
-            )}
-            {visibleColumns.map((column) => {
-              const active = sort?.startsWith(`${column.id}:`);
-              const direction = sort === `${column.id}:asc` ? 'asc' : sort === `${column.id}:desc` ? 'desc' : undefined;
-              return (
-                <TableHead key={column.id} className={column.className}>
-                  {column.sortable && onSortChange ? (
-                    <button
-                      type="button"
-                      onClick={() => onSortChange(nextSort(column.id, sort))}
-                      className={cn(
-                        'flex items-center gap-1 uppercase tracking-widest hover:text-[var(--foreground)]',
-                        active && 'text-[var(--foreground)]',
-                      )}
-                    >
-                      {column.header}
-                      {direction === 'asc' && <ArrowUp className="h-3 w-3" />}
-                      {direction === 'desc' && <ArrowDown className="h-3 w-3" />}
-                      {!direction && <ArrowUpDown className="h-3 w-3 opacity-40" />}
-                    </button>
-                  ) : (
-                    column.header
-                  )}
+      <div className={mobileCard ? 'hidden sm:block' : undefined}>
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-[var(--card)]">
+            <TableRow>
+              {selectable && (
+                <TableHead className="w-8">
+                  <Checkbox
+                    checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                    indeterminate={someSelected}
+                    onCheckedChange={toggleAll}
+                    aria-label="Select all rows"
+                  />
                 </TableHead>
+              )}
+              {visibleColumns.map((column) => {
+                const active = sort?.startsWith(`${column.id}:`);
+                const direction = sort === `${column.id}:asc` ? 'asc' : sort === `${column.id}:desc` ? 'desc' : undefined;
+                return (
+                  <TableHead key={column.id} className={column.className}>
+                    {column.sortable && onSortChange ? (
+                      <button
+                        type="button"
+                        onClick={() => onSortChange(nextSort(column.id, sort))}
+                        className={cn(
+                          'flex items-center gap-1 uppercase tracking-widest hover:text-[var(--foreground)]',
+                          active && 'text-[var(--foreground)]',
+                        )}
+                      >
+                        {column.header}
+                        {direction === 'asc' && <ArrowUp className="h-3 w-3" />}
+                        {direction === 'desc' && <ArrowDown className="h-3 w-3" />}
+                        {!direction && <ArrowUpDown className="h-3 w-3 opacity-40" />}
+                      </button>
+                    ) : (
+                      column.header
+                    )}
+                  </TableHead>
+                );
+              })}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row) => {
+              const id = getRowId(row);
+              return (
+                <TableRow key={id}>
+                  {selectable && (
+                    <TableCell>
+                      <Checkbox checked={selected.has(id)} onCheckedChange={() => toggleRow(id)} aria-label="Select row" />
+                    </TableCell>
+                  )}
+                  {visibleColumns.map((column) => (
+                    <TableCell key={column.id} className={column.className}>
+                      {column.cell(row)}
+                    </TableCell>
+                  ))}
+                </TableRow>
               );
             })}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+          </TableBody>
+        </Table>
+      </div>
+
+      {mobileCard && (
+        <div className="space-y-2 sm:hidden">
           {rows.map((row) => {
             const id = getRowId(row);
             return (
-              <TableRow key={id}>
+              <div key={id} className="flex items-start gap-3 rounded-xl border border-[var(--border)] p-3">
                 {selectable && (
-                  <TableCell>
-                    <Checkbox checked={selected.has(id)} onCheckedChange={() => toggleRow(id)} aria-label="Select row" />
-                  </TableCell>
+                  <Checkbox checked={selected.has(id)} onCheckedChange={() => toggleRow(id)} aria-label="Select row" className="mt-0.5 shrink-0" />
                 )}
-                {visibleColumns.map((column) => (
-                  <TableCell key={column.id} className={column.className}>
-                    {column.cell(row)}
-                  </TableCell>
-                ))}
-              </TableRow>
+                <div className="min-w-0 flex-1">{mobileCard(row)}</div>
+              </div>
             );
           })}
-        </TableBody>
-      </Table>
+        </div>
+      )}
     </div>
   );
 }

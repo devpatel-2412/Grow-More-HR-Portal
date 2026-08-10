@@ -57,7 +57,7 @@ export function AcceptInvitePage() {
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <InlineFormError message={errors.root?.message} />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="firstName">First name</Label>
               <Input id="firstName" autoComplete="given-name" {...register('firstName')} />

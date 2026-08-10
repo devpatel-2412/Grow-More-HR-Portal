@@ -8,7 +8,7 @@ import { APP_NAME } from '../../config/brand';
 import { RoleGate } from './RoleGate';
 import { CommandPalette } from './CommandPalette';
 import { TopHeader } from './TopHeader';
-import { NAV_ITEMS } from '../../config/nav-items';
+import { NAV_ITEMS, type NavItem } from '../../config/nav-items';
 import { cn } from '../../utils/cn';
 
 const SIDEBAR_COLLAPSED_KEY = 'grow-more-sidebar-collapsed';
@@ -21,6 +21,20 @@ function navLinkClasses({ isActive, collapsed }: { isActive: boolean; collapsed:
       ? 'border-[var(--primary)] bg-[var(--primary-light)] text-[var(--primary)]'
       : 'border-transparent text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]',
   );
+}
+
+/** Groups NAV_ITEMS by their (optional) `group` field, preserving first-seen order — display only, never affects `allow`/route gating. */
+function groupNavItems(items: NavItem[]): { group: string | undefined; items: NavItem[] }[] {
+  const order: (string | undefined)[] = [];
+  const byGroup = new Map<string | undefined, NavItem[]>();
+  for (const item of items) {
+    if (!byGroup.has(item.group)) {
+      byGroup.set(item.group, []);
+      order.push(item.group);
+    }
+    byGroup.get(item.group)!.push(item);
+  }
+  return order.map((group) => ({ group, items: byGroup.get(group)! }));
 }
 
 export function AppShell() {
@@ -63,11 +77,7 @@ export function AppShell() {
       <CommandPalette />
 
       {mobileNavOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
-          onClick={() => setMobileNavOpen(false)}
-          aria-hidden="true"
-        />
+        <div className="fixed inset-0 z-30 bg-black/60 lg:hidden" onClick={() => setMobileNavOpen(false)} aria-hidden="true" />
       )}
 
       <aside
@@ -90,27 +100,36 @@ export function AppShell() {
         </div>
 
         <nav className={cn('flex-1 min-h-0 space-y-1 overflow-y-auto overflow-x-hidden px-4 py-6', collapsed && 'lg:px-3')} aria-label="Primary">
-          {NAV_ITEMS.map((item) => {
-            const link = (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                end={item.end}
-                title={collapsed ? item.label : undefined}
-                className={({ isActive }) => navLinkClasses({ isActive, collapsed })}
-              >
-                <item.icon className="h-4 w-4 shrink-0" />
-                <span className={cn(collapsed && 'lg:hidden')}>{item.label}</span>
-              </NavLink>
-            );
-            return item.allow ? (
-              <RoleGate key={item.path} allow={item.allow}>
-                {link}
-              </RoleGate>
-            ) : (
-              link
-            );
-          })}
+          {groupNavItems(NAV_ITEMS).map(({ group, items }) => (
+            <div key={group ?? '__ungrouped'} className="space-y-1 pb-1">
+              {group && (
+                <div className={cn('px-2.5 pt-3 pb-1 text-[10px] font-semibold tracking-wider text-[var(--muted-foreground)] uppercase', collapsed && 'lg:hidden')}>
+                  {group}
+                </div>
+              )}
+              {items.map((item) => {
+                const link = (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    end={item.end}
+                    title={collapsed ? item.label : undefined}
+                    className={({ isActive }) => navLinkClasses({ isActive, collapsed })}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span className={cn(collapsed && 'lg:hidden')}>{item.label}</span>
+                  </NavLink>
+                );
+                return item.allow ? (
+                  <RoleGate key={item.path} allow={item.allow}>
+                    {link}
+                  </RoleGate>
+                ) : (
+                  link
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="hidden shrink-0 border-t border-[var(--border)] p-3 lg:block">
@@ -129,7 +148,7 @@ export function AppShell() {
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <TopHeader onOpenMobileNav={() => setMobileNavOpen(true)} />
-        <main id="main-content" tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto p-8 focus:outline-none">
+        <main id="main-content" tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto p-4 focus:outline-none sm:p-6 lg:p-8">
           <Outlet />
         </main>
       </div>

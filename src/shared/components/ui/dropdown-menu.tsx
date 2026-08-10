@@ -15,7 +15,7 @@ export function DropdownMenuContent({
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
         sideOffset={sideOffset}
-        className={cn('glass-panel z-50 min-w-[10rem] rounded-xl bg-[var(--card)] p-1 focus:outline-none', className)}
+        className={cn('surface-overlay z-50 min-w-[10rem] rounded-xl p-1 focus:outline-none', className)}
         {...props}
       />
     </DropdownMenuPrimitive.Portal>

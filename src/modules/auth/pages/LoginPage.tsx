@@ -7,10 +7,7 @@ import { APP_NAME } from '../../../shared/config/brand';
 export function LoginPage() {
   return (
     <AuthLayout>
-      <div className="absolute top-1/4 left-1/4 h-96 w-96 rounded-full bg-brand-primary/10 blur-[120px]" />
-      <div className="absolute bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-brand-secondary/10 blur-[120px]" />
-
-      <Card className="relative z-10 w-full max-w-md">
+      <Card className="w-full max-w-md">
         <CardHeader>
           <Logo className="mb-3 h-12 w-12 shadow-lg shadow-(--primary)/20" />
           <CardTitle>{APP_NAME}</CardTitle>

@@ -1,23 +1,19 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { Pencil } from 'lucide-react';
 import { useEmployee } from '../hooks/useEmployee';
 import { useAuth } from '../../auth/context/AuthContext';
 import { EmployeeStatusBadge } from '../components/EmployeeStatusBadge';
 import { ChecklistPanel } from '../../lifecycle/components/ChecklistPanel';
 import { LifecycleEventsPanel } from '../../lifecycle/components/LifecycleEventsPanel';
 import { FnfSettlementPanel } from '../../lifecycle/components/FnfSettlementPanel';
-import { Card } from '../../../shared/components/ui/card';
 import { ErrorState } from '../../../shared/components/feedback/ErrorState';
 import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
-import { cn } from '../../../shared/utils/cn';
 import { ProfileEditForm } from '../components/ProfileEditForm';
 import { Button } from '../../../shared/components/ui/button';
-import { Pencil } from 'lucide-react';
+import { DetailPageShell } from '../../../shared/components/layout/DetailPageShell';
 
-const TABS = ['overview', 'checklist', 'lifecycle', 'fnf'] as const;
-type Tab = (typeof TABS)[number];
-const TAB_LABELS: Record<Tab, string> = { overview: 'Overview', checklist: 'Checklist', lifecycle: 'Lifecycle', fnf: 'F&F settlement' };
+type Tab = 'overview' | 'checklist' | 'lifecycle' | 'fnf';
 
 export function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -45,88 +41,73 @@ export function EmployeeDetailPage() {
   const exitEligible = employee.status === 'OFFBOARDING' || employee.status === 'TERMINATED' || employee.status === 'RESIGNED';
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div>
-        <Link
-          to="/employees"
-          className="mb-2 inline-flex items-center gap-1 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Employees
-        </Link>
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">{fullName}</h1>
-          <EmployeeStatusBadge status={employee.status} />
-        </div>
-        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          {employee.employeeId} · {employee.designation} · {employee.department}
-        </p>
-      </div>
+    <DetailPageShell
+      maxWidth="5xl"
+      breadcrumb={[{ label: 'Employees', to: '/employees' }, { label: fullName }]}
+      title={fullName}
+      badge={<EmployeeStatusBadge status={employee.status} />}
+      subtitle={`${employee.employeeId} · ${employee.designation} · ${employee.department}`}
+      activeTab={tab}
+      onTabChange={(v) => setTab(v as Tab)}
+      tabs={[
+        {
+          value: 'overview',
+          label: 'Overview',
+          content: (
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                {isSelf && !isEditing && (
+                  <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                    <Pencil className="h-4 w-4" />
+                    Edit Profile
+                  </Button>
+                )}
+              </div>
 
-      <div className="flex gap-1 border-b border-[var(--border)]">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={cn(
-              'px-4 py-2 text-xs font-semibold transition-colors',
-              tab === t
-                ? 'border-b-2 border-[var(--primary)] text-[var(--foreground)]'
-                : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]',
-            )}
-          >
-            {TAB_LABELS[t]}
-          </button>
-        ))}
-      </div>
-
-      <Card className="p-0">
-        {tab === 'overview' && (
-          <div className="p-4 space-y-4">
-            <div className="flex justify-end">
-              {isSelf && !isEditing && (
-                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit Profile
-                </Button>
+              {isEditing && isSelf ? (
+                <ProfileEditForm
+                  employee={employee}
+                  onSuccess={() => {
+                    setIsEditing(false);
+                    refetch();
+                  }}
+                  onCancel={() => setIsEditing(false)}
+                />
+              ) : (
+                <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Phone</dt>
+                    <dd className="text-[var(--foreground)]">{employee.phone ?? '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Date of joining</dt>
+                    <dd className="text-[var(--foreground)]">{new Date(employee.dateOfJoining).toLocaleDateString()}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Address</dt>
+                    <dd className="text-[var(--foreground)]">{employee.address ?? '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Emergency Contact</dt>
+                    <dd className="text-[var(--foreground)]">{employee.emergencyContact ?? '—'}</dd>
+                  </div>
+                </dl>
               )}
             </div>
-            
-            {isEditing && isSelf ? (
-              <ProfileEditForm 
-                employee={employee} 
-                onSuccess={() => { setIsEditing(false); refetch(); }} 
-                onCancel={() => setIsEditing(false)} 
-              />
-            ) : (
-              <dl className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Phone</dt>
-                  <dd className="text-[var(--foreground)]">{employee.phone ?? '—'}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Date of joining</dt>
-                  <dd className="text-[var(--foreground)]">{new Date(employee.dateOfJoining).toLocaleDateString()}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Address</dt>
-                  <dd className="text-[var(--foreground)]">{employee.address ?? '—'}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Emergency Contact</dt>
-                  <dd className="text-[var(--foreground)]">{employee.emergencyContact ?? '—'}</dd>
-                </div>
-              </dl>
-            )}
-          </div>
-        )}
-        {tab === 'checklist' && <ChecklistPanel employeeId={id} canManage={canManage} />}
-        {tab === 'lifecycle' && (
-          <LifecycleEventsPanel employeeId={id} employeeName={fullName} status={employee.status} canManage={canManage} />
-        )}
-        {tab === 'fnf' && <FnfSettlementPanel employeeId={id} employeeName={fullName} eligible={exitEligible} canManage={canManage} />}
-      </Card>
-    </div>
+          ),
+        },
+        { value: 'checklist', label: 'Checklist', content: <ChecklistPanel employeeId={id} canManage={canManage} /> },
+        {
+          value: 'lifecycle',
+          label: 'Lifecycle',
+          content: <LifecycleEventsPanel employeeId={id} employeeName={fullName} status={employee.status} canManage={canManage} />,
+        },
+        {
+          value: 'fnf',
+          label: 'F&F settlement',
+          content: <FnfSettlementPanel employeeId={id} employeeName={fullName} eligible={exitEligible} canManage={canManage} />,
+        },
+      ]}
+    />
   );
 }
