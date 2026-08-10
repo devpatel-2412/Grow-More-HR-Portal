@@ -116,6 +116,31 @@ describe('RBAC — the 6 fixed roles', () => {
     );
   });
 
+  it('auto-heals a tenant that predates RBAC seeding — GET /rbac/roles alone initializes all 5 roles, TEAM_LEADER included, with no manual seed step', async () => {
+    const { res: signupRes, tenantId } = await signupSuperAdminTenant();
+    const token = signupRes.body.data.accessToken;
+    // Deliberately no seedSystemRolesForTenant() call here — this reproduces a tenant created
+    // before dynamic RBAC existed, or whose one-off backfill script was never run in production.
+
+    const listRes = await request(app).get('/api/v1/rbac/roles').set('Authorization', `Bearer ${token}`);
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.data).toHaveLength(5);
+    expect(listRes.body.data.map((r: { name: string }) => r.name).sort()).toEqual(
+      ['ADMIN', 'EMPLOYEE', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER'].sort(),
+    );
+
+    const teamLeader = listRes.body.data.find((r: { name: string }) => r.name === 'TEAM_LEADER');
+    expect(teamLeader).toBeDefined();
+    expect(teamLeader.permissions.length).toBeGreaterThan(0);
+
+    // Calling it again must not create duplicates — same 5 rows, same ids.
+    const secondListRes = await request(app).get('/api/v1/rbac/roles').set('Authorization', `Bearer ${token}`);
+    expect(secondListRes.body.data).toHaveLength(5);
+    expect(secondListRes.body.data.map((r: { id: string }) => r.id).sort()).toEqual(
+      listRes.body.data.map((r: { id: string }) => r.id).sort(),
+    );
+  });
+
   it('has no route left to create, rename, or delete a role — only the 6 fixed roles can ever exist', async () => {
     const { res: signupRes, tenantId } = await signupSuperAdminTenant();
     const token = signupRes.body.data.accessToken;

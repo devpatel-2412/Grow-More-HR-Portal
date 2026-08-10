@@ -88,7 +88,7 @@ export function AppShell() {
         )}
       >
         <div className={cn('flex shrink-0 items-center gap-3 border-b border-[var(--border)] p-6', collapsed && 'lg:justify-center lg:px-3')}>
-          <Logo className="h-8 w-8 shrink-0 shadow-lg" />
+          <Logo className="h-8 w-auto shrink-0" />
           {!collapsed && (
             <div className="min-w-0 lg:block">
               <h2 className="truncate text-sm font-extrabold tracking-tight text-[var(--foreground)]">{tenant?.name ?? APP_NAME}</h2>

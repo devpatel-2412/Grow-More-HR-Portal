@@ -38,6 +38,7 @@ function makeDeps() {
     findRoleByName: vi.fn().mockResolvedValue(null),
     findRoleById: vi.fn(),
     findRolesByTenant: vi.fn(),
+    createRole: vi.fn().mockImplementation(({ name }: { name: string }) => Promise.resolve(makeRole({ id: `role-${name}`, name }))),
     addRolePermissions: vi.fn().mockResolvedValue(undefined),
     removeRolePermission: vi.fn().mockResolvedValue(undefined),
     findUserRoleAssignment: vi.fn().mockResolvedValue(null),
@@ -153,5 +154,82 @@ describe('RbacService — core guards', () => {
 
     expect(deps.repository.findRolesByTenant).toHaveBeenCalledWith('tenant-1');
     expect(roles).toEqual([makeRole()]);
+  });
+});
+
+describe('RbacService.listRoles — auto-heals tenants that predate RBAC seeding', () => {
+  // Reproduces the reported bug: a tenant created before dynamic RBAC existed (or whose one-off
+  // backfill script was never run) has zero Role rows, so the Roles & Permissions page showed
+  // "This role hasn't been initialized for your company yet" for every one of the 5 configurable
+  // roles — TEAM_LEADER included, even though it's a real, always-valid fixed role.
+  const ALL_FIVE = ['ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'];
+
+  it('creates all 5 configurable roles (never SUPER_ADMIN) when the tenant has none yet', async () => {
+    const deps = makeDeps();
+    deps.repository.findRoleByName.mockResolvedValue(null); // nothing exists yet, for any role
+    deps.repository.findRolesByTenant.mockResolvedValue([]);
+    const service = build(deps);
+
+    await service.listRoles('tenant-1');
+
+    const createdNames = deps.repository.createRole.mock.calls.map(([data]: [{ name: string }]) => data.name);
+    expect(createdNames.sort()).toEqual([...ALL_FIVE].sort());
+    expect(createdNames).not.toContain('SUPER_ADMIN');
+    expect(deps.repository.addRolePermissions).toHaveBeenCalledTimes(5);
+  });
+
+  it('specifically initializes TEAM_LEADER with a real starting permission set', async () => {
+    const deps = makeDeps();
+    deps.repository.findRoleByName.mockResolvedValue(null);
+    deps.repository.findRolesByTenant.mockResolvedValue([]);
+    const service = build(deps);
+
+    await service.listRoles('tenant-1');
+
+    expect(deps.repository.createRole).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: 'tenant-1', name: 'TEAM_LEADER', isSystem: true }),
+    );
+    const teamLeaderCall = deps.repository.addRolePermissions.mock.calls.find(([roleId]: [string]) => roleId === 'role-TEAM_LEADER');
+    expect(teamLeaderCall?.[1]?.length).toBeGreaterThan(0);
+  });
+
+  it('never recreates or touches a role that already exists — idempotent, does not overwrite customized permissions', async () => {
+    const deps = makeDeps();
+    // TEAM_LEADER (and only TEAM_LEADER) is already initialized — e.g. a SUPER_ADMIN previously
+    // cleared it down to a custom permission set. The other 4 are still missing.
+    deps.repository.findRoleByName.mockImplementation((_tenantId: string, name: string) =>
+      Promise.resolve(name === 'TEAM_LEADER' ? makeRole({ id: 'role-TEAM_LEADER', name: 'TEAM_LEADER' }) : null),
+    );
+    deps.repository.findRolesByTenant.mockResolvedValue([]);
+    const service = build(deps);
+
+    await service.listRoles('tenant-1');
+
+    const createdNames = deps.repository.createRole.mock.calls.map(([data]: [{ name: string }]) => data.name);
+    expect(createdNames).not.toContain('TEAM_LEADER');
+    expect(createdNames.sort()).toEqual(['ADMIN', 'EMPLOYEE', 'HR_MANAGER', 'PROJECT_MANAGER'].sort());
+  });
+
+  it('running listRoles twice in a row creates no duplicates the second time', async () => {
+    const deps = makeDeps();
+    const existing = new Map<string, unknown>();
+    deps.repository.findRoleByName.mockImplementation((_tenantId: string, name: string) => Promise.resolve(existing.get(name) ?? null));
+    deps.repository.createRole.mockImplementation(({ name }: { name: string }) => {
+      const role = makeRole({ id: `role-${name}`, name });
+      existing.set(name, role);
+      return Promise.resolve(role);
+    });
+    deps.repository.findRolesByTenant.mockResolvedValue([]);
+    const service = build(deps);
+
+    await service.listRoles('tenant-1');
+    expect(deps.repository.createRole).toHaveBeenCalledTimes(5);
+
+    deps.repository.createRole.mockClear();
+    deps.repository.addRolePermissions.mockClear();
+    await service.listRoles('tenant-1');
+
+    expect(deps.repository.createRole).not.toHaveBeenCalled();
+    expect(deps.repository.addRolePermissions).not.toHaveBeenCalled();
   });
 });
