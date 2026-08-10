@@ -7,6 +7,7 @@ import { UnauthorizedError, ForbiddenError } from '../errors/app-error.js';
 
 const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
+    role: { findFirst: vi.fn().mockResolvedValue(null) },
     userRoleAssignment: { findMany: vi.fn().mockResolvedValue([]) },
     employeeProfile: { findUnique: vi.fn().mockResolvedValue(null) },
     departmentPermission: { findMany: vi.fn().mockResolvedValue([]) },
@@ -20,6 +21,7 @@ vi.mock('../../db/prisma.js', () => ({ prisma: prismaMock }));
 // (different-role) cached result instead of resolving fresh.
 beforeEach(() => {
   invalidateAllPermissionCache();
+  prismaMock.role.findFirst.mockResolvedValue(null);
   prismaMock.userRoleAssignment.findMany.mockResolvedValue([]);
   prismaMock.employeeProfile.findUnique.mockResolvedValue(null);
   prismaMock.departmentPermission.findMany.mockResolvedValue([]);
@@ -130,16 +132,8 @@ describe('requireStaff', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('throws ForbiddenError for an external-role login (CLIENT or CANDIDATE)', () => {
-    for (const role of ['CLIENT', 'CANDIDATE']) {
-      const next = vi.fn();
-      expect(() => requireStaff(mockReq({ role } as never), {} as Response, next)).toThrow(ForbiddenError);
-      expect(next).not.toHaveBeenCalled();
-    }
-  });
-
-  it('calls next() for every staff role', () => {
-    for (const role of ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'EMPLOYEE', 'RECRUITER', 'FINANCE']) {
+  it('calls next() for every one of the 6 fixed roles — there is no external role left to reject', () => {
+    for (const role of ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE']) {
       const next = vi.fn();
       requireStaff(mockReq({ role } as never), {} as Response, next);
       expect(next).toHaveBeenCalledOnce();

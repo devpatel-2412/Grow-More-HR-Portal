@@ -20,7 +20,7 @@ import { workReportRouter } from './modules/workreports/workreport.routes.js';
 import { timeLogRouter } from './modules/timetracking/timelog.routes.js';
 import { payrollRouter } from './modules/payroll/payroll.routes.js';
 import { jobPostingRouter, candidateRouter, interviewRouter } from './modules/recruitment/recruitment.routes.js';
-import { leadRouter, clientRouter, crmContactRouter, crmActivityRouter } from './modules/crm/crm.routes.js';
+import { leadRouter, crmActivityRouter } from './modules/crm/crm.routes.js';
 import { financeRouter } from './modules/finance/finance.routes.js';
 import { ticketRouter } from './modules/workplace/ticket.routes.js';
 import { kbRouter } from './modules/workplace/kb.routes.js';
@@ -37,7 +37,6 @@ import { checklistItemRouter } from './modules/lifecycle/checklist.routes.js';
 import { vendorRouter } from './modules/inventory/vendor.routes.js';
 import { inventoryRouter } from './modules/inventory/inventory.routes.js';
 import { sopRouter } from './modules/sop/sop.routes.js';
-import { clientPortalRouter } from './modules/client-portal/client-portal.routes.js';
 import { dashboardRouter } from './modules/dashboard/dashboard.routes.js';
 import { notificationRouter } from './modules/notifications/notification.routes.js';
 import { sessionRouter } from './modules/sessions/session.routes.js';
@@ -96,8 +95,6 @@ export function createApp() {
   app.use('/api/v1/candidates', candidateRouter);
   app.use('/api/v1/interviews', interviewRouter);
   app.use('/api/v1/leads', leadRouter);
-  app.use('/api/v1/clients', clientRouter);
-  app.use('/api/v1/client-contacts', crmContactRouter);
   app.use('/api/v1/crm-activities', crmActivityRouter);
   app.use('/api/v1/finance', financeRouter);
   app.use('/api/v1/tickets', ticketRouter);
@@ -115,7 +112,6 @@ export function createApp() {
   app.use('/api/v1/vendors', vendorRouter);
   app.use('/api/v1/inventory-items', inventoryRouter);
   app.use('/api/v1/sops', sopRouter);
-  app.use('/api/v1/client-portal', clientPortalRouter);
 
   // Only mounted when Supabase Storage isn't configured — this is the local-disk fallback's own
   // download route, so it has no reason to exist (and every reason not to) once a real provider

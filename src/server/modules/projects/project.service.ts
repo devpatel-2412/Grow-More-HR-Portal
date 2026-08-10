@@ -47,12 +47,7 @@ export class ProjectService {
 
   async update(tenantId: string, id: string, input: z.infer<typeof updateProjectSchema>, meta: RequestMeta = {}) {
     await this.getById(tenantId, id);
-    const { clientPortalId, ...rest } = input;
-    const updated = await this.repository.update(id, {
-      ...rest,
-      clientPortal:
-        clientPortalId === undefined ? undefined : clientPortalId === null ? { disconnect: true } : { connect: { id: clientPortalId } },
-    });
+    const updated = await this.repository.update(id, input);
 
     await auditLogService.record({
       tenantId,

@@ -37,7 +37,6 @@ export interface FinanceDocumentRecord {
   amountPaid: number;
   notes: string | null;
   status: FinanceStatus;
-  clientPortalId: string | null;
   projectId: string | null;
   createdAt: string;
   lineItems?: FinanceLineItemRecord[];

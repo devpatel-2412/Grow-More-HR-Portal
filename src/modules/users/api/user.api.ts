@@ -19,8 +19,7 @@ export interface ListInvitesQuery {
 
 export const userApi = {
   list: (query: ListUsersQuery) => api.getPaginated<UserListItem>('/users', query),
-  invite: (values: InviteUserFormValues | { email: string; role: 'CLIENT'; clientPortalId: string }) =>
-    api.post<InvitedUser>('/users/invite', values),
+  invite: (values: InviteUserFormValues) => api.post<InvitedUser>('/users/invite', values),
   invitableRoles: () => api.get<{ roles: UserRole[] }>('/users/invitable-roles'),
   listInvites: (query: ListInvitesQuery) => api.getPaginated<Invite>('/users/invites', query),
   resendInvite: (id: string) => api.post<Invite>(`/users/invites/${id}/resend`),

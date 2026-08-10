@@ -1,7 +1,8 @@
 import type { Request, Response } from 'express';
 import { assetService } from './asset.service.js';
 import { sendCreated, sendOk, sendPaginated } from '../../shared/utils/response.util.js';
-import { roleHasPermission, PERMISSIONS } from '../../shared/permissions/permissions.js';
+import { PERMISSIONS } from '../../shared/permissions/permissions.js';
+import { resolveEffectivePermissions } from '../../shared/permissions/permission-resolver.service.js';
 import type { z } from 'zod';
 import type { createAssetSchema, assignAssetSchema, changeAssetStatusSchema, listAssetsQuerySchema } from './asset.validators.js';
 
@@ -34,7 +35,8 @@ export async function changeAssetStatus(req: Request, res: Response): Promise<vo
 
 export async function listAssets(req: Request, res: Response): Promise<void> {
   const query = req.query as unknown as z.infer<typeof listAssetsQuerySchema>;
-  const canReadTenant = roleHasPermission(req.user!.role, PERMISSIONS.ASSET_MANAGE);
+  const effective = await resolveEffectivePermissions(req.user!.sub, req.user!.tenantId, req.user!.role);
+  const canReadTenant = effective.has(PERMISSIONS.ASSET_MANAGE);
   const { rows, meta } = await assetService.list(req.user!.tenantId, { userId: req.user!.sub, canReadTenant }, query);
   sendPaginated(res, rows, meta);
 }

@@ -113,9 +113,6 @@ export const PERMISSIONS = {
 
   /** View the tenant-wide active-sessions dashboard and force-logout a user or the whole tenant */
   SESSION_MANAGE: 'session:manage',
-
-  /** Create/edit/delete dynamic roles, assign/remove permissions and department/branch scoping. */
-  ROLE_MANAGE: 'role:manage',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -123,9 +120,12 @@ export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 export const ALL_PERMISSIONS = Object.values(PERMISSIONS) as Permission[];
 
 /**
- * Default role → permission matrix. SUPER_ADMIN gets every permission unconditionally.
- * This static map is deliberately swappable: a later per-tenant custom-role table can
- * replace the lookup inside requirePermission() without changing any call site.
+ * SUPER_ADMIN gets every permission unconditionally (see permission-resolver.service.ts's
+ * short-circuit). For the other 5 fixed roles, this map is used only as seed data
+ * (rbac-seed.util.ts copies it into that role's DB-backed Role/RolePermission rows the first time
+ * a tenant is seeded) and as an emergency fallback if that DB row is ever missing — at runtime,
+ * the Roles & Permissions page's live database state is what requirePermission() actually checks,
+ * not this array. Kept here, not deleted, because seeding needs a sensible starting point.
  */
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   SUPER_ADMIN: ALL_PERMISSIONS,
@@ -192,7 +192,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     PERMISSIONS.AUDIT_READ,
     PERMISSIONS.DASHBOARD_READ_TENANT,
     PERMISSIONS.SESSION_MANAGE,
-    PERMISSIONS.ROLE_MANAGE,
   ],
   HR_MANAGER: [
     // USER_INVITE deliberately NOT granted by default — enterprise invitation hierarchy requires
@@ -318,49 +317,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     // SOPs — read-only
     PERMISSIONS.SOP_READ,
   ],
-  CLIENT: [],
-  RECRUITER: [PERMISSIONS.RECRUITMENT_MANAGE, PERMISSIONS.RECRUITMENT_READ],
-  FINANCE: [PERMISSIONS.FINANCE_MANAGE, PERMISSIONS.FINANCE_READ],
-  // No candidate-facing surface exists yet — see the UserRole.CANDIDATE comment in schema.prisma.
-  CANDIDATE: [],
-  // Junior HR — day-to-day employee/attendance/leave operations, no org-structure management,
-  // no invite/payroll/recruitment authority (those stay with HR_MANAGER unless separately granted).
-  HR_EXECUTIVE: [
-    PERMISSIONS.USER_READ_TENANT,
-    PERMISSIONS.EMPLOYEE_READ_TENANT,
-    PERMISSIONS.EMPLOYEE_UPDATE,
-    PERMISSIONS.EMPLOYEE_READ_SELF,
-    PERMISSIONS.EMPLOYEE_UPDATE_SELF,
-    PERMISSIONS.ATTENDANCE_READ_TENANT,
-    PERMISSIONS.ATTENDANCE_REGULARIZATION_APPROVE,
-    PERMISSIONS.ATTENDANCE_SELF,
-    PERMISSIONS.ATTENDANCE_REGULARIZATION_CREATE,
-    PERMISSIONS.LEAVE_READ_TENANT,
-    PERMISSIONS.LEAVE_APPROVE_HR,
-    PERMISSIONS.LEAVE_APPLY,
-    PERMISSIONS.LEAVE_VIEW_SELF,
-    PERMISSIONS.TASK_VIEW_ASSIGNED,
-    PERMISSIONS.TASK_UPDATE_OWN,
-    PERMISSIONS.WORK_REPORT_READ_TENANT,
-    PERMISSIONS.WORK_REPORT_REVIEW,
-    PERMISSIONS.WORK_REPORT_SUBMIT,
-    PERMISSIONS.TIME_LOG_READ_TENANT,
-    PERMISSIONS.TIME_LOG_SELF,
-    PERMISSIONS.PAYSLIP_READ_SELF,
-    PERMISSIONS.RECRUITMENT_READ,
-    PERMISSIONS.TICKET_MANAGE,
-    PERMISSIONS.TICKET_READ_TENANT,
-    PERMISSIONS.TICKET_CREATE,
-    PERMISSIONS.TICKET_VIEW_SELF,
-    PERMISSIONS.KB_MANAGE,
-    PERMISSIONS.KB_READ,
-    PERMISSIONS.DOCUMENT_MANAGE,
-    PERMISSIONS.DOCUMENT_VIEW_SELF,
-    PERMISSIONS.DOCUMENT_UPLOAD_SELF,
-    PERMISSIONS.ANNOUNCEMENT_READ,
-    PERMISSIONS.SOP_READ,
-    PERMISSIONS.DASHBOARD_READ_TENANT,
-  ],
   // Leads a team day-to-day (task assignment, attendance/leave approval for direct reports) —
   // scoped down from PROJECT_MANAGER: no CRM, no project creation, no recruitment/finance visibility.
   TEAM_LEADER: [
@@ -395,8 +351,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     PERMISSIONS.SOP_READ,
     PERMISSIONS.DASHBOARD_READ_TENANT,
   ],
-  // Mirrors FINANCE — same module, different title per the enterprise role list.
-  ACCOUNTS: [PERMISSIONS.FINANCE_MANAGE, PERMISSIONS.FINANCE_READ],
 };
 
 /**
@@ -408,17 +362,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
  */
 export const INVITABLE_ROLES: Record<UserRole, UserRole[]> = {
   SUPER_ADMIN: Object.keys(ROLE_PERMISSIONS) as UserRole[],
-  ADMIN: ['HR_MANAGER', 'HR_EXECUTIVE', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE', 'RECRUITER', 'FINANCE', 'ACCOUNTS'],
+  ADMIN: ['HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'],
   HR_MANAGER: ['EMPLOYEE'],
-  HR_EXECUTIVE: [],
   PROJECT_MANAGER: ['EMPLOYEE'],
   TEAM_LEADER: [],
   EMPLOYEE: [],
-  RECRUITER: [],
-  FINANCE: [],
-  ACCOUNTS: [],
-  CLIENT: [],
-  CANDIDATE: [],
 };
 
 export function roleHasPermission(role: UserRole, permission: Permission): boolean {

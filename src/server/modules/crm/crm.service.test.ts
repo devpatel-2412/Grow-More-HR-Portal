@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { CrmService, canTransitionLead } from './crm.service.js';
+import { auditLogService } from '../audit/audit.service.js';
 import { ConflictError, NotFoundError } from '../../shared/errors/app-error.js';
 
 vi.mock('../audit/audit.service.js', () => ({ auditLogService: { record: vi.fn() } }));
@@ -14,7 +15,6 @@ function makeLead(overrides: Partial<Record<string, unknown>> = {}) {
     phone: null,
     status: 'NEW',
     estimatedValue: 5000,
-    convertedClientId: null,
     ...overrides,
   };
 }
@@ -28,40 +28,17 @@ function makeDeps() {
     delete: vi.fn(),
     findMany: vi.fn(),
     summarise: vi.fn(),
-    convert: vi.fn().mockResolvedValue({ id: 'client-1' }),
-  };
-  const clientRepository = {
-    create: vi.fn(),
-    findById: vi.fn().mockResolvedValue({ id: 'client-1', tenantId: 'tenant-1' }),
-    findByEmail: vi.fn().mockResolvedValue(null),
-    findWithDetail: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    findMany: vi.fn(),
-  };
-  const contactRepository = {
-    create: vi.fn().mockResolvedValue({ id: 'contact-1' }),
-    findById: vi.fn(),
-    delete: vi.fn(),
-    findByClientAndEmail: vi.fn().mockResolvedValue(null),
-    setPrimary: vi.fn(),
   };
   const activityRepository = { create: vi.fn().mockResolvedValue({ id: 'act-1' }), findMany: vi.fn() };
   const employeeRepository = {
     findById: vi.fn().mockResolvedValue({ id: 'emp-1', tenantId: 'tenant-1' }),
     findByUserId: vi.fn().mockResolvedValue({ id: 'emp-1' }),
   };
-  return { leadRepository, clientRepository, contactRepository, activityRepository, employeeRepository };
+  return { leadRepository, activityRepository, employeeRepository };
 }
 
 function build(deps: ReturnType<typeof makeDeps>) {
-  return new CrmService(
-    deps.leadRepository as never,
-    deps.clientRepository as never,
-    deps.contactRepository as never,
-    deps.activityRepository as never,
-    deps.employeeRepository as never,
-  );
+  return new CrmService(deps.leadRepository as never, deps.activityRepository as never, deps.employeeRepository as never);
 }
 
 describe('canTransitionLead — sales funnel', () => {
@@ -76,8 +53,9 @@ describe('canTransitionLead — sales funnel', () => {
     expect(canTransitionLead('CONTACTED', 'PROPOSAL')).toBe(false);
   });
 
-  it('never reaches WON by a plain stage change — conversion is the only route', () => {
-    for (const stage of ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL'] as const) {
+  it('reaches WON only directly from PROPOSAL', () => {
+    expect(canTransitionLead('PROPOSAL', 'WON')).toBe(true);
+    for (const stage of ['NEW', 'CONTACTED', 'QUALIFIED'] as const) {
       expect(canTransitionLead(stage, 'WON')).toBe(false);
     }
   });
@@ -95,11 +73,18 @@ describe('canTransitionLead — sales funnel', () => {
 });
 
 describe('CrmService.changeLeadStage', () => {
-  it('rejects marking a lead won directly', async () => {
+  it('wins a lead directly from PROPOSAL and logs it as LEAD_CONVERTED', async () => {
     const deps = makeDeps();
-    await expect(build(deps).changeLeadStage('tenant-1', 'lead-1', 'WON', undefined, {})).rejects.toThrow(
-      /converting it to a client/i,
-    );
+    deps.leadRepository.findById.mockResolvedValue(makeLead({ status: 'PROPOSAL' }));
+    await build(deps).changeLeadStage('tenant-1', 'lead-1', 'WON', undefined, {});
+    expect(deps.leadRepository.update).toHaveBeenCalledWith('lead-1', { status: 'WON', lostReason: null });
+    expect(auditLogService.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'LEAD_CONVERTED' }));
+  });
+
+  it('refuses to win a lead that is not yet at the proposal stage', async () => {
+    const deps = makeDeps();
+    deps.leadRepository.findById.mockResolvedValue(makeLead({ status: 'QUALIFIED' }));
+    await expect(build(deps).changeLeadStage('tenant-1', 'lead-1', 'WON', undefined, {})).rejects.toThrow(ConflictError);
   });
 
   it('stores a reason when a lead is lost', async () => {
@@ -126,50 +111,6 @@ describe('CrmService.changeLeadStage', () => {
   });
 });
 
-describe('CrmService.convertLead', () => {
-  it('only converts from the proposal stage', async () => {
-    const deps = makeDeps();
-    deps.leadRepository.findById.mockResolvedValue(makeLead({ status: 'QUALIFIED' }));
-    await expect(build(deps).convertLead('tenant-1', 'lead-1', {}, {})).rejects.toThrow(ConflictError);
-  });
-
-  it('refuses to convert a lost lead', async () => {
-    const deps = makeDeps();
-    deps.leadRepository.findById.mockResolvedValue(makeLead({ status: 'LOST' }));
-    await expect(build(deps).convertLead('tenant-1', 'lead-1', {}, {})).rejects.toThrow(ConflictError);
-  });
-
-  it('refuses to convert the same lead twice', async () => {
-    const deps = makeDeps();
-    deps.leadRepository.findById.mockResolvedValue(makeLead({ status: 'PROPOSAL', convertedClientId: 'client-9' }));
-    await expect(build(deps).convertLead('tenant-1', 'lead-1', {}, {})).rejects.toThrow(/already been converted/i);
-  });
-
-  it('refuses when a client already holds that contact email', async () => {
-    const deps = makeDeps();
-    deps.leadRepository.findById.mockResolvedValue(makeLead({ status: 'PROPOSAL' }));
-    deps.clientRepository.findByEmail.mockResolvedValue({ id: 'client-existing' });
-    await expect(build(deps).convertLead('tenant-1', 'lead-1', {}, {})).rejects.toThrow(ConflictError);
-  });
-
-  it('carries the lead details onto the new client', async () => {
-    const deps = makeDeps();
-    deps.leadRepository.findById.mockResolvedValue(makeLead({ status: 'PROPOSAL', phone: '+1 555 0100' }));
-
-    await build(deps).convertLead('tenant-1', 'lead-1', { industry: 'Manufacturing' }, {});
-
-    const [leadId, client] = deps.leadRepository.convert.mock.calls[0];
-    expect(leadId).toBe('lead-1');
-    expect(client).toMatchObject({
-      companyName: 'Globex',
-      contactEmail: 'hank@globex.com',
-      phone: '+1 555 0100',
-      industry: 'Manufacturing',
-      status: 'ACTIVE',
-    });
-  });
-});
-
 describe('CrmService.createLead', () => {
   it('refuses a duplicate lead email within the tenant', async () => {
     const deps = makeDeps();
@@ -193,27 +134,5 @@ describe('CrmService.createLead', () => {
         {},
       ),
     ).rejects.toThrow(NotFoundError);
-  });
-});
-
-describe('CrmService.addContact', () => {
-  it('refuses a duplicate contact email on the same client', async () => {
-    const deps = makeDeps();
-    deps.contactRepository.findByClientAndEmail.mockResolvedValue({ id: 'contact-existing' });
-    await expect(
-      build(deps).addContact('tenant-1', 'client-1', { name: 'Sam', email: 'sam@globex.com', isPrimary: false }, {}),
-    ).rejects.toThrow(ConflictError);
-  });
-
-  it('demotes other contacts when a new primary is added', async () => {
-    const deps = makeDeps();
-    await build(deps).addContact('tenant-1', 'client-1', { name: 'Sam', email: 'sam@globex.com', isPrimary: true }, {});
-    expect(deps.contactRepository.setPrimary).toHaveBeenCalledWith('client-1', 'contact-1');
-  });
-
-  it('leaves primaries alone for a non-primary contact', async () => {
-    const deps = makeDeps();
-    await build(deps).addContact('tenant-1', 'client-1', { name: 'Sam', email: 'sam@globex.com', isPrimary: false }, {});
-    expect(deps.contactRepository.setPrimary).not.toHaveBeenCalled();
   });
 });

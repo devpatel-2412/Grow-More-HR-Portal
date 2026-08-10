@@ -133,7 +133,7 @@ export class FinanceRepository {
 
   async findMany(
     tenantId: string,
-    filter: { type?: FinanceType; status?: FinanceStatus; clientPortalId?: string; projectId?: string },
+    filter: { type?: FinanceType; status?: FinanceStatus; projectId?: string },
     orderBy: Record<string, 'asc' | 'desc'>,
     skip: number,
     take: number,
@@ -142,7 +142,6 @@ export class FinanceRepository {
       tenantId,
       type: filter.type,
       status: filter.status,
-      clientPortalId: filter.clientPortalId,
       projectId: filter.projectId,
     };
     const [rows, total] = await Promise.all([

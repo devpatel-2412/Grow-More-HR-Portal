@@ -16,8 +16,8 @@ function makeInvite(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-function makeDeps(inviteOverrides: Partial<Record<string, unknown>> = {}, clientProfileId: string | null = null) {
-  const foundUser = { id: 'user-1', email: 'new@acme.com', clientProfileId };
+function makeDeps(inviteOverrides: Partial<Record<string, unknown>> = {}) {
+  const foundUser = { id: 'user-1', email: 'new@acme.com' };
   const repository = {
     findByEmail: vi.fn().mockResolvedValue(foundUser),
     update: vi.fn().mockImplementation((_id, data) => Promise.resolve({ ...foundUser, ...data })),
@@ -37,26 +37,17 @@ function makeDeps(inviteOverrides: Partial<Record<string, unknown>> = {}, client
     create: vi.fn().mockResolvedValue({ id: 'emp-1' }),
     findByUserId: vi.fn().mockResolvedValue(null),
   };
-  const clientRepository = {};
-  const contactRepository = { findByClientAndEmail: vi.fn(), create: vi.fn() };
   const tenantRepository = { findById: vi.fn().mockResolvedValue({ id: 'tenant-1', name: 'Acme Inc' }) };
-  return { repository, inviteRepository, employeeRepository, clientRepository, contactRepository, tenantRepository };
+  return { repository, inviteRepository, employeeRepository, tenantRepository };
 }
 
 function build(deps: ReturnType<typeof makeDeps>) {
-  return new UserService(
-    deps.repository as never,
-    deps.inviteRepository as never,
-    deps.employeeRepository as never,
-    deps.clientRepository as never,
-    deps.contactRepository as never,
-    deps.tenantRepository as never,
-  );
+  return new UserService(deps.repository as never, deps.inviteRepository as never, deps.employeeRepository as never, deps.tenantRepository as never);
 }
 
 describe('UserService.acceptInvite', () => {
-  it('creates an EmployeeProfile for a staff-role invite (e.g. EMPLOYEE, RECRUITER, FINANCE)', async () => {
-    for (const role of ['EMPLOYEE', 'RECRUITER', 'FINANCE']) {
+  it('unconditionally creates an EmployeeProfile for every accepted invite — there is no non-staff role left to branch on', async () => {
+    for (const role of ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE']) {
       const deps = makeDeps({ role });
       await build(deps).acceptInvite({ token: 'raw-token', password: 'CorrectPassword123', firstName: 'Ada', lastName: 'Lovelace', acceptedTerms: true });
       expect(deps.employeeRepository.create).toHaveBeenCalledOnce();
@@ -68,20 +59,6 @@ describe('UserService.acceptInvite', () => {
     deps.employeeRepository.findByUserId.mockResolvedValue({ id: 'emp-preexisting' } as never);
     await build(deps).acceptInvite({ token: 'raw-token', password: 'CorrectPassword123', firstName: 'Ada', lastName: 'Lovelace', acceptedTerms: true });
     expect(deps.employeeRepository.create).not.toHaveBeenCalled();
-  });
-
-  it('does not create an EmployeeProfile for a CANDIDATE-role invite — no candidate portal exists yet', async () => {
-    const deps = makeDeps({ role: 'CANDIDATE' });
-    await build(deps).acceptInvite({ token: 'raw-token', password: 'CorrectPassword123', firstName: 'Cara', lastName: 'Candidate', acceptedTerms: true });
-    expect(deps.employeeRepository.create).not.toHaveBeenCalled();
-    expect(deps.contactRepository.create).not.toHaveBeenCalled();
-  });
-
-  it('creates a ClientContact, not an EmployeeProfile, for a CLIENT-role invite', async () => {
-    const deps = makeDeps({ role: 'CLIENT' }, 'client-1');
-    await build(deps).acceptInvite({ token: 'raw-token', password: 'CorrectPassword123', firstName: 'Cory', lastName: 'Client', acceptedTerms: true });
-    expect(deps.employeeRepository.create).not.toHaveBeenCalled();
-    expect(deps.contactRepository.create).toHaveBeenCalledOnce();
   });
 });
 

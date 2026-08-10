@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ticketApi, kbApi, documentApi, assetApi, visitorApi, roomBookingApi } from '../api/workplace.api';
+import { ticketApi, kbApi, documentApi, assetApi, visitorApi } from '../api/workplace.api';
 import type { UploadDocumentPayload } from '../api/workplace.api';
 import type {
   TicketCategory,
@@ -230,32 +230,5 @@ export function useCheckOutVisitor() {
   return useMutation({
     mutationFn: (id: string) => visitorApi.checkOut(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workplace', 'visitors'] }),
-  });
-}
-
-// ---------------------------------------------------------------- room bookings
-
-export function useRoomBookings(query: { page: number; limit: number; roomName?: string }) {
-  return useQuery({
-    queryKey: ['workplace', 'room-bookings', query],
-    queryFn: () => roomBookingApi.list(query),
-    placeholderData: (previous) => previous,
-  });
-}
-
-export function useCreateRoomBooking() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: { roomName: string; startTime: string; endTime: string; purpose: string }) =>
-      roomBookingApi.create(payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workplace', 'room-bookings'] }),
-  });
-}
-
-export function useCancelRoomBooking() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => roomBookingApi.cancel(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workplace', 'room-bookings'] }),
   });
 }

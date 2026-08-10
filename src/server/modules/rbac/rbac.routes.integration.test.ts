@@ -8,6 +8,7 @@ import { createApp } from '../../app.js';
 import { prisma } from '../../db/prisma.js';
 import { hashPassword } from '../../shared/utils/hash.util.js';
 import { signupTestTenant } from '../../shared/testing/signup-test-tenant.js';
+import { seedSystemRolesForTenant } from './rbac-seed.util.js';
 
 const app = createApp();
 
@@ -24,6 +25,21 @@ async function resetDatabase() {
 
 async function signupTenant() {
   return signupTestTenant(app);
+}
+
+/**
+ * signupTestTenant() always hands back an ADMIN (the shared fixture other integration test files
+ * also rely on) — this router is now gated to SUPER_ADMIN only, so RBAC tests promote that account
+ * and re-login, since the JWT's role claim is minted at login time and won't reflect a promotion
+ * made after the fact.
+ */
+async function signupSuperAdminTenant() {
+  const { res, domain, tenantId, userId } = await signupTestTenant(app);
+  await prisma.user.update({ where: { id: userId }, data: { role: 'SUPER_ADMIN' } });
+  const relogin = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: res.body.data.user.email, password: 'CorrectPassword123' });
+  return { res: relogin, domain, tenantId, userId };
 }
 
 async function createEmployeeAccount(tenantId: string, domain: string, department = 'Engineering') {
@@ -67,7 +83,7 @@ describe('RBAC — route protection', () => {
     expect(res.status).toBe(401);
   });
 
-  it('rejects a plain EMPLOYEE, who has no ROLE_MANAGE permission', async () => {
+  it('rejects a plain EMPLOYEE', async () => {
     const { res: signupRes, domain } = await signupTenant();
     const adminToken = signupRes.body.data.accessToken;
     const me = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${adminToken}`);
@@ -76,172 +92,111 @@ describe('RBAC — route protection', () => {
     const res = await request(app).get('/api/v1/rbac/roles').set('Authorization', `Bearer ${worker.token}`);
     expect(res.status).toBe(403);
   });
-});
 
-describe('RBAC — role CRUD', () => {
-  it('seeds nothing automatically, then lets ADMIN create/read/update/delete a custom role', async () => {
+  it('rejects an ADMIN — this router is SUPER_ADMIN-only, not staff-admin', async () => {
     const { res: signupRes } = await signupTenant();
     const adminToken = signupRes.body.data.accessToken;
 
-    const listRes = await request(app).get('/api/v1/rbac/roles').set('Authorization', `Bearer ${adminToken}`);
+    const res = await request(app).get('/api/v1/rbac/roles').set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status).toBe(403);
+  });
+});
+
+describe('RBAC — the 6 fixed roles', () => {
+  it('lists exactly the 5 seeded system roles (SUPER_ADMIN itself has no DB row to list)', async () => {
+    const { res: signupRes, tenantId } = await signupSuperAdminTenant();
+    const token = signupRes.body.data.accessToken;
+    await seedSystemRolesForTenant(tenantId);
+
+    const listRes = await request(app).get('/api/v1/rbac/roles').set('Authorization', `Bearer ${token}`);
     expect(listRes.status).toBe(200);
-    expect(listRes.body.data).toHaveLength(0);
+    expect(listRes.body.data).toHaveLength(5);
+    expect(listRes.body.data.map((r: { name: string }) => r.name).sort()).toEqual(
+      ['ADMIN', 'EMPLOYEE', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER'].sort(),
+    );
+  });
 
-    const createRes = await request(app)
-      .post('/api/v1/rbac/roles')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Team Lead', description: 'Leads a small team', permissions: ['employee:read:tenant'] });
-    expect(createRes.status).toBe(201);
-    expect(createRes.body.data.permissions).toHaveLength(1);
-    const roleId = createRes.body.data.id;
+  it('has no route left to create, rename, or delete a role — only the 6 fixed roles can ever exist', async () => {
+    const { res: signupRes, tenantId } = await signupSuperAdminTenant();
+    const token = signupRes.body.data.accessToken;
+    await seedSystemRolesForTenant(tenantId);
+    const listRes = await request(app).get('/api/v1/rbac/roles').set('Authorization', `Bearer ${token}`);
+    const roleId = listRes.body.data[0].id;
 
-    const duplicateNameRes = await request(app)
-      .post('/api/v1/rbac/roles')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Team Lead', permissions: [] });
-    expect(duplicateNameRes.status).toBe(409);
-
-    const getRes = await request(app).get(`/api/v1/rbac/roles/${roleId}`).set('Authorization', `Bearer ${adminToken}`);
-    expect(getRes.status).toBe(200);
-    expect(getRes.body.data.name).toBe('Team Lead');
+    const createRes = await request(app).post('/api/v1/rbac/roles').set('Authorization', `Bearer ${token}`).send({ name: 'New Role' });
+    expect(createRes.status).toBe(404);
 
     const updateRes = await request(app)
       .patch(`/api/v1/rbac/roles/${roleId}`)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ description: 'Updated description' });
-    expect(updateRes.status).toBe(200);
-    expect(updateRes.body.data.description).toBe('Updated description');
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Renamed' });
+    expect(updateRes.status).toBe(404);
 
-    const deleteRes = await request(app).delete(`/api/v1/rbac/roles/${roleId}`).set('Authorization', `Bearer ${adminToken}`);
-    expect(deleteRes.status).toBe(204);
-
-    const listAfterDeleteRes = await request(app).get('/api/v1/rbac/roles').set('Authorization', `Bearer ${adminToken}`);
-    expect(listAfterDeleteRes.body.data).toHaveLength(0);
-  });
-
-  it('blocks deleting a system role but allows deleting a custom one', async () => {
-    const { res: signupRes } = await signupTenant();
-    const adminToken = signupRes.body.data.accessToken;
-    const me = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${adminToken}`);
-
-    const systemRole = await prisma.role.create({
-      data: { tenantId: me.body.data.tenant.id, name: 'SEED_TEST', isSystem: true },
-    });
-
-    const deleteRes = await request(app).delete(`/api/v1/rbac/roles/${systemRole.id}`).set('Authorization', `Bearer ${adminToken}`);
-    expect(deleteRes.status).toBe(409);
-  });
-
-  it('duplicates a role including its permissions', async () => {
-    const { res: signupRes } = await signupTenant();
-    const adminToken = signupRes.body.data.accessToken;
-
-    const createRes = await request(app)
-      .post('/api/v1/rbac/roles')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Original', permissions: ['employee:read:tenant', 'employee:create'] });
-    const roleId = createRes.body.data.id;
+    const deleteRes = await request(app).delete(`/api/v1/rbac/roles/${roleId}`).set('Authorization', `Bearer ${token}`);
+    expect(deleteRes.status).toBe(404);
 
     const duplicateRes = await request(app)
       .post(`/api/v1/rbac/roles/${roleId}/duplicate`)
-      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Clone' });
-    expect(duplicateRes.status).toBe(201);
-    expect(duplicateRes.body.data.name).toBe('Clone');
-    expect(duplicateRes.body.data.permissions).toHaveLength(2);
+    expect(duplicateRes.status).toBe(404);
   });
 });
 
 describe('RBAC — permission assignment', () => {
-  it('assigns and removes a permission on a role', async () => {
-    const { res: signupRes } = await signupTenant();
-    const adminToken = signupRes.body.data.accessToken;
-
-    const createRes = await request(app)
-      .post('/api/v1/rbac/roles')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Growable', permissions: [] });
-    const roleId = createRes.body.data.id;
+  it("assigns and removes a permission on a fixed role — SUPER_ADMIN's own checkbox toggle", async () => {
+    const { res: signupRes, tenantId } = await signupSuperAdminTenant();
+    const token = signupRes.body.data.accessToken;
+    await seedSystemRolesForTenant(tenantId);
+    const listRes = await request(app).get('/api/v1/rbac/roles').set('Authorization', `Bearer ${token}`);
+    const employeeRoleId = listRes.body.data.find((r: { name: string }) => r.name === 'EMPLOYEE').id;
 
     const assignRes = await request(app)
-      .post(`/api/v1/rbac/roles/${roleId}/permissions`)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ permission: 'employee:read:tenant' });
+      .post(`/api/v1/rbac/roles/${employeeRoleId}/permissions`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ permission: 'tenant:list:all' });
     expect(assignRes.status).toBe(204);
 
-    const afterAssignRes = await request(app).get(`/api/v1/rbac/roles/${roleId}`).set('Authorization', `Bearer ${adminToken}`);
-    expect(afterAssignRes.body.data.permissions.map((p: { permission: string }) => p.permission)).toContain('employee:read:tenant');
+    const afterAssignRes = await request(app).get(`/api/v1/rbac/roles/${employeeRoleId}`).set('Authorization', `Bearer ${token}`);
+    expect(afterAssignRes.body.data.permissions.map((p: { permission: string }) => p.permission)).toContain('tenant:list:all');
 
     const removeRes = await request(app)
-      .delete(`/api/v1/rbac/roles/${roleId}/permissions/${encodeURIComponent('employee:read:tenant')}`)
-      .set('Authorization', `Bearer ${adminToken}`);
+      .delete(`/api/v1/rbac/roles/${employeeRoleId}/permissions/${encodeURIComponent('tenant:list:all')}`)
+      .set('Authorization', `Bearer ${token}`);
     expect(removeRes.status).toBe(204);
 
-    const afterRemoveRes = await request(app).get(`/api/v1/rbac/roles/${roleId}`).set('Authorization', `Bearer ${adminToken}`);
-    expect(afterRemoveRes.body.data.permissions).toHaveLength(0);
-  });
-
-  it('blocks an ADMIN from creating a role with a permission only SUPER_ADMIN holds (privilege escalation)', async () => {
-    const { res: signupRes } = await signupTenant();
-    const adminToken = signupRes.body.data.accessToken;
-
-    // ADMIN's static permission set (see ROLE_PERMISSIONS) deliberately excludes TENANT_LIST_ALL —
-    // that's SUPER_ADMIN-only ("list every tenant"). ADMIN must not be able to grant it to anyone.
-    const res = await request(app)
-      .post('/api/v1/rbac/roles')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Overreaching Role', permissions: ['tenant:list:all'] });
-    expect(res.status).toBe(403);
-  });
-
-  it('blocks an ADMIN from assigning a permission they do not hold to an existing role', async () => {
-    const { res: signupRes } = await signupTenant();
-    const adminToken = signupRes.body.data.accessToken;
-
-    const createRes = await request(app)
-      .post('/api/v1/rbac/roles')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Plain Role', permissions: [] });
-    const roleId = createRes.body.data.id;
-
-    const res = await request(app)
-      .post(`/api/v1/rbac/roles/${roleId}/permissions`)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ permission: 'tenant:list:all' });
-    expect(res.status).toBe(403);
+    const afterRemoveRes = await request(app).get(`/api/v1/rbac/roles/${employeeRoleId}`).set('Authorization', `Bearer ${token}`);
+    expect(afterRemoveRes.body.data.permissions.map((p: { permission: string }) => p.permission)).not.toContain('tenant:list:all');
   });
 });
 
-describe('RBAC — dynamic role assignment actually grants access', () => {
-  it('grants a static-EMPLOYEE user access to an ADMIN-only route once assigned a role carrying that permission', async () => {
-    const { res: signupRes, domain } = await signupTenant();
-    const adminToken = signupRes.body.data.accessToken;
-    const me = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${adminToken}`);
-    const worker = await createEmployeeAccount(me.body.data.tenant.id, domain);
+describe('RBAC — enabling a permission for a role takes effect immediately for everyone holding it', () => {
+  it('the Employee Portal example: EMPLOYEE gains USER_READ_TENANT the moment SUPER_ADMIN grants it — no re-login required', async () => {
+    const { res: signupRes, domain, tenantId } = await signupSuperAdminTenant();
+    const token = signupRes.body.data.accessToken;
+    await seedSystemRolesForTenant(tenantId);
+    const worker = await createEmployeeAccount(tenantId, domain);
 
-    // Confirm the baseline: a plain EMPLOYEE cannot list tenant users (USER_READ_TENANT).
+    // Baseline: EMPLOYEE's seeded default does not include USER_READ_TENANT.
     const beforeRes = await request(app).get('/api/v1/users').set('Authorization', `Bearer ${worker.token}`);
     expect(beforeRes.status).toBe(403);
 
-    const roleRes = await request(app)
-      .post('/api/v1/rbac/roles')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'User Viewer', permissions: ['user:read:tenant'] });
-    const roleId = roleRes.body.data.id;
+    const listRes = await request(app).get('/api/v1/rbac/roles').set('Authorization', `Bearer ${token}`);
+    const employeeRoleId = listRes.body.data.find((r: { name: string }) => r.name === 'EMPLOYEE').id;
 
     const assignRes = await request(app)
-      .post(`/api/v1/rbac/users/${worker.userId}/roles`)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ roleId });
-    expect(assignRes.status).toBe(201);
+      .post(`/api/v1/rbac/roles/${employeeRoleId}/permissions`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ permission: 'user:read:tenant' });
+    expect(assignRes.status).toBe(204);
 
-    // Same worker, same static EMPLOYEE role, now genuinely gains access via the dynamic grant.
+    // Same worker, same access token, no re-login — the grant lives on the role, not the user.
     const afterRes = await request(app).get('/api/v1/users').set('Authorization', `Bearer ${worker.token}`);
     expect(afterRes.status).toBe(200);
 
     const removeRes = await request(app)
-      .delete(`/api/v1/rbac/users/${worker.userId}/roles/${roleId}`)
-      .set('Authorization', `Bearer ${adminToken}`);
+      .delete(`/api/v1/rbac/roles/${employeeRoleId}/permissions/${encodeURIComponent('user:read:tenant')}`)
+      .set('Authorization', `Bearer ${token}`);
     expect(removeRes.status).toBe(204);
 
     const afterRemoveRes = await request(app).get('/api/v1/users').set('Authorization', `Bearer ${worker.token}`);
@@ -249,19 +204,49 @@ describe('RBAC — dynamic role assignment actually grants access', () => {
   });
 });
 
-describe('RBAC — department and branch permissions', () => {
+describe('RBAC — user-role-assignment and department/branch permissions', () => {
+  it('grants a static-EMPLOYEE user access to an ADMIN-only route once assigned the seeded ADMIN role', async () => {
+    const { res: signupRes, domain, tenantId } = await signupSuperAdminTenant();
+    const token = signupRes.body.data.accessToken;
+    await seedSystemRolesForTenant(tenantId);
+    const worker = await createEmployeeAccount(tenantId, domain);
+
+    const beforeRes = await request(app).get('/api/v1/users').set('Authorization', `Bearer ${worker.token}`);
+    expect(beforeRes.status).toBe(403);
+
+    const listRes = await request(app).get('/api/v1/rbac/roles').set('Authorization', `Bearer ${token}`);
+    const adminRoleId = listRes.body.data.find((r: { name: string }) => r.name === 'ADMIN').id;
+
+    const assignRes = await request(app)
+      .post(`/api/v1/rbac/users/${worker.userId}/roles`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ roleId: adminRoleId });
+    expect(assignRes.status).toBe(201);
+
+    // Same worker, still statically EMPLOYEE, now gains access via the additive UserRoleAssignment.
+    const afterRes = await request(app).get('/api/v1/users').set('Authorization', `Bearer ${worker.token}`);
+    expect(afterRes.status).toBe(200);
+
+    const removeRes = await request(app)
+      .delete(`/api/v1/rbac/users/${worker.userId}/roles/${adminRoleId}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(removeRes.status).toBe(204);
+
+    const afterRemoveRes = await request(app).get('/api/v1/users').set('Authorization', `Bearer ${worker.token}`);
+    expect(afterRemoveRes.status).toBe(403);
+  });
+
   it('grants access to every user in a department via a DepartmentPermission', async () => {
-    const { res: signupRes, domain } = await signupTenant();
-    const adminToken = signupRes.body.data.accessToken;
-    const me = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${adminToken}`);
-    const worker = await createEmployeeAccount(me.body.data.tenant.id, domain, 'Finance');
+    const { res: signupRes, domain, tenantId } = await signupSuperAdminTenant();
+    const token = signupRes.body.data.accessToken;
+    const worker = await createEmployeeAccount(tenantId, domain, 'Finance');
 
     const beforeRes = await request(app).get('/api/v1/users').set('Authorization', `Bearer ${worker.token}`);
     expect(beforeRes.status).toBe(403);
 
     const createRes = await request(app)
       .post('/api/v1/rbac/department-permissions')
-      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ department: 'Finance', permission: 'user:read:tenant' });
     expect(createRes.status).toBe(201);
 
@@ -270,20 +255,18 @@ describe('RBAC — department and branch permissions', () => {
   });
 
   it('grants access to every user in a branch via a BranchPermission', async () => {
-    const { res: signupRes, domain } = await signupTenant();
-    const adminToken = signupRes.body.data.accessToken;
-    const me = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${adminToken}`);
-    const tenantId = me.body.data.tenant.id;
+    const { res: signupRes, domain, tenantId } = await signupSuperAdminTenant();
+    const token = signupRes.body.data.accessToken;
     const worker = await createEmployeeAccount(tenantId, domain);
 
     const branchRes = await request(app)
       .post('/api/v1/branches')
-      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Headquarters', code: 'HQ' });
     const branchId = branchRes.body.data.id;
     await request(app)
       .patch(`/api/v1/employees/${worker.employeeId}`)
-      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ branchId });
 
     const beforeRes = await request(app).get('/api/v1/users').set('Authorization', `Bearer ${worker.token}`);
@@ -291,7 +274,7 @@ describe('RBAC — department and branch permissions', () => {
 
     const createRes = await request(app)
       .post('/api/v1/rbac/branch-permissions')
-      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ branchId, permission: 'user:read:tenant' });
     expect(createRes.status).toBe(201);
 
@@ -300,12 +283,12 @@ describe('RBAC — department and branch permissions', () => {
   });
 
   it('rejects a branch permission for a branch that does not exist', async () => {
-    const { res: signupRes } = await signupTenant();
-    const adminToken = signupRes.body.data.accessToken;
+    const { res: signupRes } = await signupSuperAdminTenant();
+    const token = signupRes.body.data.accessToken;
 
     const res = await request(app)
       .post('/api/v1/rbac/branch-permissions')
-      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ branchId: '00000000-0000-0000-0000-000000000000', permission: 'user:read:tenant' });
     expect(res.status).toBe(404);
   });

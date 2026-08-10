@@ -1,6 +1,6 @@
 # Module 1 — Foundation: Multi-Tenant Auth, RBAC & Identity
 
-This is the bedrock module of the Business OS platform. Every other module (HRMS, ERP, CRM,
+This is the bedrock module of the Grow More platform. Every other module (HRMS, ERP, CRM,
 ATS, Projects, Finance, ...) depends on the identity, authorization, and multi-tenancy
 primitives established here.
 

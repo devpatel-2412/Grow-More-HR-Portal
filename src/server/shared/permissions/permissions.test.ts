@@ -12,31 +12,10 @@ describe('permissions', () => {
     // Should have self-service permissions
     expect(roleHasPermission('EMPLOYEE', PERMISSIONS.EMPLOYEE_READ_SELF)).toBe(true);
     expect(roleHasPermission('EMPLOYEE', PERMISSIONS.ATTENDANCE_SELF)).toBe(true);
-    
-    // Should NOT have manage or global permissions
-    expect(roleHasPermission('EMPLOYEE', PERMISSIONS.EMPLOYEE_MANAGE)).toBe(false);
-    expect(roleHasPermission('EMPLOYEE', PERMISSIONS.TENANT_MANAGE)).toBe(false);
-  });
 
-  it('denies CLIENT and CANDIDATE any permission by default', () => {
-    for (const permission of Object.values(PERMISSIONS)) {
-      expect(roleHasPermission('CLIENT', permission)).toBe(false);
-      expect(roleHasPermission('CANDIDATE', permission)).toBe(false);
-    }
-  });
-
-  it('scopes RECRUITER to recruitment only', () => {
-    expect(roleHasPermission('RECRUITER', PERMISSIONS.RECRUITMENT_MANAGE)).toBe(true);
-    expect(roleHasPermission('RECRUITER', PERMISSIONS.RECRUITMENT_READ)).toBe(true);
-    expect(roleHasPermission('RECRUITER', PERMISSIONS.EMPLOYEE_CREATE)).toBe(false);
-    expect(roleHasPermission('RECRUITER', PERMISSIONS.FINANCE_MANAGE)).toBe(false);
-  });
-
-  it('scopes FINANCE to finance only', () => {
-    expect(roleHasPermission('FINANCE', PERMISSIONS.FINANCE_MANAGE)).toBe(true);
-    expect(roleHasPermission('FINANCE', PERMISSIONS.FINANCE_READ)).toBe(true);
-    expect(roleHasPermission('FINANCE', PERMISSIONS.PAYROLL_MANAGE)).toBe(false);
-    expect(roleHasPermission('FINANCE', PERMISSIONS.RECRUITMENT_MANAGE)).toBe(false);
+    // Should NOT have tenant-wide or admin-only permissions
+    expect(roleHasPermission('EMPLOYEE', PERMISSIONS.EMPLOYEE_CREATE)).toBe(false);
+    expect(roleHasPermission('EMPLOYEE', PERMISSIONS.TENANT_UPDATE)).toBe(false);
   });
 
   it('grants ADMIN tenant and user management permissions but not platform-wide tenant listing', () => {
@@ -50,6 +29,12 @@ describe('permissions', () => {
     for (const perms of Object.values(ROLE_PERMISSIONS)) {
       for (const p of perms) expect(known.has(p)).toBe(true);
     }
+  });
+
+  it('has exactly the 6 fixed roles — no custom roles', () => {
+    expect(Object.keys(ROLE_PERMISSIONS).sort()).toEqual(
+      ['ADMIN', 'EMPLOYEE', 'HR_MANAGER', 'PROJECT_MANAGER', 'SUPER_ADMIN', 'TEAM_LEADER'].sort(),
+    );
   });
 });
 
@@ -68,17 +53,20 @@ describe('INVITABLE_ROLES — enterprise invitation hierarchy', () => {
 
   it('lets ADMIN invite staff roles but never SUPER_ADMIN or ADMIN itself', () => {
     expect(INVITABLE_ROLES.ADMIN).toContain('HR_MANAGER');
+    expect(INVITABLE_ROLES.ADMIN).toContain('PROJECT_MANAGER');
+    expect(INVITABLE_ROLES.ADMIN).toContain('TEAM_LEADER');
     expect(INVITABLE_ROLES.ADMIN).toContain('EMPLOYEE');
     expect(INVITABLE_ROLES.ADMIN).not.toContain('SUPER_ADMIN');
     expect(INVITABLE_ROLES.ADMIN).not.toContain('ADMIN');
   });
 
-  it('restricts HR_MANAGER to inviting EMPLOYEE only, once granted the ability at all', () => {
+  it('restricts HR_MANAGER and PROJECT_MANAGER to inviting EMPLOYEE only, once granted the ability at all', () => {
     expect(INVITABLE_ROLES.HR_MANAGER).toEqual(['EMPLOYEE']);
+    expect(INVITABLE_ROLES.PROJECT_MANAGER).toEqual(['EMPLOYEE']);
   });
 
-  it('grants no invite ability by default to line roles (EMPLOYEE, RECRUITER, FINANCE, HR_EXECUTIVE, TEAM_LEADER, ACCOUNTS, CLIENT, CANDIDATE)', () => {
-    for (const role of ['EMPLOYEE', 'RECRUITER', 'FINANCE', 'HR_EXECUTIVE', 'TEAM_LEADER', 'ACCOUNTS', 'CLIENT', 'CANDIDATE'] as const) {
+  it('grants no invite ability by default to line roles (TEAM_LEADER, EMPLOYEE)', () => {
+    for (const role of ['TEAM_LEADER', 'EMPLOYEE'] as const) {
       expect(INVITABLE_ROLES[role]).toEqual([]);
     }
   });

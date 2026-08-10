@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw';
 export const handlers = {
   loginSuccess: http.post('/api/v1/auth/login', () =>
     HttpResponse.json({
-      data: { requiresTwoFactor: false, accessToken: 'fake-access-token', user: { id: 'u1', email: 'admin@acme.com', role: 'ADMIN', status: 'ACTIVE' } },
+      data: { requiresTwoFactor: false, accessToken: 'fake-access-token', user: { id: 'u1', email: 'admin@acme.com', role: 'ADMIN', status: 'ACTIVE', permissions: [] } },
     }),
   ),
   loginRequires2FA: http.post('/api/v1/auth/login', () =>
@@ -19,7 +19,7 @@ export const handlers = {
   meSuccess: http.get('/api/v1/auth/me', () =>
     HttpResponse.json({
       data: {
-        user: { id: 'u1', email: 'admin@acme.com', role: 'ADMIN', status: 'ACTIVE' },
+        user: { id: 'u1', email: 'admin@acme.com', role: 'ADMIN', status: 'ACTIVE', permissions: [] },
         profile: null,
         tenant: { id: 't1', name: 'Acme Inc', domain: 'acme', logoUrl: null, primaryColor: '#16a34a', secondaryColor: '#0ea5e9' },
       },
@@ -29,7 +29,7 @@ export const handlers = {
     HttpResponse.json({ error: { code: 'UNAUTHORIZED', message: 'No session cookie present' } }, { status: 401 }),
   ),
   invitableRolesSuccess: http.get('/api/v1/users/invitable-roles', () =>
-    HttpResponse.json({ data: { roles: ['ADMIN', 'HR_MANAGER', 'HR_EXECUTIVE', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE', 'RECRUITER', 'FINANCE', 'ACCOUNTS'] } }),
+    HttpResponse.json({ data: { roles: ['ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] } }),
   ),
   invitableRolesEmpty: http.get('/api/v1/users/invitable-roles', () => HttpResponse.json({ data: { roles: [] } })),
   inviteUserSuccess: http.post('/api/v1/users/invite', () =>
@@ -228,7 +228,6 @@ export const handlers = {
           amountPaid: 0,
           notes: null,
           status: 'DRAFT',
-          clientPortalId: null,
           projectId: null,
           createdAt: '2026-07-29T10:00:00.000Z',
         },

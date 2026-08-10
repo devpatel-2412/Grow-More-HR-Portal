@@ -1,13 +1,9 @@
 import { Router } from 'express';
 import { authenticateAccessToken } from '../../shared/middleware/auth.middleware.js';
-import { requirePermission } from '../../shared/middleware/rbac.middleware.js';
+import { requireRole } from '../../shared/middleware/rbac.middleware.js';
 import { validate } from '../../shared/middleware/validate.middleware.js';
-import { PERMISSIONS } from '../../shared/permissions/permissions.js';
 import { asyncHandler } from '../../shared/utils/async-handler.js';
 import {
-  createRoleSchema,
-  updateRoleSchema,
-  duplicateRoleSchema,
   assignPermissionSchema,
   roleIdParamSchema,
   roleAndPermissionParamSchema,
@@ -23,10 +19,6 @@ import {
   listPermissionCatalogue,
   listRoles,
   getRole,
-  createRole,
-  updateRole,
-  deleteRole,
-  duplicateRole,
   assignPermission,
   removePermission,
   listDepartmentPermissions,
@@ -43,20 +35,15 @@ import {
 export const rbacRouter = Router();
 
 rbacRouter.use(authenticateAccessToken);
-rbacRouter.use(requirePermission(PERMISSIONS.ROLE_MANAGE));
+// The 6 fixed roles' access is decided by SUPER_ADMIN alone — see permissions.ts's ROLE_PERMISSIONS
+// doc comment and permission-resolver.service.ts. Not permission-gated: there is no permission that
+// could delegate this without also being editable through this very page.
+rbacRouter.use(requireRole('SUPER_ADMIN'));
 
 rbacRouter.get('/permissions', asyncHandler(listPermissionCatalogue));
 
 rbacRouter.get('/roles', asyncHandler(listRoles));
-rbacRouter.post('/roles', validate({ body: createRoleSchema }), asyncHandler(createRole));
 rbacRouter.get('/roles/:id', validate({ params: roleIdParamSchema }), asyncHandler(getRole));
-rbacRouter.patch('/roles/:id', validate({ params: roleIdParamSchema, body: updateRoleSchema }), asyncHandler(updateRole));
-rbacRouter.delete('/roles/:id', validate({ params: roleIdParamSchema }), asyncHandler(deleteRole));
-rbacRouter.post(
-  '/roles/:id/duplicate',
-  validate({ params: roleIdParamSchema, body: duplicateRoleSchema }),
-  asyncHandler(duplicateRole),
-);
 rbacRouter.post(
   '/roles/:id/permissions',
   validate({ params: roleIdParamSchema, body: assignPermissionSchema }),

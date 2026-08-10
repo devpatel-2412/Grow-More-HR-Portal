@@ -11,6 +11,7 @@ import { twoFactorService } from '../two-factor/two-factor.service.js';
 import { emailService } from '../../shared/email/email.service.js';
 import { passwordResetEmailTemplate } from '../../shared/email/email.templates.js';
 import { env } from '../../shared/config/env.js';
+import { resolveEffectivePermissions } from '../../shared/permissions/permission-resolver.service.js';
 import type { RequestMeta } from './auth.types.js';
 import type { UserRole } from '@prisma/client';
 import type { z } from 'zod';
@@ -28,8 +29,12 @@ const FAILED_LOGIN_LOCK_THRESHOLD = 5;
 const FAILED_LOGIN_LOCK_DURATION_MS = 15 * 60 * 1000;
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
-function toPublicUser(user: { id: string; email: string; role: string; status: string }) {
-  return { id: user.id, email: user.email, role: user.role, status: user.status };
+// Attaches the caller's own effective permission set — see permission-resolver.service.ts — so the
+// frontend can gate UI (e.g. hiding "Add Employee") without a round trip. The resolver is already
+// 60s-cached, so this costs a DB hit only on a cache miss.
+async function toPublicUser(user: { id: string; email: string; role: UserRole; status: string; tenantId: string }) {
+  const permissions = await resolveEffectivePermissions(user.id, user.tenantId, user.role);
+  return { id: user.id, email: user.email, role: user.role, status: user.status, permissions: [...permissions] };
 }
 
 export class AuthService {
@@ -232,7 +237,7 @@ export class AuthService {
       refreshToken: rawNewToken,
       refreshTokenExpiresAt: expiresAt,
       rememberMe: existing.rememberMe,
-      user: toPublicUser(user),
+      user: await toPublicUser(user),
     };
   }
 
@@ -270,7 +275,7 @@ export class AuthService {
     const user = await this.userRepository.findByIdWithProfile(userId);
     if (!user) throw new NotFoundError('User not found');
     return {
-      user: toPublicUser(user),
+      user: await toPublicUser(user),
       profile: user.profile,
       tenant: user.tenant,
     };
@@ -434,7 +439,7 @@ export class AuthService {
       refreshToken: rawRefreshToken,
       refreshTokenExpiresAt: expiresAt,
       rememberMe,
-      user: toPublicUser(user),
+      user: await toPublicUser(user),
     };
   }
 }

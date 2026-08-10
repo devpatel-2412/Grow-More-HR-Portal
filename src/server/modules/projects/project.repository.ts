@@ -20,7 +20,7 @@ export class ProjectRepository {
 
   async findMany(
     tenantId: string,
-    filter: { status?: ProjectStatus; clientPortalId?: string; search?: string },
+    filter: { status?: ProjectStatus; search?: string },
     orderBy: Record<string, 'asc' | 'desc'>,
     skip: number,
     take: number,
@@ -28,7 +28,6 @@ export class ProjectRepository {
     const where: Prisma.ProjectWhereInput = {
       tenantId,
       status: filter.status,
-      clientPortalId: filter.clientPortalId,
       name: filter.search ? { contains: filter.search, mode: 'insensitive' } : undefined,
     };
     const [rows, total] = await Promise.all([

@@ -1,4 +1,4 @@
-# Business OS
+# Grow More
 
 An enterprise Business Operating System (HRMS + ERP + CRM + ATS + Project Management, multi-tenant SaaS) being built module by module.
 

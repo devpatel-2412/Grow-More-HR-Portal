@@ -1,7 +1,8 @@
 import type { Request, Response } from 'express';
 import { checklistService } from './checklist.service.js';
 import { sendCreated, sendOk, sendNoContent } from '../../shared/utils/response.util.js';
-import { roleHasPermission, PERMISSIONS } from '../../shared/permissions/permissions.js';
+import { PERMISSIONS } from '../../shared/permissions/permissions.js';
+import { resolveEffectivePermissions } from '../../shared/permissions/permission-resolver.service.js';
 import type { z } from 'zod';
 import type { createChecklistItemSchema, updateChecklistItemSchema } from './checklist.validators.js';
 
@@ -10,7 +11,8 @@ function requestMeta(req: Request) {
 }
 
 export async function listChecklist(req: Request, res: Response): Promise<void> {
-  const canManage = roleHasPermission(req.user!.role, PERMISSIONS.EMPLOYEE_UPDATE);
+  const effective = await resolveEffectivePermissions(req.user!.sub, req.user!.tenantId, req.user!.role);
+  const canManage = effective.has(PERMISSIONS.EMPLOYEE_UPDATE);
   const items = await checklistService.list(req.user!.tenantId, req.params.id, { userId: req.user!.sub, canManage });
   sendOk(res, items);
 }

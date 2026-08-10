@@ -68,14 +68,13 @@ export class FinanceService {
     const number = formatDocumentNumber(input.type, input.issueDate.getUTCFullYear(), sequence);
     const isInterState = await this.resolveInterState(tenantId, input.placeOfSupplyStateCode);
 
-    const { lineItems, clientPortalId, projectId, ...rest } = input;
+    const { lineItems, projectId, ...rest } = input;
     const document = await this.repository.createWithLineItems(
       {
         tenant: { connect: { id: tenantId } },
         number,
         status: 'DRAFT',
         ...rest,
-        clientPortal: clientPortalId ? { connect: { id: clientPortalId } } : undefined,
         project: projectId ? { connect: { id: projectId } } : undefined,
         createdBy: createdByEmployeeId ? { connect: { id: createdByEmployeeId } } : undefined,
       },
@@ -195,7 +194,7 @@ export class FinanceService {
     const orderBy = toPrismaOrderBy(query.sort, FINANCE_SORTABLE_FIELDS, { field: 'issueDate', direction: 'desc' });
     const { rows, total } = await this.repository.findMany(
       tenantId,
-      { type: query.type, status: query.status, clientPortalId: query.clientPortalId, projectId: query.projectId },
+      { type: query.type, status: query.status, projectId: query.projectId },
       orderBy,
       (query.page - 1) * query.limit,
       query.limit,

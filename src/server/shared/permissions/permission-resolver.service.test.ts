@@ -4,6 +4,10 @@ import { ALL_PERMISSIONS, PERMISSIONS } from './permissions.js';
 
 const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
+    // Defaults to "no system Role row for this tenant/role" — the pre-seeding / bootstrap-safety
+    // case — so every pre-existing test below (written against the static-fallback behavior)
+    // keeps exercising exactly that path unless it opts into a row via mockResolvedValueOnce.
+    role: { findFirst: vi.fn().mockResolvedValue(null) },
     userRoleAssignment: { findMany: vi.fn().mockResolvedValue([]) },
     employeeProfile: { findUnique: vi.fn().mockResolvedValue(null) },
     departmentPermission: { findMany: vi.fn().mockResolvedValue([]) },
@@ -15,6 +19,7 @@ vi.mock('../../db/prisma.js', () => ({ prisma: prismaMock }));
 beforeEach(() => {
   invalidateAllPermissionCache();
   vi.clearAllMocks();
+  prismaMock.role.findFirst.mockResolvedValue(null);
   prismaMock.userRoleAssignment.findMany.mockResolvedValue([]);
   prismaMock.employeeProfile.findUnique.mockResolvedValue(null);
   prismaMock.departmentPermission.findMany.mockResolvedValue([]);
@@ -28,10 +33,25 @@ describe('resolveEffectivePermissions', () => {
     expect(prismaMock.userRoleAssignment.findMany).not.toHaveBeenCalled();
   });
 
-  it('matches the static ROLE_PERMISSIONS set when there is no dynamic data', async () => {
+  it('matches the static ROLE_PERMISSIONS set when there is no system Role row yet', async () => {
     const result = await resolveEffectivePermissions('user-1', 'tenant-1', 'EMPLOYEE');
     expect(result.has(PERMISSIONS.EMPLOYEE_READ_SELF)).toBe(true);
     expect(result.has(PERMISSIONS.TENANT_LIST_ALL)).toBe(false);
+  });
+
+  it("uses the tenant's live Role row as the base once one exists, instead of the static default", async () => {
+    prismaMock.role.findFirst.mockResolvedValue({ permissions: [{ permission: PERMISSIONS.PROJECT_MANAGE }] });
+    const result = await resolveEffectivePermissions('user-1', 'tenant-1', 'EMPLOYEE');
+    expect(result.has(PERMISSIONS.PROJECT_MANAGE)).toBe(true);
+    // The static default's EMPLOYEE_READ_SELF is NOT present — the DB row replaced the base
+    // entirely rather than being merged with it.
+    expect(result.has(PERMISSIONS.EMPLOYEE_READ_SELF)).toBe(false);
+  });
+
+  it('an existing system Role row with zero permissions resolves to no base access — it must not silently fall back to static', async () => {
+    prismaMock.role.findFirst.mockResolvedValue({ permissions: [] });
+    const result = await resolveEffectivePermissions('user-1', 'tenant-1', 'EMPLOYEE');
+    expect(result.size).toBe(0);
   });
 
   it('unions in permissions granted via a dynamic UserRoleAssignment', async () => {

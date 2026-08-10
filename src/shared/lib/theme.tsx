@@ -9,7 +9,7 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
-const STORAGE_KEY = 'business-os-theme';
+const STORAGE_KEY = 'grow-more-theme';
 
 function getInitialTheme(): Theme {
   if (typeof window === 'undefined') return 'dark';

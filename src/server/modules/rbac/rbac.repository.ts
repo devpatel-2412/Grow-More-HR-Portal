@@ -2,10 +2,19 @@ import { prisma } from '../../db/prisma.js';
 
 const roleWithPermissions = { permissions: true } as const;
 
+/**
+ * The 5 non-SUPER_ADMIN fixed roles a Role row can legitimately be named — SUPER_ADMIN never gets
+ * one (its access is hardcoded, never DB-driven; see permission-resolver.service.ts). Filtering by
+ * name here, not just relying on nothing creating other rows, is what guarantees "6 Roles" holds
+ * even for a tenant seeded before roles were fixed (a stale row from an old custom role stays
+ * invisible and inert rather than needing every historical tenant migrated first).
+ */
+const FIXED_ROLE_NAMES = ['ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] as const;
+
 export class RbacRepository {
   findRolesByTenant(tenantId: string) {
     return prisma.role.findMany({
-      where: { tenantId, deletedAt: null },
+      where: { tenantId, deletedAt: null, name: { in: [...FIXED_ROLE_NAMES] } },
       include: roleWithPermissions,
       orderBy: { name: 'asc' },
     });

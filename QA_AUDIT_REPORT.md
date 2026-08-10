@@ -1,4 +1,4 @@
-# Business OS — Full QA / Product / Architecture Audit
+# Grow More — Full QA / Product / Architecture Audit
 
 **Auditor stance**: this report inspects the actual code, actual running server, and actual test
 results — nothing here is assumed. Where a requested feature does not exist, it is marked
@@ -499,7 +499,7 @@ recommendation, factoring in what actually blocks other modules:
 | Scope | % |
 |---|---|
 | Module 1 (Foundation) itself | ~85% (unchanged from prior audit; gap is admin-UI screens for working APIs) |
-| Full Business OS vision (all 30 modules) | **~3–4%** |
+| Full Grow More vision (all 30 modules) | **~3–4%** |
 
 This is a slightly lower number than the previous `FEATURE_AUDIT.md`'s ~4–5%, because this pass
 evaluated against the fuller 30-module list in this prompt (including Reports, Notifications,

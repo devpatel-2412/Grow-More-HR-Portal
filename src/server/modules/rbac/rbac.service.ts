@@ -5,8 +5,6 @@ import { ConflictError, ForbiddenError, NotFoundError } from '../../shared/error
 import { auditLogService } from '../audit/audit.service.js';
 import { resolveEffectivePermissions, invalidateAllPermissionCache } from '../../shared/permissions/permission-resolver.service.js';
 import type { Permission } from '../../shared/permissions/permissions.js';
-import type { z } from 'zod';
-import type { createRoleSchema, updateRoleSchema } from './rbac.validators.js';
 
 export interface RbacRequestContext {
   actorUserId: string;
@@ -23,10 +21,10 @@ export class RbacService {
   ) {}
 
   /**
-   * The core privilege-escalation guard: nobody — including an ADMIN managing roles — can grant a
-   * permission they don't themselves effectively hold right now (static + their own dynamic
+   * The core privilege-escalation guard: nobody — including a SUPER_ADMIN's own delegate — can
+   * grant a permission they don't themselves effectively hold right now (their own dynamic
    * grants). SUPER_ADMIN's effective set is unconditionally "everything," so this never blocks
-   * a SUPER_ADMIN. Checked on every write that grants a permission to anything.
+   * a SUPER_ADMIN, who is the only actor that can reach this service at all (see rbac.routes.ts).
    */
   private async assertNotEscalating(ctx: RbacRequestContext, permissionsToGrant: Permission[]): Promise<void> {
     if (permissionsToGrant.length === 0) return;
@@ -37,6 +35,7 @@ export class RbacService {
     }
   }
 
+  /** Always exactly the 6 fixed system roles (RbacRepository.findRolesByTenant already filters by name). */
   async listRoles(tenantId: string) {
     return this.repository.findRolesByTenant(tenantId);
   }
@@ -45,92 +44,6 @@ export class RbacService {
     const role = await this.repository.findRoleById(id);
     if (!role || role.tenantId !== tenantId || role.deletedAt) throw new NotFoundError('Role not found');
     return role;
-  }
-
-  async createRole(ctx: RbacRequestContext, input: z.infer<typeof createRoleSchema>) {
-    const existing = await this.repository.findRoleByName(ctx.tenantId, input.name);
-    if (existing) throw new ConflictError('A role with this name already exists');
-
-    await this.assertNotEscalating(ctx, input.permissions);
-
-    const role = await this.repository.createRole({ tenantId: ctx.tenantId, name: input.name, description: input.description });
-    if (input.permissions.length > 0) {
-      await this.repository.addRolePermissions(role.id, input.permissions);
-    }
-    invalidateAllPermissionCache();
-    await auditLogService.record({
-      tenantId: ctx.tenantId,
-      actorUserId: ctx.actorUserId,
-      action: 'ROLE_CREATED',
-      targetType: 'Role',
-      targetId: role.id,
-      ipAddress: ctx.ipAddress,
-      userAgent: ctx.userAgent,
-      metadata: { name: input.name, permissions: input.permissions },
-    });
-    return this.getRole(ctx.tenantId, role.id);
-  }
-
-  async updateRole(ctx: RbacRequestContext, id: string, input: z.infer<typeof updateRoleSchema>) {
-    const role = await this.getRole(ctx.tenantId, id);
-    if (input.name && input.name !== role.name) {
-      const existing = await this.repository.findRoleByName(ctx.tenantId, input.name);
-      if (existing) throw new ConflictError('A role with this name already exists');
-    }
-    const updated = await this.repository.updateRole(id, { name: input.name, description: input.description });
-    await auditLogService.record({
-      tenantId: ctx.tenantId,
-      actorUserId: ctx.actorUserId,
-      action: 'ROLE_UPDATED',
-      targetType: 'Role',
-      targetId: id,
-      ipAddress: ctx.ipAddress,
-      userAgent: ctx.userAgent,
-      metadata: input,
-    });
-    return updated;
-  }
-
-  async deleteRole(ctx: RbacRequestContext, id: string) {
-    const role = await this.getRole(ctx.tenantId, id);
-    if (role.isSystem) throw new ConflictError('System roles (seeded from the built-in staff roles) cannot be deleted');
-    await this.repository.softDeleteRole(id);
-    invalidateAllPermissionCache();
-    await auditLogService.record({
-      tenantId: ctx.tenantId,
-      actorUserId: ctx.actorUserId,
-      action: 'ROLE_DELETED',
-      targetType: 'Role',
-      targetId: id,
-      ipAddress: ctx.ipAddress,
-      userAgent: ctx.userAgent,
-    });
-  }
-
-  async duplicateRole(ctx: RbacRequestContext, id: string, newName: string) {
-    const source = await this.getRole(ctx.tenantId, id);
-    const existing = await this.repository.findRoleByName(ctx.tenantId, newName);
-    if (existing) throw new ConflictError('A role with this name already exists');
-
-    const permissions = source.permissions.map((p) => p.permission) as Permission[];
-    await this.assertNotEscalating(ctx, permissions);
-
-    const clone = await this.repository.createRole({ tenantId: ctx.tenantId, name: newName, description: source.description ?? undefined });
-    if (permissions.length > 0) {
-      await this.repository.addRolePermissions(clone.id, permissions);
-    }
-    invalidateAllPermissionCache();
-    await auditLogService.record({
-      tenantId: ctx.tenantId,
-      actorUserId: ctx.actorUserId,
-      action: 'ROLE_DUPLICATED',
-      targetType: 'Role',
-      targetId: clone.id,
-      ipAddress: ctx.ipAddress,
-      userAgent: ctx.userAgent,
-      metadata: { sourceRoleId: id, name: newName },
-    });
-    return this.getRole(ctx.tenantId, clone.id);
   }
 
   async assignPermission(ctx: RbacRequestContext, roleId: string, permission: Permission) {

@@ -1,5 +1,5 @@
 import { prisma } from '../../db/prisma.js';
-import type { Prisma, LeadStatus, ClientStatus, CrmActivityType } from '@prisma/client';
+import type { Prisma, LeadStatus, CrmActivityType } from '@prisma/client';
 
 export class LeadRepository {
   create(data: Prisma.LeadCreateInput) {
@@ -62,101 +62,6 @@ export class LeadRepository {
       value: row._sum.estimatedValue ?? 0,
     }));
   }
-
-  /**
-   * Converting a won lead creates its client and links the two in one transaction — a client
-   * created without the back-link would let the same lead be converted twice.
-   */
-  convert(leadId: string, client: Prisma.ClientPortalCreateInput) {
-    return prisma.$transaction(async (tx) => {
-      const created = await tx.clientPortal.create({ data: client });
-      await tx.lead.update({ where: { id: leadId }, data: { convertedClientId: created.id, status: 'WON' } });
-      return created;
-    });
-  }
-}
-
-export class ClientRepository {
-  create(data: Prisma.ClientPortalCreateInput) {
-    return prisma.clientPortal.create({ data });
-  }
-
-  findById(id: string) {
-    return prisma.clientPortal.findUnique({ where: { id } });
-  }
-
-  findByEmail(tenantId: string, contactEmail: string) {
-    return prisma.clientPortal.findUnique({ where: { tenantId_contactEmail: { tenantId, contactEmail } } });
-  }
-
-  findWithDetail(id: string) {
-    return prisma.clientPortal.findUnique({
-      where: { id },
-      include: {
-        contacts: { orderBy: [{ isPrimary: 'desc' }, { name: 'asc' }] },
-        projects: { select: { id: true, name: true, status: true } },
-      },
-    });
-  }
-
-  update(id: string, data: Prisma.ClientPortalUpdateInput) {
-    return prisma.clientPortal.update({ where: { id }, data });
-  }
-
-  delete(id: string) {
-    return prisma.clientPortal.delete({ where: { id } });
-  }
-
-  async findMany(
-    tenantId: string,
-    filter: { status?: ClientStatus; accountManagerId?: string; search?: string },
-    orderBy: Record<string, 'asc' | 'desc'>,
-    skip: number,
-    take: number,
-  ) {
-    const where: Prisma.ClientPortalWhereInput = {
-      tenantId,
-      status: filter.status,
-      accountManagerId: filter.accountManagerId,
-      OR: filter.search
-        ? [
-            { companyName: { contains: filter.search, mode: 'insensitive' } },
-            { contactEmail: { contains: filter.search, mode: 'insensitive' } },
-          ]
-        : undefined,
-    };
-    const [rows, total] = await Promise.all([
-      prisma.clientPortal.findMany({ where, orderBy, skip, take }),
-      prisma.clientPortal.count({ where }),
-    ]);
-    return { rows, total };
-  }
-}
-
-export class ContactRepository {
-  create(data: Prisma.ClientContactCreateInput) {
-    return prisma.clientContact.create({ data });
-  }
-
-  findById(id: string) {
-    return prisma.clientContact.findUnique({ where: { id } });
-  }
-
-  delete(id: string) {
-    return prisma.clientContact.delete({ where: { id } });
-  }
-
-  findByClientAndEmail(clientId: string, email: string) {
-    return prisma.clientContact.findUnique({ where: { clientId_email: { clientId, email } } });
-  }
-
-  /** Demotes every other contact so "primary" stays singular per client. */
-  setPrimary(clientId: string, contactId: string) {
-    return prisma.$transaction([
-      prisma.clientContact.updateMany({ where: { clientId, id: { not: contactId } }, data: { isPrimary: false } }),
-      prisma.clientContact.update({ where: { id: contactId }, data: { isPrimary: true } }),
-    ]);
-  }
 }
 
 export class CrmActivityRepository {
@@ -166,7 +71,7 @@ export class CrmActivityRepository {
 
   async findMany(
     tenantId: string,
-    filter: { leadId?: string; clientId?: string; type?: CrmActivityType },
+    filter: { leadId?: string; type?: CrmActivityType },
     orderBy: Record<string, 'asc' | 'desc'>,
     skip: number,
     take: number,
@@ -174,7 +79,6 @@ export class CrmActivityRepository {
     const where: Prisma.CrmActivityWhereInput = {
       tenantId,
       leadId: filter.leadId,
-      clientId: filter.clientId,
       type: filter.type,
     };
     const [rows, total] = await Promise.all([

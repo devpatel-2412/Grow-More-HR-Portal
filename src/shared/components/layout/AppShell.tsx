@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Outlet, Navigate, useLocation, NavLink } from 'react-router-dom';
+import { Outlet, useLocation, NavLink } from 'react-router-dom';
 import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { Button } from '../ui/button';
@@ -11,7 +11,7 @@ import { TopHeader } from './TopHeader';
 import { NAV_ITEMS } from '../../config/nav-items';
 import { cn } from '../../utils/cn';
 
-const SIDEBAR_COLLAPSED_KEY = 'business-os-sidebar-collapsed';
+const SIDEBAR_COLLAPSED_KEY = 'grow-more-sidebar-collapsed';
 
 function navLinkClasses({ isActive, collapsed }: { isActive: boolean; collapsed: boolean }) {
   return cn(
@@ -50,12 +50,6 @@ export function AppShell() {
   useEffect(() => {
     window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? '1' : '0');
   }, [collapsed]);
-
-  // A CLIENT login has no employee profile and none of this shell's modules apply to them —
-  // they belong in the separate ClientPortalShell instead.
-  if (user && user.role === 'CLIENT') {
-    return <Navigate to="/portal" replace />;
-  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--background)]">

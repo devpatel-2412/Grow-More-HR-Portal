@@ -1,5 +1,4 @@
 export type LeadStatus = 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'PROPOSAL' | 'WON' | 'LOST';
-export type ClientStatus = 'ACTIVE' | 'INACTIVE' | 'CHURNED';
 export type CrmActivityType = 'CALL' | 'EMAIL' | 'MEETING' | 'NOTE';
 
 export interface LeadRecord {
@@ -15,42 +14,7 @@ export interface LeadRecord {
   ownerId: string | null;
   notes: string | null;
   lostReason: string | null;
-  convertedClientId: string | null;
   createdAt: string;
-}
-
-export interface ClientContactRecord {
-  id: string;
-  clientId: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  designation: string | null;
-  isPrimary: boolean;
-}
-
-export interface ClientProjectSummary {
-  id: string;
-  name: string;
-  status: string;
-}
-
-export interface ClientRecord {
-  id: string;
-  tenantId: string;
-  companyName: string;
-  contactEmail: string;
-  phone: string | null;
-  website: string | null;
-  address: string | null;
-  industry: string | null;
-  logoUrl: string | null;
-  status: ClientStatus;
-  accountManagerId: string | null;
-  notes: string | null;
-  createdAt: string;
-  contacts?: ClientContactRecord[];
-  projects?: ClientProjectSummary[];
 }
 
 export interface CrmActivityRecord {
@@ -61,7 +25,6 @@ export interface CrmActivityRecord {
   body: string | null;
   occurredAt: string;
   leadId: string | null;
-  clientId: string | null;
   createdById: string | null;
   createdAt: string;
 }
@@ -72,12 +35,12 @@ export interface LeadPipelineRow {
   value: number;
 }
 
-/** Mirrors the server's funnel rules — WON is reachable only via conversion, never a plain move. */
+/** Mirrors the server's funnel rules — WON is reachable only directly from PROPOSAL. */
 export const LEAD_TRANSITIONS: Record<LeadStatus, LeadStatus[]> = {
   NEW: ['CONTACTED', 'LOST'],
   CONTACTED: ['QUALIFIED', 'LOST'],
   QUALIFIED: ['PROPOSAL', 'LOST'],
-  PROPOSAL: ['LOST'],
+  PROPOSAL: ['WON', 'LOST'],
   WON: [],
   LOST: [],
 };

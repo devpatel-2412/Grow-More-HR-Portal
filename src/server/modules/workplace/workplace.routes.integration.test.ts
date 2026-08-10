@@ -41,9 +41,7 @@ async function resetDatabase() {
   await prisma.financeLineItem.deleteMany();
   await prisma.financeDocument.deleteMany();
   await prisma.crmActivity.deleteMany();
-  await prisma.clientContact.deleteMany();
   await prisma.lead.deleteMany();
-  await prisma.clientPortal.deleteMany();
   await prisma.interview.deleteMany();
   await prisma.candidate.deleteMany();
   await prisma.jobPosting.deleteMany();

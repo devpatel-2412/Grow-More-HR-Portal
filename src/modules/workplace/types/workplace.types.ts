@@ -112,18 +112,3 @@ export interface VisitorRecord {
   status: VisitorStatus;
   createdAt: string;
 }
-
-// Room bookings
-export type RoomBookingStatus = 'CONFIRMED' | 'CANCELLED';
-
-export interface RoomBookingRecord {
-  id: string;
-  tenantId: string;
-  roomName: string;
-  employeeId: string;
-  startTime: string;
-  endTime: string;
-  purpose: string;
-  status: RoomBookingStatus;
-  createdAt: string;
-}

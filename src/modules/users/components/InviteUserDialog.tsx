@@ -19,9 +19,7 @@ export function InviteUserDialog() {
   const inviteMutation = useInviteUser();
   // The caller's own allowed invite-target roles (see INVITABLE_ROLES on the server) — a role
   // without USER_INVITE granted for a given target role simply never sees it as an option here,
-  // rather than being able to pick it and get a 403 on submit. CLIENT/CANDIDATE are filtered out
-  // even if granted: this generic dialog doesn't collect the clientPortalId a CLIENT invite needs,
-  // and there's no candidate portal for CANDIDATE to lead to (see STAFF_ROLES above).
+  // rather than being able to pick it and get a 403 on submit.
   const { data: invitableRolesData } = useInvitableRoles();
   const invitableRoles = STAFF_ROLES.filter((role) => invitableRolesData?.roles.includes(role));
   const {

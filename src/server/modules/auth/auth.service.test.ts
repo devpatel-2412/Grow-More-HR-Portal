@@ -15,6 +15,11 @@ vi.mock('../audit/audit.service.js', () => ({
 vi.mock('../../shared/email/email.service.js', () => ({
   emailService: { send: vi.fn().mockResolvedValue(undefined) },
 }));
+// toPublicUser() resolves the caller's permission set on every session response — stub it out so
+// this unit-test file's fully-mocked repos never fall through to the real Prisma singleton.
+vi.mock('../../shared/permissions/permission-resolver.service.js', () => ({
+  resolveEffectivePermissions: vi.fn().mockResolvedValue(new Set(['employee:read:self'])),
+}));
 
 function makeUser(overrides: Partial<Record<string, unknown>> = {}) {
   return {

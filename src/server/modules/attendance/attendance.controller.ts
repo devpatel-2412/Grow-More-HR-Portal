@@ -1,7 +1,8 @@
 import type { Request, Response } from 'express';
 import { attendanceService } from './attendance.service.js';
 import { sendCreated, sendOk, sendPaginated } from '../../shared/utils/response.util.js';
-import { roleHasPermission, PERMISSIONS } from '../../shared/permissions/permissions.js';
+import { PERMISSIONS } from '../../shared/permissions/permissions.js';
+import { resolveEffectivePermissions } from '../../shared/permissions/permission-resolver.service.js';
 import type { z } from 'zod';
 import type { punchInSchema, listAttendanceQuerySchema } from './attendance.validators.js';
 
@@ -38,7 +39,8 @@ export async function getAttendance(req: Request, res: Response): Promise<void> 
 
 export async function listAttendance(req: Request, res: Response): Promise<void> {
   const query = req.query as unknown as z.infer<typeof listAttendanceQuerySchema>;
-  const canReadTenant = roleHasPermission(req.user!.role, PERMISSIONS.ATTENDANCE_READ_TENANT);
+  const effective = await resolveEffectivePermissions(req.user!.sub, req.user!.tenantId, req.user!.role);
+  const canReadTenant = effective.has(PERMISSIONS.ATTENDANCE_READ_TENANT);
   // employee scoped list queries naturally filter based on canReadTenant and userId inside the service
   const { rows, meta } = await attendanceService.list(req.user!.tenantId, { userId: req.user!.sub, tenantId: req.user!.tenantId, canReadTenant }, query);
   sendPaginated(res, rows, meta);
