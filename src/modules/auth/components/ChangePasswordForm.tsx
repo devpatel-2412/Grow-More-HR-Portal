@@ -7,7 +7,7 @@ import { authApi } from '../api/auth.api';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
-import { Input } from '../../../shared/components/ui/input';
+import { PasswordInput } from '../../../shared/components/ui/password-input';
 import { Label } from '../../../shared/components/ui/label';
 import { InlineFormError } from '../../../shared/components/feedback/ErrorState';
 
@@ -42,17 +42,17 @@ export function ChangePasswordForm() {
       <InlineFormError message={errors.root?.message} />
       <div>
         <Label htmlFor="currentPassword">Current password</Label>
-        <Input id="currentPassword" type="password" autoComplete="current-password" {...register('currentPassword')} />
+        <PasswordInput id="currentPassword" autoComplete="current-password" {...register('currentPassword')} />
         {errors.currentPassword && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.currentPassword.message}</p>}
       </div>
       <div>
         <Label htmlFor="newPassword">New password</Label>
-        <Input id="newPassword" type="password" autoComplete="new-password" {...register('newPassword')} />
+        <PasswordInput id="newPassword" autoComplete="new-password" {...register('newPassword')} />
         {errors.newPassword && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.newPassword.message}</p>}
       </div>
       <div>
         <Label htmlFor="confirmPassword">Confirm new password</Label>
-        <Input id="confirmPassword" type="password" autoComplete="new-password" {...register('confirmPassword')} />
+        <PasswordInput id="confirmPassword" autoComplete="new-password" {...register('confirmPassword')} />
         {errors.confirmPassword && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.confirmPassword.message}</p>}
       </div>
       <Button type="submit" size="sm" loading={isSubmitting}>
