@@ -35,8 +35,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // for one tick on every session restore and bounced an actually-valid session to /login.
   useEffect(() => {
     registerAuthExpiredHandler(() => {
+      setAccessToken(null);
       setSessionUser(null);
       queryClient.setQueryData(['auth', 'me'], null);
+      queryClient.clear();
     });
     // A logout (explicit or inactivity-triggered) in another same-origin tab lands here — clear
     // local state only, don't re-call the server (the tab that acted already did, and the refresh
@@ -45,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccessToken(null);
       setSessionUser(null);
       queryClient.setQueryData(['auth', 'me'], null);
+      queryClient.clear();
     });
   }, [queryClient]);
 
@@ -59,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setAccessToken(null);
       setSessionUser(null);
+      queryClient.setQueryData(['auth', 'me'], null);
       queryClient.clear();
       broadcastLogout();
     }

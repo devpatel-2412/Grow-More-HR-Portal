@@ -50,7 +50,7 @@ export function AppShell() {
   // changes (a nav click) so it doesn't stay open covering the page it just navigated to.
   useEffect(() => {
     setMobileNavOpen(false);
-  }, [location.pathname]);
+  }, [location.pathname, location.search, location.hash]);
 
   useEffect(() => {
     if (!mobileNavOpen) return;
@@ -77,7 +77,19 @@ export function AppShell() {
       <CommandPalette />
 
       {mobileNavOpen && (
-        <div className="fixed inset-0 z-30 bg-black/60 lg:hidden" onClick={() => setMobileNavOpen(false)} aria-hidden="true" />
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Close mobile navigation"
+          className="fixed inset-0 z-30 bg-black/60 lg:hidden cursor-pointer"
+          onClick={() => setMobileNavOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setMobileNavOpen(false);
+            }
+          }}
+        />
       )}
 
       <aside

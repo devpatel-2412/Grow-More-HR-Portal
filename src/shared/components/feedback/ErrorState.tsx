@@ -30,7 +30,9 @@ export function InlineFormError({ message }: { message?: string }) {
   return (
     <div
       role="alert"
-      className="mb-4 flex items-center gap-2 rounded-lg border border-[var(--destructive)]/40 bg-[var(--destructive)]/10 p-3 text-xs text-[var(--destructive)]"
+      tabIndex={-1}
+      ref={(el) => el?.focus()}
+      className="mb-4 flex items-center gap-2 rounded-lg border border-[var(--destructive)]/40 bg-[var(--destructive)]/10 p-3 text-xs text-[var(--destructive)] focus:outline-none"
     >
       <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span>{message}</span>
