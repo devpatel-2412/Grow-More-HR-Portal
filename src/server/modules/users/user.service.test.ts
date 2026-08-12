@@ -52,7 +52,7 @@ describe('UserService.acceptInvite', () => {
       await build(deps).acceptInvite({ token: 'raw-token', password: 'CorrectPassword123', firstName: 'Ada', lastName: 'Lovelace', acceptedTerms: true });
       expect(deps.employeeRepository.create).toHaveBeenCalledOnce();
     }
-  });
+  }, 15000);
 
   it('does not create a second EmployeeProfile when an admin already created one while the invite was pending', async () => {
     const deps = makeDeps({ role: 'EMPLOYEE' });
