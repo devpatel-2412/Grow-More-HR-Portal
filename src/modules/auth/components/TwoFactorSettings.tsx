@@ -5,6 +5,7 @@ import { authApi } from '../api/auth.api';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
+import { PasswordInput } from '../../../shared/components/ui/password-input';
 import { Label } from '../../../shared/components/ui/label';
 import { InlineFormError } from '../../../shared/components/feedback/ErrorState';
 
@@ -106,7 +107,11 @@ export function TwoFactorSettings() {
       <div className="border-t border-[var(--border)] pt-4">
         <p className="mb-2 text-xs text-[var(--muted-foreground)]">Already enabled? Disable it here (requires password + a valid code).</p>
         <div className="grid grid-cols-2 gap-2">
-          <Input placeholder="Current password" type="password" value={disablePassword} onChange={(e) => setDisablePassword(e.target.value)} />
+          <PasswordInput
+            placeholder="Current password"
+            value={disablePassword}
+            onChange={(e) => setDisablePassword(e.target.value)}
+          />
           <Input placeholder="6-digit code" value={disableCode} onChange={(e) => setDisableCode(e.target.value)} maxLength={6} />
         </div>
         <Button variant="destructive" size="sm" className="mt-2" onClick={handleDisable} loading={disableMutation.isPending}>

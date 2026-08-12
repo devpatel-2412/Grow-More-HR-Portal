@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
+import { PasswordInput } from '../../../shared/components/ui/password-input';
 import { Label } from '../../../shared/components/ui/label';
 import { InlineFormError } from '../../../shared/components/feedback/ErrorState';
 
@@ -64,9 +65,8 @@ export function LoginForm() {
 
       <div>
         <Label htmlFor="password">Password</Label>
-        <Input
+        <PasswordInput
           id="password"
-          type="password"
           autoComplete="current-password"
           placeholder="••••••••"
           aria-invalid={!!errors.password}

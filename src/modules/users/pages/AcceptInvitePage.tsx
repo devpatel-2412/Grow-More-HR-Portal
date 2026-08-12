@@ -8,6 +8,7 @@ import { useAcceptInvite } from '../hooks/useAcceptInvite';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
+import { PasswordInput } from '../../../shared/components/ui/password-input';
 import { Label } from '../../../shared/components/ui/label';
 import { Checkbox } from '../../../shared/components/ui/checkbox';
 import { Card, CardHeader, CardTitle, CardDescription } from '../../../shared/components/ui/card';
@@ -71,7 +72,7 @@ export function AcceptInvitePage() {
           </div>
           <div>
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" autoComplete="new-password" {...register('password')} />
+            <PasswordInput id="password" autoComplete="new-password" {...register('password')} />
             {errors.password && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.password.message}</p>}
           </div>
           <div>

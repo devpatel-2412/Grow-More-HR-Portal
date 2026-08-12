@@ -6,7 +6,7 @@ import { passwordResetConfirmSchema, type PasswordResetConfirmFormValues } from 
 import { useConfirmPasswordReset } from '../hooks/usePasswordReset';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
-import { Input } from '../../../shared/components/ui/input';
+import { PasswordInput } from '../../../shared/components/ui/password-input';
 import { Label } from '../../../shared/components/ui/label';
 import { InlineFormError } from '../../../shared/components/feedback/ErrorState';
 
@@ -40,13 +40,13 @@ export function PasswordResetForm({ token }: { token: string }) {
 
       <div>
         <Label htmlFor="newPassword">New password</Label>
-        <Input id="newPassword" type="password" autoComplete="new-password" {...register('newPassword')} />
+        <PasswordInput id="newPassword" autoComplete="new-password" {...register('newPassword')} />
         {errors.newPassword && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.newPassword.message}</p>}
       </div>
 
       <div>
         <Label htmlFor="confirmPassword">Confirm new password</Label>
-        <Input id="confirmPassword" type="password" autoComplete="new-password" {...register('confirmPassword')} />
+        <PasswordInput id="confirmPassword" autoComplete="new-password" {...register('confirmPassword')} />
         {errors.confirmPassword && (
           <p className="mt-1 text-xs text-[var(--destructive)]">{errors.confirmPassword.message}</p>
         )}
