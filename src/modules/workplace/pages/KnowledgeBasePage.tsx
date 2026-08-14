@@ -10,14 +10,13 @@ import { Button } from '../../../shared/components/ui/button';
 import { Badge } from '../../../shared/components/ui/badge';
 import { PaginationBar } from '../../../shared/components/ui/pagination';
 import { ListPage } from '../../../shared/components/layout/ListPage';
-import { useAuth } from '../../auth/context/AuthContext';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 
 export function KnowledgeBasePage() {
   const pagination = usePagination(20);
   const { data, isLoading, isError, refetch } = useKbArticles({ page: pagination.page, limit: pagination.limit });
   const deleteMutation = useDeleteKbArticle();
-  const { user } = useAuth();
-  const canManage = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'HR_MANAGER' || user?.role === 'PROJECT_MANAGER';
+  const canManage = useHasPermission('kb:manage');
   const [expandedId, setExpandedId] = useState<string | undefined>();
   const state = isLoading ? 'loading' : isError ? 'error' : !data || data.data.length === 0 ? 'empty' : 'ready';
 

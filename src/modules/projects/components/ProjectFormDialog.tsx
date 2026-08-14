@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { FolderPlus } from 'lucide-react';
 import { createProjectSchema, type CreateProjectFormValues } from '../schemas/project.schemas';
 import { useCreateProject } from '../hooks/useProjects';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -15,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 export function ProjectFormDialog() {
   const [open, setOpen] = useState(false);
   const createMutation = useCreateProject();
+  const canCreate = useHasPermission('project:manage');
   const {
     register,
     handleSubmit,
@@ -22,6 +24,8 @@ export function ProjectFormDialog() {
     setError,
     reset,
   } = useForm<CreateProjectFormValues>({ resolver: zodResolver(createProjectSchema) });
+
+  if (!canCreate) return null;
 
   async function onSubmit(values: CreateProjectFormValues) {
     try {

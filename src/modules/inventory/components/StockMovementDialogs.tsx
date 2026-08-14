@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { ArrowDownToLine, ArrowUpFromLine, Sliders } from 'lucide-react';
 import { useStockIn, useStockOut, useAdjustStock, useVendors } from '../hooks/useInventory';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -31,6 +32,7 @@ const stockInSchema = z.object({ quantity: z.number().int().positive('Must be at
 export function StockInDialog({ item }: { item: InventoryItemRecord }) {
   const [open, setOpen] = useState(false);
   const mutation = useStockIn(item.id);
+  const canManage = useHasPermission('inventory:manage');
   const { data: vendorPage } = useVendors({ page: 1, limit: 100 });
   const {
     register,
@@ -54,6 +56,8 @@ export function StockInDialog({ item }: { item: InventoryItemRecord }) {
       setError('root', { message: err instanceof ApiError ? err.message : 'Unable to record this stock-in.' });
     }
   }
+
+  if (!canManage) return null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -118,6 +122,7 @@ const stockOutSchema = z.object({ quantity: z.number().int().positive('Must be a
 export function StockOutDialog({ item }: { item: InventoryItemRecord }) {
   const [open, setOpen] = useState(false);
   const mutation = useStockOut(item.id);
+  const canManage = useHasPermission('inventory:manage');
   const {
     register,
     handleSubmit,
@@ -136,6 +141,8 @@ export function StockOutDialog({ item }: { item: InventoryItemRecord }) {
       setError('root', { message: err instanceof ApiError ? err.message : 'Unable to record this stock-out.' });
     }
   }
+
+  if (!canManage) return null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -178,6 +185,7 @@ const adjustSchema = z.object({ quantity: z.number().int().refine((v) => v !== 0
 export function AdjustStockDialog({ item }: { item: InventoryItemRecord }) {
   const [open, setOpen] = useState(false);
   const mutation = useAdjustStock(item.id);
+  const canManage = useHasPermission('inventory:manage');
   const {
     register,
     handleSubmit,
@@ -196,6 +204,8 @@ export function AdjustStockDialog({ item }: { item: InventoryItemRecord }) {
       setError('root', { message: err instanceof ApiError ? err.message : 'Unable to adjust this item.' });
     }
   }
+
+  if (!canManage) return null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

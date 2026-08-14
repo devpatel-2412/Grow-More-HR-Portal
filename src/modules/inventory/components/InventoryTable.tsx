@@ -6,6 +6,7 @@ import { StockInDialog, StockOutDialog, AdjustStockDialog } from './StockMovemen
 import { TransactionHistoryDialog } from './TransactionHistoryDialog';
 import { Button } from '../../../shared/components/ui/button';
 import { useDeleteInventoryItem } from '../hooks/useInventory';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import type { InventoryItemRecord, VendorRecord } from '../types/inventory.types';
 
@@ -21,6 +22,7 @@ export function InventoryTable({
   onSortChange?: (sort: string | undefined) => void;
 }) {
   const deleteMutation = useDeleteInventoryItem();
+  const canManage = useHasPermission('inventory:manage');
   const vendorNames: Record<string, string> = {};
   for (const vendor of vendors) vendorNames[vendor.id] = vendor.name;
 
@@ -90,9 +92,11 @@ export function InventoryTable({
           <AdjustStockDialog item={i} />
           <TransactionHistoryDialog item={i} />
           <InventoryItemFormDialog mode="edit" item={i} />
-          <Button size="icon" variant="ghost" aria-label={`Delete ${i.name}`} onClick={() => remove(i.id)}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {canManage && (
+            <Button size="icon" variant="ghost" aria-label={`Delete ${i.name}`} onClick={() => remove(i.id)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       ),
     },

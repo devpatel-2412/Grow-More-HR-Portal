@@ -6,6 +6,7 @@ import { UserPlus } from 'lucide-react';
 import { inviteUserSchema, STAFF_ROLES, type InviteUserFormValues } from '../schemas/user.schemas';
 import { useInviteUser } from '../hooks/useInviteUser';
 import { useInvitableRoles } from '../hooks/useInvitableRoles';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -16,6 +17,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 
 export function InviteUserDialog() {
   const [open, setOpen] = useState(false);
+  const canInvite = useHasPermission('user:invite');
   const inviteMutation = useInviteUser();
   // The caller's own allowed invite-target roles (see INVITABLE_ROLES on the server) — a role
   // without USER_INVITE granted for a given target role simply never sees it as an option here,
@@ -41,6 +43,8 @@ export function InviteUserDialog() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invitableRolesData]);
+
+  if (!canInvite) return null;
 
   async function onSubmit(values: InviteUserFormValues) {
     try {

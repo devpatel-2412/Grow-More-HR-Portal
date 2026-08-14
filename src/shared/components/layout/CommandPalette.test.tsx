@@ -8,8 +8,20 @@ import { useAuth } from '../../../modules/auth/context/AuthContext';
 vi.mock('../../../modules/auth/context/AuthContext');
 const mockUseAuth = vi.mocked(useAuth);
 
-function renderPalette(role: string) {
-  mockUseAuth.mockReturnValue({ user: { id: 'u1', email: 'a@b.com', role, status: 'ACTIVE' } } as never);
+// Mirrors ROLE_PERMISSIONS.ADMIN / .EMPLOYEE from src/server/shared/permissions/permissions.ts —
+// enough of each role's real default permission set to exercise every NAV_ITEMS entry these tests
+// touch (Attendance, Payroll, Settings).
+const ADMIN_PERMISSIONS = [
+  'attendance:self',
+  'payroll:read:tenant',
+  'tenant:update',
+  'employee:read:tenant',
+  'leave:view:self',
+];
+const EMPLOYEE_PERMISSIONS = ['attendance:self', 'leave:view:self'];
+
+function renderPalette(role: string, permissions: string[] = role === 'EMPLOYEE' ? EMPLOYEE_PERMISSIONS : ADMIN_PERMISSIONS) {
+  mockUseAuth.mockReturnValue({ user: { id: 'u1', email: 'a@b.com', role, status: 'ACTIVE', permissions } } as never);
   return render(
     <MemoryRouter>
       <CommandPalette />

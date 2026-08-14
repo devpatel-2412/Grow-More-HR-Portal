@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { createCommentSchema, type CreateCommentFormValues } from '../schemas/task.schemas';
 import { useTaskComments, useAddComment } from '../hooks/useTaskComments';
+import { usePermissions } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -26,6 +27,9 @@ function renderWithMentions(body: string) {
 export function TaskComments({ taskId }: { taskId: string }) {
   const { data: comments, isLoading } = useTaskComments(taskId);
   const addMutation = useAddComment(taskId);
+  const { hasAny } = usePermissions();
+  // addComment is gated by updateOwn server-side (task.routes.ts): task:manage or task:update:own.
+  const canComment = hasAny(['task:manage', 'task:update:own']);
   const {
     register,
     handleSubmit,
@@ -56,15 +60,17 @@ export function TaskComments({ taskId }: { taskId: string }) {
           {comments && comments.length === 0 && <p className="text-xs text-[var(--muted-foreground)]">No comments yet.</p>}
         </div>
       )}
-      <form onSubmit={handleSubmit(onSubmit)} className="flex items-end gap-2" noValidate>
-        <div className="flex-1">
-          <Input placeholder="Write a comment... use @name to mention someone" {...register('body')} />
-          {errors.body && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.body.message}</p>}
-        </div>
-        <Button type="submit" size="sm" loading={addMutation.isPending}>
-          Post
-        </Button>
-      </form>
+      {canComment && (
+        <form onSubmit={handleSubmit(onSubmit)} className="flex items-end gap-2" noValidate>
+          <div className="flex-1">
+            <Input placeholder="Write a comment... use @name to mention someone" {...register('body')} />
+            {errors.body && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.body.message}</p>}
+          </div>
+          <Button type="submit" size="sm" loading={addMutation.isPending}>
+            Post
+          </Button>
+        </form>
+      )}
     </div>
   );
 }

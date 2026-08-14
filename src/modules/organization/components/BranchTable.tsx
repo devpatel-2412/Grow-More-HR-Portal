@@ -4,6 +4,7 @@ import { DataTable, type DataTableColumn } from '../../../shared/components/ui/d
 import { BranchFormDialog } from './BranchFormDialog';
 import { Button } from '../../../shared/components/ui/button';
 import { useDeleteBranch } from '../hooks/useOrganization';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import type { BranchRecord } from '../types/organization.types';
 
@@ -17,6 +18,7 @@ export function BranchTable({
   onSortChange?: (sort: string | undefined) => void;
 }) {
   const deleteMutation = useDeleteBranch();
+  const canManage = useHasPermission('org:manage');
 
   async function remove(id: string) {
     try {
@@ -54,19 +56,24 @@ export function BranchTable({
       csvValue: (b) => (b.isHeadOffice ? 'Yes' : 'No'),
       cell: (b) => (b.isHeadOffice ? 'Yes' : '—'),
     },
-    {
-      id: 'actions',
-      header: 'Actions',
-      className: 'text-right',
-      cell: (b) => (
-        <div className="flex justify-end gap-2">
-          <BranchFormDialog mode="edit" branch={b} />
-          <Button size="icon" variant="ghost" aria-label={`Delete ${b.name}`} onClick={() => remove(b.id)}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-    },
+    // Omitted entirely (not just emptied) when the user can't manage branches — no dangling Actions column.
+    ...(canManage
+      ? [
+          {
+            id: 'actions',
+            header: 'Actions',
+            className: 'text-right',
+            cell: (b) => (
+              <div className="flex justify-end gap-2">
+                <BranchFormDialog mode="edit" branch={b} />
+                <Button size="icon" variant="ghost" aria-label={`Delete ${b.name}`} onClick={() => remove(b.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ),
+          } satisfies DataTableColumn<BranchRecord>,
+        ]
+      : []),
   ];
 
   return (

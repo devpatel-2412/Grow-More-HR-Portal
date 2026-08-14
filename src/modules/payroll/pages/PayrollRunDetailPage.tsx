@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { usePayrollRun, usePayrollRunTransition } from '../hooks/usePayroll';
 import { useEmployees } from '../../employees/hooks/useEmployees';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { PayslipTable } from '../components/PayslipTable';
 import { PayrollStatusBadge, MONTH_NAMES, formatCurrency } from '../components/PayrollStatusBadge';
 import { ApiError } from '../../../shared/lib/api-client';
@@ -17,6 +18,7 @@ export function PayrollRunDetailPage() {
   const { data: run, isLoading, isError, refetch } = usePayrollRun(id);
   const { data: employeePage } = useEmployees({ page: 1, limit: 100 });
   const transition = usePayrollRunTransition();
+  const canManage = useHasPermission('payroll:manage');
 
   const employeeNames = useMemo(() => {
     const map: Record<string, string> = {};
@@ -47,28 +49,30 @@ export function PayrollRunDetailPage() {
       badge={<PayrollStatusBadge status={run.status} />}
       subtitle={`${run.itemCount} payslips · total net ${formatCurrency(run.totalNet)}`}
       actions={
-        <>
-          {run.status === 'DRAFT' && (
-            <>
-              <Button variant="ghost" onClick={() => act('cancel')} loading={transition.isPending}>
-                Cancel run
-              </Button>
-              <Button onClick={() => act('approve')} loading={transition.isPending}>
-                Approve
-              </Button>
-            </>
-          )}
-          {run.status === 'APPROVED' && (
-            <>
-              <Button variant="ghost" onClick={() => act('cancel')} loading={transition.isPending}>
-                Cancel run
-              </Button>
-              <Button onClick={() => act('mark-paid')} loading={transition.isPending}>
-                Mark as paid
-              </Button>
-            </>
-          )}
-        </>
+        canManage ? (
+          <>
+            {run.status === 'DRAFT' && (
+              <>
+                <Button variant="ghost" onClick={() => act('cancel')} loading={transition.isPending}>
+                  Cancel run
+                </Button>
+                <Button onClick={() => act('approve')} loading={transition.isPending}>
+                  Approve
+                </Button>
+              </>
+            )}
+            {run.status === 'APPROVED' && (
+              <>
+                <Button variant="ghost" onClick={() => act('cancel')} loading={transition.isPending}>
+                  Cancel run
+                </Button>
+                <Button onClick={() => act('mark-paid')} loading={transition.isPending}>
+                  Mark as paid
+                </Button>
+              </>
+            )}
+          </>
+        ) : undefined
       }
     >
       <Card>

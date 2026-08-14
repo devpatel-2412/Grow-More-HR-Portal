@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
+import { useHasPermission } from '../hooks/useHasPermission';
 import { authApi } from '../api/auth.api';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Card } from '../../../shared/components/ui/card';
@@ -11,8 +12,6 @@ import { ChangePasswordForm } from '../components/ChangePasswordForm';
 import { LoginHistoryPanel } from '../components/LoginHistoryPanel';
 import { PunchWidget } from '../../attendance/components/PunchWidget';
 import { AdminKpiDashboard } from '../../dashboard/components/AdminKpiDashboard';
-
-const ADMIN_DASHBOARD_ROLES = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'];
 
 function useClock() {
   const [now, setNow] = useState(() => new Date());
@@ -43,7 +42,7 @@ export function DashboardPage() {
     }
   }
 
-  const showAdminDashboard = !!user && ADMIN_DASHBOARD_ROLES.includes(user.role);
+  const showAdminDashboard = useHasPermission('dashboard:read:tenant');
 
   return (
     <div className={showAdminDashboard ? 'mx-auto max-w-6xl space-y-6' : 'mx-auto max-w-4xl space-y-6'}>

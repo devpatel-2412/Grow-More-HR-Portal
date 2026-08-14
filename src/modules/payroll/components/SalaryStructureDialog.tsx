@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { Wallet } from 'lucide-react';
 import { useSetSalaryStructure } from '../hooks/usePayroll';
 import { useEmployees } from '../../employees/hooks/useEmployees';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -36,6 +37,7 @@ export function SalaryStructureDialog() {
   const [open, setOpen] = useState(false);
   const setMutation = useSetSalaryStructure();
   const { data: employeePage } = useEmployees({ page: 1, limit: 100 });
+  const canManage = useHasPermission('payroll:manage');
   const {
     register,
     control,
@@ -53,6 +55,8 @@ export function SalaryStructureDialog() {
       allowance: 0,
     },
   });
+
+  if (!canManage) return null;
 
   async function onSubmit(values: SalaryStructureFormValues) {
     try {

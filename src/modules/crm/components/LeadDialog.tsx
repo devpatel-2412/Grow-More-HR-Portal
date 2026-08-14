@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { UserPlus } from 'lucide-react';
 import { useCreateLead } from '../hooks/useCrm';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -34,6 +35,7 @@ type LeadFormValues = z.infer<typeof leadSchema>;
 export function LeadDialog() {
   const [open, setOpen] = useState(false);
   const createMutation = useCreateLead();
+  const canManage = useHasPermission('crm:manage');
   const {
     register,
     handleSubmit,
@@ -44,6 +46,8 @@ export function LeadDialog() {
     resolver: zodResolver(leadSchema),
     defaultValues: { companyName: '', contactName: '', email: '', phone: '', source: '', estimatedValue: 0 },
   });
+
+  if (!canManage) return null;
 
   async function onSubmit(values: LeadFormValues) {
     try {

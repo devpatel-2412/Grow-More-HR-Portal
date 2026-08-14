@@ -7,6 +7,7 @@ import { InvitationsTable } from '../components/InvitationsTable';
 import { InviteUserDialog } from '../components/InviteUserDialog';
 import { usePagination } from '../../../shared/hooks/usePagination';
 import { useAuth } from '../../auth/context/AuthContext';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { Card } from '../../../shared/components/ui/card';
 import { Input } from '../../../shared/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../shared/components/ui/tabs';
@@ -19,11 +20,14 @@ type Tab = 'team' | 'invitations';
 
 export function UsersPage() {
   const { user } = useAuth();
+  const canInvite = useHasPermission('user:invite');
   const [tab, setTab] = useState<Tab>('team');
   const pagination = usePagination(20);
   const invitesPagination = usePagination(20);
   const { data, isLoading, isError, refetch } = useUsers(pagination.queryParams);
-  const invitesQuery = useInvites({ page: invitesPagination.page, limit: invitesPagination.limit });
+  // The invites list is USER_INVITE-gated server-side too — skip the request entirely (and hide
+  // the tab below) rather than firing it and letting it 403.
+  const invitesQuery = useInvites({ page: invitesPagination.page, limit: invitesPagination.limit }, { enabled: canInvite });
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -38,7 +42,7 @@ export function UsersPage() {
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
         <TabsList>
           <TabsTrigger value="team">Team</TabsTrigger>
-          <TabsTrigger value="invitations">Invitations</TabsTrigger>
+          {canInvite && <TabsTrigger value="invitations">Invitations</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="team" className="mt-4">
@@ -76,30 +80,32 @@ export function UsersPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="invitations" className="mt-4">
-          <Card>
-            {invitesQuery.isLoading && (
-              <div className="space-y-2">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            )}
+        {canInvite && (
+          <TabsContent value="invitations" className="mt-4">
+            <Card>
+              {invitesQuery.isLoading && (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              )}
 
-            {invitesQuery.isError && <ErrorState description="Failed to load invitations." onRetry={() => invitesQuery.refetch()} />}
+              {invitesQuery.isError && <ErrorState description="Failed to load invitations." onRetry={() => invitesQuery.refetch()} />}
 
-            {!invitesQuery.isLoading && !invitesQuery.isError && invitesQuery.data && invitesQuery.data.data.length === 0 && (
-              <EmptyState icon={MailQuestion} title="No invitations yet" description="Invitations you send will show up here." />
-            )}
+              {!invitesQuery.isLoading && !invitesQuery.isError && invitesQuery.data && invitesQuery.data.data.length === 0 && (
+                <EmptyState icon={MailQuestion} title="No invitations yet" description="Invitations you send will show up here." />
+              )}
 
-            {!invitesQuery.isLoading && !invitesQuery.isError && invitesQuery.data && invitesQuery.data.data.length > 0 && (
-              <div className="space-y-4">
-                <InvitationsTable invites={invitesQuery.data.data} />
-                <PaginationBar meta={invitesQuery.data.meta} onPageChange={invitesPagination.setPage} />
-              </div>
-            )}
-          </Card>
-        </TabsContent>
+              {!invitesQuery.isLoading && !invitesQuery.isError && invitesQuery.data && invitesQuery.data.data.length > 0 && (
+                <div className="space-y-4">
+                  <InvitationsTable invites={invitesQuery.data.data} />
+                  <PaginationBar meta={invitesQuery.data.meta} onPageChange={invitesPagination.setPage} />
+                </div>
+              )}
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { Boxes } from 'lucide-react';
 import { useAssets, useAssignAsset, useUnassignAsset, useChangeAssetStatus } from '../hooks/useWorkplace';
 import { useEmployees } from '../../employees/hooks/useEmployees';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { usePagination } from '../../../shared/hooks/usePagination';
 import { CreateAssetDialog } from '../components/CreateAssetDialog';
 import { AssetStatusBadge } from '../components/AssetBadges';
@@ -21,6 +22,7 @@ export function AssetsPage() {
   const unassignMutation = useUnassignAsset();
   const statusMutation = useChangeAssetStatus();
   const [assigningId, setAssigningId] = useState<string | undefined>();
+  const canManage = useHasPermission('asset:manage');
   const state = isLoading ? 'loading' : isError ? 'error' : !data || data.data.length === 0 ? 'empty' : 'ready';
 
   const employeeNames: Record<string, string> = {};
@@ -82,7 +84,7 @@ export function AssetsPage() {
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Holder</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                {canManage && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -95,44 +97,46 @@ export function AssetsPage() {
                     <AssetStatusBadge status={asset.status} />
                   </TableCell>
                   <TableCell>{asset.employeeId ? (employeeNames[asset.employeeId] ?? '—') : '—'}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      {asset.status === 'AVAILABLE' && assigningId !== asset.id && (
-                        <Button size="sm" variant="outline" onClick={() => setAssigningId(asset.id)}>
-                          Assign
-                        </Button>
-                      )}
-                      {assigningId === asset.id && (
-                        <Select onValueChange={(employeeId) => assign(asset.id, employeeId)}>
-                          <SelectTrigger className="w-40" aria-label="Assign to">
-                            <SelectValue placeholder="Pick an employee" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {(employeePage?.data ?? []).map((employee) => (
-                              <SelectItem key={employee.id} value={employee.id}>
-                                {employee.firstName} {employee.lastName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                      {asset.status === 'ASSIGNED' && (
-                        <Button size="sm" variant="ghost" onClick={() => unassign(asset.id)}>
-                          Unassign
-                        </Button>
-                      )}
-                      {asset.status !== 'RETIRED' && asset.status !== 'UNDER_REPAIR' && (
-                        <Button size="sm" variant="ghost" onClick={() => markRepair(asset.id)}>
-                          Repair
-                        </Button>
-                      )}
-                      {asset.status !== 'RETIRED' && (
-                        <Button size="sm" variant="ghost" onClick={() => retire(asset.id)}>
-                          Retire
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
+                  {canManage && (
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        {asset.status === 'AVAILABLE' && assigningId !== asset.id && (
+                          <Button size="sm" variant="outline" onClick={() => setAssigningId(asset.id)}>
+                            Assign
+                          </Button>
+                        )}
+                        {assigningId === asset.id && (
+                          <Select onValueChange={(employeeId) => assign(asset.id, employeeId)}>
+                            <SelectTrigger className="w-40" aria-label="Assign to">
+                              <SelectValue placeholder="Pick an employee" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(employeePage?.data ?? []).map((employee) => (
+                                <SelectItem key={employee.id} value={employee.id}>
+                                  {employee.firstName} {employee.lastName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {asset.status === 'ASSIGNED' && (
+                          <Button size="sm" variant="ghost" onClick={() => unassign(asset.id)}>
+                            Unassign
+                          </Button>
+                        )}
+                        {asset.status !== 'RETIRED' && asset.status !== 'UNDER_REPAIR' && (
+                          <Button size="sm" variant="ghost" onClick={() => markRepair(asset.id)}>
+                            Repair
+                          </Button>
+                        )}
+                        {asset.status !== 'RETIRED' && (
+                          <Button size="sm" variant="ghost" onClick={() => retire(asset.id)}>
+                            Retire
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

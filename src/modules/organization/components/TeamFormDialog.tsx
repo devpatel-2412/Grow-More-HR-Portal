@@ -7,6 +7,7 @@ import { Users2, Pencil } from 'lucide-react';
 import { useCreateTeam, useUpdateTeam } from '../hooks/useOrganization';
 import { useBranches } from '../hooks/useOrganization';
 import { useEmployees } from '../../employees/hooks/useEmployees';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -46,6 +47,9 @@ interface EditModeProps {
 
 export function TeamFormDialog(props: CreateModeProps | EditModeProps) {
   const [open, setOpen] = useState(false);
+  const canManage = useHasPermission('org:manage');
+
+  if (!canManage) return null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

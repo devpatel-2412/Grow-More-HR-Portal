@@ -2,6 +2,7 @@ import { toast } from 'sonner';
 import { Badge } from '../../../shared/components/ui/badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui/table';
 import { useReviewRegularization } from '../hooks/useRegularizations';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import type { RegularizationRequest, RegularizationStatus } from '../types/attendance.types';
 
@@ -18,6 +19,7 @@ function formatDateTime(iso: string | null): string {
 
 export function RegularizationTable({ requests }: { requests: RegularizationRequest[] }) {
   const reviewMutation = useReviewRegularization();
+  const canApprove = useHasPermission('attendance:regularization:approve');
 
   async function handleReview(id: string, status: 'APPROVED' | 'REJECTED') {
     try {
@@ -37,7 +39,7 @@ export function RegularizationTable({ requests }: { requests: RegularizationRequ
           <TableHead>Requested check-out</TableHead>
           <TableHead>Reason</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
+          {canApprove && <TableHead className="text-right">Actions</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -52,28 +54,30 @@ export function RegularizationTable({ requests }: { requests: RegularizationRequ
             <TableCell>
               <Badge variant={STATUS_VARIANT[r.status]}>{r.status}</Badge>
             </TableCell>
-            <TableCell className="text-right">
-              {r.status === 'PENDING' ? (
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    className="text-emerald-500 hover:underline"
-                    onClick={() => handleReview(r.id, 'APPROVED')}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    className="text-[var(--destructive)] hover:underline"
-                    onClick={() => handleReview(r.id, 'REJECTED')}
-                  >
-                    Reject
-                  </button>
-                </div>
-              ) : (
-                <span className="text-[var(--muted-foreground)]">Reviewed</span>
-              )}
-            </TableCell>
+            {canApprove && (
+              <TableCell className="text-right">
+                {r.status === 'PENDING' ? (
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      className="text-emerald-500 hover:underline"
+                      onClick={() => handleReview(r.id, 'APPROVED')}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      className="text-[var(--destructive)] hover:underline"
+                      onClick={() => handleReview(r.id, 'REJECTED')}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-[var(--muted-foreground)]">Reviewed</span>
+                )}
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>

@@ -7,6 +7,7 @@ import { LoginPage } from '../modules/auth/pages/LoginPage';
 import { ProtectedRoute } from '../shared/components/layout/ProtectedRoute';
 import { AppShell } from '../shared/components/layout/AppShell';
 import { RequireRole } from '../shared/components/layout/RequireRole';
+import { RequirePermission } from '../shared/components/layout/RequirePermission';
 import { PageLoadingSkeleton } from '../shared/components/feedback/LoadingSkeleton';
 import { NotFoundPage } from '../shared/components/feedback/NotFoundPage';
 
@@ -75,71 +76,153 @@ export const router = createBrowserRouter([
       {
         element: <AppShell />,
         children: [
+          // Every authenticated staff member — these pages' underlying list/read endpoints have no
+          // permission gate server-side (auth only), so there's nothing to hide the nav item or
+          // route behind. See router-permission mapping notes in nav-items.ts.
           { path: '/', element: lazyRoute(<DashboardPage />) },
+          { path: '/projects', element: lazyRoute(<ProjectsPage />) },
+          { path: '/projects/:id', element: lazyRoute(<ProjectDetailPage />) },
+          { path: '/organization/chart', element: lazyRoute(<OrgChartPage />) },
+          { path: '/assets', element: lazyRoute(<AssetsPage />) },
+
           {
-            element: <RequireRole allow={['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE']} />,
+            element: <RequirePermission permission="attendance:self" />,
+            children: [{ path: '/attendance', element: lazyRoute(<AttendancePage />) }],
+          },
+          {
+            element: <RequirePermission permission="leave:view:self" />,
+            children: [{ path: '/leave', element: lazyRoute(<LeavePage />) }],
+          },
+          {
+            element: <RequirePermission anyOf={['leave:approve:hr', 'leave:approve:manager']} />,
+            children: [{ path: '/leave/approvals', element: lazyRoute(<LeaveApprovalsPage />) }],
+          },
+          {
+            element: <RequirePermission permission="attendance:regularization:approve" />,
+            children: [{ path: '/attendance/regularizations', element: lazyRoute(<RegularizationsPage />) }],
+          },
+          {
+            element: <RequirePermission permission="timelog:self" />,
+            children: [{ path: '/time-tracking', element: lazyRoute(<TimeTrackingPage />) }],
+          },
+          {
+            element: <RequirePermission permission="workreport:submit" />,
+            children: [{ path: '/work-reports', element: lazyRoute(<WorkReportsPage />) }],
+          },
+          {
+            element: <RequirePermission permission="workreport:review" />,
+            children: [{ path: '/work-reports/review', element: lazyRoute(<WorkReportReviewPage />) }],
+          },
+          {
+            element: <RequirePermission permission="payslip:read:self" />,
+            children: [{ path: '/payslips', element: lazyRoute(<MyPayslipsPage />) }],
+          },
+          {
+            element: <RequirePermission permission="employee:read:tenant" />,
             children: [
-              { path: '/attendance', element: lazyRoute(<AttendancePage />) },
-              { path: '/leave', element: lazyRoute(<LeavePage />) },
-              { path: '/projects', element: lazyRoute(<ProjectsPage />) },
-              { path: '/projects/:id', element: lazyRoute(<ProjectDetailPage />) },
-              { path: '/time-tracking', element: lazyRoute(<TimeTrackingPage />) },
-              { path: '/work-reports', element: lazyRoute(<WorkReportsPage />) },
-              { path: '/payslips', element: lazyRoute(<MyPayslipsPage />) },
               { path: '/employees', element: lazyRoute(<EmployeesPage />) },
               { path: '/employees/:id', element: lazyRoute(<EmployeeDetailPage />) },
+            ],
+          },
+          {
+            element: <RequirePermission permission="user:read:tenant" />,
+            children: [{ path: '/users', element: lazyRoute(<UsersPage />) }],
+          },
+          {
+            element: <RequirePermission permission="org:manage" />,
+            children: [
+              { path: '/organization/branches', element: lazyRoute(<BranchesPage />) },
+              { path: '/organization/teams', element: lazyRoute(<TeamsPage />) },
+            ],
+          },
+          {
+            element: <RequirePermission permission="finance:read" />,
+            children: [
+              { path: '/finance', element: lazyRoute(<FinanceDocumentsPage />) },
+              { path: '/finance/reports/profit-loss', element: lazyRoute(<ProfitLossPage />) },
+              { path: '/finance/:id', element: lazyRoute(<FinanceDocumentDetailPage />) },
+            ],
+          },
+          {
+            element: <RequirePermission permission="payroll:read:tenant" />,
+            children: [
+              { path: '/payroll', element: lazyRoute(<PayrollRunsPage />) },
+              { path: '/payroll/runs/:id', element: lazyRoute(<PayrollRunDetailPage />) },
+            ],
+          },
+          {
+            element: <RequirePermission permission="recruitment:read" />,
+            children: [
+              { path: '/recruitment', element: lazyRoute(<JobPostingsPage />) },
+              { path: '/recruitment/:id', element: lazyRoute(<JobPostingDetailPage />) },
+            ],
+          },
+          {
+            element: <RequirePermission permission="crm:read" />,
+            children: [{ path: '/crm/leads', element: lazyRoute(<LeadsPage />) }],
+          },
+          {
+            element: <RequirePermission permission="ticket:view:self" />,
+            children: [
               { path: '/helpdesk', element: lazyRoute(<TicketsPage />) },
               { path: '/helpdesk/:id', element: lazyRoute(<TicketDetailPage />) },
-              { path: '/knowledge-base', element: lazyRoute(<KnowledgeBasePage />) },
-              { path: '/documents', element: lazyRoute(<DocumentsPage />) },
-              { path: '/assets', element: lazyRoute(<AssetsPage />) },
-              { path: '/announcements', element: lazyRoute(<AnnouncementsPage />) },
-              { path: '/organization/chart', element: lazyRoute(<OrgChartPage />) },
+            ],
+          },
+          {
+            element: <RequirePermission permission="kb:read" />,
+            children: [{ path: '/knowledge-base', element: lazyRoute(<KnowledgeBasePage />) }],
+          },
+          {
+            element: <RequirePermission permission="document:view:self" />,
+            children: [{ path: '/documents', element: lazyRoute(<DocumentsPage />) }],
+          },
+          {
+            element: <RequirePermission permission="announcement:read" />,
+            children: [{ path: '/announcements', element: lazyRoute(<AnnouncementsPage />) }],
+          },
+          {
+            element: <RequirePermission permission="sop:read" />,
+            children: [
               { path: '/sops', element: lazyRoute(<SopsPage />) },
               { path: '/sops/:id', element: lazyRoute(<SopDetailPage />) },
             ],
           },
           {
-            element: <RequireRole allow={['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER']} />,
-            children: [
-              { path: '/leave/approvals', element: lazyRoute(<LeaveApprovalsPage />) },
-              { path: '/work-reports/review', element: lazyRoute(<WorkReportReviewPage />) },
-              { path: '/attendance/regularizations', element: lazyRoute(<RegularizationsPage />) },
-            ],
+            element: <RequirePermission permission="template:manage" />,
+            children: [{ path: '/templates', element: lazyRoute(<TemplatesPage />) }],
           },
           {
-            element: <RequireRole allow={['SUPER_ADMIN', 'ADMIN']} />,
-            children: [
-              { path: '/finance', element: lazyRoute(<FinanceDocumentsPage />) },
-              { path: '/finance/reports/profit-loss', element: lazyRoute(<ProfitLossPage />) },
-              { path: '/finance/:id', element: lazyRoute(<FinanceDocumentDetailPage />) },
-              { path: '/audit-log', element: lazyRoute(<AuditLogPage />) },
-              { path: '/settings', element: lazyRoute(<TenantSettingsPage />) },
-              { path: '/sessions', element: lazyRoute(<SessionsPage />) },
-            ],
+            element: <RequirePermission permission="visitor:manage" />,
+            children: [{ path: '/visitors', element: lazyRoute(<VisitorsPage />) }],
           },
+          {
+            element: <RequirePermission permission="vendor:manage" />,
+            children: [{ path: '/vendors', element: lazyRoute(<VendorsPage />) }],
+          },
+          {
+            element: <RequirePermission permission="inventory:manage" />,
+            children: [{ path: '/inventory', element: lazyRoute(<InventoryItemsPage />) }],
+          },
+          {
+            element: <RequirePermission permission="audit:read" />,
+            children: [{ path: '/audit-log', element: lazyRoute(<AuditLogPage />) }],
+          },
+          {
+            element: <RequirePermission permission="session:manage" />,
+            children: [{ path: '/sessions', element: lazyRoute(<SessionsPage />) }],
+          },
+          {
+            element: <RequirePermission permission="tenant:update" />,
+            children: [{ path: '/settings', element: lazyRoute(<TenantSettingsPage />) }],
+          },
+
+          // No permission concept exists for these — access is hardcoded to SUPER_ADMIN server-side
+          // (cross-tenant company switching, and deciding every other role's permissions).
           {
             element: <RequireRole allow={['SUPER_ADMIN']} />,
             children: [
               { path: '/companies', element: lazyRoute(<CompaniesPage />) },
               { path: '/roles', element: lazyRoute(<RolesPage />) },
-            ],
-          },
-          {
-            element: <RequireRole allow={['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER']} />,
-            children: [
-              { path: '/recruitment', element: lazyRoute(<JobPostingsPage />) },
-              { path: '/recruitment/:id', element: lazyRoute(<JobPostingDetailPage />) },
-              { path: '/templates', element: lazyRoute(<TemplatesPage />) },
-              { path: '/visitors', element: lazyRoute(<VisitorsPage />) },
-              { path: '/crm/leads', element: lazyRoute(<LeadsPage />) },
-              { path: '/payroll', element: lazyRoute(<PayrollRunsPage />) },
-              { path: '/payroll/runs/:id', element: lazyRoute(<PayrollRunDetailPage />) },
-              { path: '/users', element: lazyRoute(<UsersPage />) },
-              { path: '/organization/branches', element: lazyRoute(<BranchesPage />) },
-              { path: '/organization/teams', element: lazyRoute(<TeamsPage />) },
-              { path: '/vendors', element: lazyRoute(<VendorsPage />) },
-              { path: '/inventory', element: lazyRoute(<InventoryItemsPage />) },
             ],
           },
         ],

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { PackagePlus } from 'lucide-react';
 import { useCreateAsset } from '../hooks/useWorkplace';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -33,6 +34,7 @@ type AssetFormValues = z.infer<typeof assetSchema>;
 export function CreateAssetDialog() {
   const [open, setOpen] = useState(false);
   const createMutation = useCreateAsset();
+  const canManage = useHasPermission('asset:manage');
   const {
     register,
     control,
@@ -44,6 +46,8 @@ export function CreateAssetDialog() {
     resolver: zodResolver(assetSchema),
     defaultValues: { name: '', serialNumber: '', type: 'LAPTOP' },
   });
+
+  if (!canManage) return null;
 
   async function onSubmit(values: AssetFormValues) {
     try {

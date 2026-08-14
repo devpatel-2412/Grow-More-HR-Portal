@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { DollarSign } from 'lucide-react';
 import { recordPaymentFormSchema, type RecordPaymentFormValues } from '../schemas/finance.schemas';
 import { useRecordPayment } from '../hooks/useFinance';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -27,6 +28,7 @@ function today(): string {
 export function RecordPaymentDialog({ documentId, remaining }: { documentId: string; remaining: number }) {
   const [open, setOpen] = useState(false);
   const recordMutation = useRecordPayment();
+  const canManage = useHasPermission('finance:manage');
   const {
     register,
     handleSubmit,
@@ -37,6 +39,8 @@ export function RecordPaymentDialog({ documentId, remaining }: { documentId: str
     resolver: zodResolver(recordPaymentFormSchema),
     defaultValues: { amount: remaining, paidAt: today(), method: '', reference: '' },
   });
+
+  if (!canManage) return null;
 
   async function onSubmit(values: RecordPaymentFormValues) {
     try {

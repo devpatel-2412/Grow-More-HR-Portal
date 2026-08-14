@@ -8,6 +8,16 @@ import type { AdminDashboardSummary } from '../types/dashboard.types';
 vi.mock('../hooks/useDashboard');
 const mockUseAdminSummary = vi.mocked(useAdminSummary);
 
+const mockUseAuth = vi.fn();
+vi.mock('../../auth/context/AuthContext', () => ({ useAuth: () => mockUseAuth() }));
+// Default to a user holding every permission the KPI cards individually gate on (finance:read,
+// payroll:read:tenant, audit:read) so these pre-existing assertions keep exercising the full card
+// set; permission-specific visibility is covered by AdminKpiDashboard's own gating being reused
+// from the shared useHasPermission hook (see PermissionGate.test.tsx / useHasPermission.test.tsx).
+mockUseAuth.mockReturnValue({
+  user: { id: '1', email: 'admin@acme.com', role: 'ADMIN', status: 'ACTIVE', permissions: ['finance:read', 'payroll:read:tenant', 'audit:read'] },
+});
+
 function makeSummary(overrides: Partial<AdminDashboardSummary> = {}): AdminDashboardSummary {
   return {
     headcount: { total: 25, active: 22, onboarding: 3, offboarding: 0 },

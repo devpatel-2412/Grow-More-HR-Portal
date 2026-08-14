@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { Ticket as TicketIcon } from 'lucide-react';
 import { useCreateTicket } from '../hooks/useWorkplace';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -34,6 +35,7 @@ type TicketFormValues = z.infer<typeof ticketSchema>;
 export function CreateTicketDialog() {
   const [open, setOpen] = useState(false);
   const createMutation = useCreateTicket();
+  const canCreate = useHasPermission('ticket:create');
   const {
     register,
     control,
@@ -45,6 +47,8 @@ export function CreateTicketDialog() {
     resolver: zodResolver(ticketSchema),
     defaultValues: { category: 'IT', subject: '', description: '' },
   });
+
+  if (!canCreate) return null;
 
   async function onSubmit(values: TicketFormValues) {
     try {

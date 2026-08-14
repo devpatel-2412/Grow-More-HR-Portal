@@ -7,7 +7,7 @@ import { UploadDocumentDialog } from '../components/UploadDocumentDialog';
 import { DocumentVersionHistoryDialog } from '../components/DocumentVersionHistoryDialog';
 import { ReplaceDocumentFileDialog } from '../components/ReplaceDocumentFileDialog';
 import { ApiError } from '../../../shared/lib/api-client';
-import { useAuth } from '../../auth/context/AuthContext';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { Button } from '../../../shared/components/ui/button';
 import { Badge } from '../../../shared/components/ui/badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui/table';
@@ -29,8 +29,7 @@ export function DocumentsPage() {
   const archiveMutation = useArchiveDocument();
   const restoreMutation = useRestoreDocument();
   const downloadMutation = useDownloadDocument();
-  const { user } = useAuth();
-  const canManage = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'HR_MANAGER' || user?.role === 'PROJECT_MANAGER';
+  const canManage = useHasPermission('document:manage');
   const state = isLoading ? 'loading' : isError ? 'error' : !data || data.data.length === 0 ? 'empty' : 'ready';
 
   async function remove(id: string) {

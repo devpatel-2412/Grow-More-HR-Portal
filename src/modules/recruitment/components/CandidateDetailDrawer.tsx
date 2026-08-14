@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { useCandidate, useScheduleInterview, useUpdateInterview } from '../hooks/useRecruitment';
 import { useEmployees } from '../../employees/hooks/useEmployees';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { CandidateStatusBadge, InterviewOutcomeBadge } from './RecruitmentBadges';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
@@ -31,6 +32,7 @@ export function CandidateDetailDrawer({
   const { data: employeePage } = useEmployees({ page: 1, limit: 100 });
   const scheduleMutation = useScheduleInterview();
   const updateInterview = useUpdateInterview();
+  const canManage = useHasPermission('recruitment:manage');
 
   const [scheduledAt, setScheduledAt] = useState(localInputValue(new Date()));
   const [interviewerId, setInterviewerId] = useState(NO_INTERVIEWER);
@@ -134,7 +136,7 @@ export function CandidateDetailDrawer({
                     </div>
                     <div className="flex items-center gap-2">
                       <InterviewOutcomeBadge outcome={interview.outcome} />
-                      {interview.outcome === 'PENDING' && (
+                      {canManage && interview.outcome === 'PENDING' && (
                         <>
                           <Button size="sm" variant="ghost" onClick={() => recordOutcome(interview.id, 'FAILED')}>
                             Fail
@@ -149,7 +151,7 @@ export function CandidateDetailDrawer({
                 ))}
               </div>
 
-              {candidate.status !== 'HIRED' && candidate.status !== 'REJECTED' && (
+              {canManage && candidate.status !== 'HIRED' && candidate.status !== 'REJECTED' && (
                 <div className="space-y-3 border-t border-[var(--border)] pt-4">
                   <h4 className="text-sm font-bold text-[var(--foreground)]">Schedule an interview</h4>
                   <div className="grid grid-cols-2 gap-3">

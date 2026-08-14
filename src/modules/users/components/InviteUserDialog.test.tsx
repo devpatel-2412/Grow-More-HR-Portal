@@ -7,11 +7,11 @@ import { server, handlers } from '../../../test/msw/server';
 
 describe('InviteUserDialog', () => {
   it('opens the dialog, validates an empty email, and submits successfully', async () => {
-    server.use(handlers.inviteUserSuccess);
+    server.use(handlers.meSuccessWithPermissions(['user:invite']), handlers.inviteUserSuccess);
     const user = userEvent.setup();
     renderWithProviders(<InviteUserDialog />);
 
-    await user.click(screen.getByRole('button', { name: /invite user/i }));
+    await user.click(await screen.findByRole('button', { name: /invite user/i }));
     expect(await screen.findByText(/invite a teammate/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /send invite/i }));
@@ -26,11 +26,11 @@ describe('InviteUserDialog', () => {
   });
 
   it('surfaces a server conflict error without closing the dialog', async () => {
-    server.use(handlers.inviteUserConflict);
+    server.use(handlers.meSuccessWithPermissions(['user:invite']), handlers.inviteUserConflict);
     const user = userEvent.setup();
     renderWithProviders(<InviteUserDialog />);
 
-    await user.click(screen.getByRole('button', { name: /invite user/i }));
+    await user.click(await screen.findByRole('button', { name: /invite user/i }));
     await user.type(await screen.findByLabelText(/email/i), 'existing@acme.com');
     await user.click(screen.getByRole('button', { name: /send invite/i }));
 
