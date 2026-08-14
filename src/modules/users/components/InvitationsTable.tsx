@@ -2,12 +2,14 @@ import { toast } from 'sonner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui/table';
 import { InviteStatusBadge } from './InviteStatusBadge';
 import { useResendInvite, useRevokeInvite } from '../hooks/useInviteMutations';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import type { Invite } from '../types/user.types';
 
 export function InvitationsTable({ invites }: { invites: Invite[] }) {
   const resendInvite = useResendInvite();
   const revokeInvite = useRevokeInvite();
+  const canInvite = useHasPermission('user:invite');
 
   async function handleResend(invite: Invite) {
     try {
@@ -36,7 +38,7 @@ export function InvitationsTable({ invites }: { invites: Invite[] }) {
           <TableHead>Role</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Expires</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
+          {canInvite && <TableHead className="text-right">Actions</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -48,20 +50,22 @@ export function InvitationsTable({ invites }: { invites: Invite[] }) {
               <InviteStatusBadge status={invite.status} />
             </TableCell>
             <TableCell className="text-[var(--muted-foreground)]">{new Date(invite.expiresAt).toLocaleDateString()}</TableCell>
-            <TableCell className="text-right">
-              {invite.status === 'PENDING' ? (
-                <div className="flex justify-end gap-3">
-                  <button type="button" onClick={() => handleResend(invite)} className="text-[var(--primary)] hover:underline">
-                    Resend
-                  </button>
-                  <button type="button" onClick={() => handleRevoke(invite)} className="text-[var(--destructive)] hover:underline">
-                    Revoke
-                  </button>
-                </div>
-              ) : (
-                <span className="text-[var(--muted-foreground)]">—</span>
-              )}
-            </TableCell>
+            {canInvite && (
+              <TableCell className="text-right">
+                {invite.status === 'PENDING' ? (
+                  <div className="flex justify-end gap-3">
+                    <button type="button" onClick={() => handleResend(invite)} className="text-[var(--primary)] hover:underline">
+                      Resend
+                    </button>
+                    <button type="button" onClick={() => handleRevoke(invite)} className="text-[var(--destructive)] hover:underline">
+                      Revoke
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-[var(--muted-foreground)]">—</span>
+                )}
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>

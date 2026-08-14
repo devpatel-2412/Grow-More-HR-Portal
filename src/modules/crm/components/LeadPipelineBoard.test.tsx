@@ -3,6 +3,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LeadPipelineBoard } from './LeadPipelineBoard';
 import { renderWithProviders } from '../../../test/test-utils';
+import { server, handlers } from '../../../test/msw/server';
 import { LEAD_TRANSITIONS, type LeadRecord } from '../types/crm.types';
 
 function makeLead(overrides: Partial<LeadRecord> = {}): LeadRecord {
@@ -49,11 +50,12 @@ describe('LeadPipelineBoard', () => {
     expect(onOpenLead).toHaveBeenCalledWith(expect.objectContaining({ id: 'lead-1' }));
   });
 
-  it('offers Mark won / Mark lost instead of a move-to dropdown at the proposal stage', () => {
+  it('offers Mark won / Mark lost instead of a move-to dropdown at the proposal stage', async () => {
+    server.use(handlers.meSuccessWithPermissions(['crm:manage']));
     renderWithProviders(<LeadPipelineBoard leads={[makeLead({ status: 'PROPOSAL' })]} onOpenLead={vi.fn()} />);
 
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /mark won/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /mark won/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /mark lost/i })).toBeInTheDocument();
   });
 

@@ -5,10 +5,9 @@ import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { Button } from '../ui/button';
 import { Logo } from '../ui/logo';
 import { APP_NAME } from '../../config/brand';
-import { RoleGate } from './RoleGate';
 import { CommandPalette } from './CommandPalette';
 import { TopHeader } from './TopHeader';
-import { NAV_ITEMS, type NavItem } from '../../config/nav-items';
+import { NAV_ITEMS, isNavItemVisible, type NavItem } from '../../config/nav-items';
 import { cn } from '../../utils/cn';
 
 const SIDEBAR_COLLAPSED_KEY = 'grow-more-sidebar-collapsed';
@@ -112,34 +111,25 @@ export function AppShell() {
         </div>
 
         <nav className={cn('flex-1 min-h-0 space-y-1 overflow-y-auto overflow-x-hidden px-4 py-6', collapsed && 'lg:px-3')} aria-label="Primary">
-          {groupNavItems(NAV_ITEMS).map(({ group, items }) => (
+          {groupNavItems(NAV_ITEMS.filter((item) => isNavItemVisible(item, user))).map(({ group, items }) => (
             <div key={group ?? '__ungrouped'} className="space-y-1 pb-1">
               {group && (
                 <div className={cn('px-2.5 pt-3 pb-1 text-[10px] font-semibold tracking-wider text-[var(--muted-foreground)] uppercase', collapsed && 'lg:hidden')}>
                   {group}
                 </div>
               )}
-              {items.map((item) => {
-                const link = (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    end={item.end}
-                    title={collapsed ? item.label : undefined}
-                    className={({ isActive }) => navLinkClasses({ isActive, collapsed })}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    <span className={cn(collapsed && 'lg:hidden')}>{item.label}</span>
-                  </NavLink>
-                );
-                return item.allow ? (
-                  <RoleGate key={item.path} allow={item.allow}>
-                    {link}
-                  </RoleGate>
-                ) : (
-                  link
-                );
-              })}
+              {items.map((item) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  end={item.end}
+                  title={collapsed ? item.label : undefined}
+                  className={({ isActive }) => navLinkClasses({ isActive, collapsed })}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span className={cn(collapsed && 'lg:hidden')}>{item.label}</span>
+                </NavLink>
+              ))}
             </div>
           ))}
         </nav>

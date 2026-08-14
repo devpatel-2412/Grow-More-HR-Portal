@@ -8,6 +8,7 @@ import { useUpdateTaskStatus } from '../hooks/useTasks';
 import { useTaskAttachments, useAddAttachment } from '../hooks/useTaskComments';
 import { TaskComments } from './TaskComments';
 import { TaskPriorityBadge } from './TaskBadges';
+import { usePermissions } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -16,6 +17,10 @@ import type { TaskRecord } from '../types/task.types';
 
 function SubtaskChecklist({ subtasks }: { subtasks: TaskRecord[] }) {
   const updateStatus = useUpdateTaskStatus();
+  const { hasAny } = usePermissions();
+  // Same updateOwn gate as the Kanban board's status control (task.routes.ts) — task:manage or
+  // task:update:own, with ownership scoping enforced server-side.
+  const canToggle = hasAny(['task:manage', 'task:update:own']);
 
   async function toggle(subtask: TaskRecord) {
     try {
@@ -31,7 +36,13 @@ function SubtaskChecklist({ subtasks }: { subtasks: TaskRecord[] }) {
     <ul className="space-y-1">
       {subtasks.map((s) => (
         <li key={s.id} className="flex items-center gap-2 text-xs">
-          <input type="checkbox" className="rounded" checked={s.status === 'DONE'} onChange={() => toggle(s)} />
+          <input
+            type="checkbox"
+            className="rounded"
+            checked={s.status === 'DONE'}
+            disabled={!canToggle}
+            onChange={() => canToggle && toggle(s)}
+          />
           <span className={s.status === 'DONE' ? 'text-[var(--muted-foreground)] line-through' : 'text-[var(--foreground)]'}>
             {s.title}
           </span>
@@ -45,6 +56,9 @@ function AttachmentsPanel({ taskId }: { taskId: string }) {
   const [showForm, setShowForm] = useState(false);
   const { data: attachments } = useTaskAttachments(taskId);
   const addMutation = useAddAttachment(taskId);
+  const { hasAny } = usePermissions();
+  // addAttachment is gated by updateOwn server-side (task.routes.ts): task:manage or task:update:own.
+  const canAddAttachment = hasAny(['task:manage', 'task:update:own']);
   const {
     register,
     handleSubmit,
@@ -76,20 +90,21 @@ function AttachmentsPanel({ taskId }: { taskId: string }) {
           {a.fileName}
         </a>
       ))}
-      {showForm ? (
-        <form onSubmit={handleSubmit(onSubmit)} className="flex items-end gap-2" noValidate>
-          <Input placeholder="File name" {...register('fileName')} />
-          <Input placeholder="https://..." {...register('fileUrl')} />
-          <Button type="submit" size="sm" loading={addMutation.isPending}>
-            Add
+      {canAddAttachment &&
+        (showForm ? (
+          <form onSubmit={handleSubmit(onSubmit)} className="flex items-end gap-2" noValidate>
+            <Input placeholder="File name" {...register('fileName')} />
+            <Input placeholder="https://..." {...register('fileUrl')} />
+            <Button type="submit" size="sm" loading={addMutation.isPending}>
+              Add
+            </Button>
+          </form>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => setShowForm(true)}>
+            <Paperclip className="h-3.5 w-3.5" />
+            Add link
           </Button>
-        </form>
-      ) : (
-        <Button variant="outline" size="sm" onClick={() => setShowForm(true)}>
-          <Paperclip className="h-3.5 w-3.5" />
-          Add link
-        </Button>
-      )}
+        ))}
       {(errors.fileName || errors.fileUrl) && (
         <p className="text-xs text-[var(--destructive)]">{errors.fileName?.message ?? errors.fileUrl?.message}</p>
       )}

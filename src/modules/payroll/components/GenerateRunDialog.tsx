@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Play } from 'lucide-react';
 import { useGeneratePayrollRun } from '../hooks/usePayroll';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { MONTH_NAMES } from './PayrollStatusBadge';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
@@ -25,8 +26,11 @@ export function GenerateRunDialog() {
   const [year, setYear] = useState(String(now.getFullYear()));
   const [error, setError] = useState<string | undefined>();
   const generateMutation = useGeneratePayrollRun();
+  const canManage = useHasPermission('payroll:manage');
 
   const years = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
+
+  if (!canManage) return null;
 
   async function handleGenerate() {
     setError(undefined);

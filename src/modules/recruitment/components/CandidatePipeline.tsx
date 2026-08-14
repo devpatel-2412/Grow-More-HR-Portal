@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import { useChangeCandidateStage } from '../hooks/useRecruitment';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { STAGE_LABEL } from './RecruitmentBadges';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Card } from '../../../shared/components/ui/card';
@@ -18,6 +19,7 @@ export function CandidatePipeline({
   onOpenCandidate: (candidate: CandidateRecord) => void;
 }) {
   const changeStage = useChangeCandidateStage();
+  const canManage = useHasPermission('recruitment:manage');
 
   async function move(candidate: CandidateRecord, status: CandidateStatus) {
     try {
@@ -55,7 +57,7 @@ export function CandidatePipeline({
                   </button>
                   <p className="truncate text-xs text-[var(--muted-foreground)]">{candidate.email}</p>
 
-                  {STAGE_TRANSITIONS[candidate.status].length > 0 && (
+                  {canManage && STAGE_TRANSITIONS[candidate.status].length > 0 && (
                     <Select value="" onValueChange={(next) => move(candidate, next as CandidateStatus)}>
                       <SelectTrigger aria-label={`Move ${candidate.firstName} ${candidate.lastName}`}>
                         <SelectValue placeholder="Move to…" />

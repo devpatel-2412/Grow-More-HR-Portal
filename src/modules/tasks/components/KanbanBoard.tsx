@@ -2,6 +2,7 @@ import { toast } from 'sonner';
 import { TASK_STATUSES } from '../schemas/task.schemas';
 import { useUpdateTaskStatus } from '../hooks/useTasks';
 import { TaskPriorityBadge } from './TaskBadges';
+import { usePermissions } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../shared/components/ui/select';
 import type { TaskRecord, TaskStatus } from '../types/task.types';
@@ -15,6 +16,12 @@ const COLUMN_LABEL: Record<TaskStatus, string> = {
 
 export function KanbanBoard({ tasks, onOpenTask }: { tasks: TaskRecord[]; onOpenTask: (task: TaskRecord) => void }) {
   const updateStatus = useUpdateTaskStatus();
+  const { hasAny } = usePermissions();
+  // Backend's updateOwn gate (task.routes.ts) accepts either task:manage or task:update:own — an
+  // assignee can move their own assigned task without task:manage. The frontend can't always know
+  // "is this my task" without the assignee field, so it's acceptable to show the control whenever
+  // either permission is held; the backend still enforces ownership scoping.
+  const canUpdateStatus = hasAny(['task:manage', 'task:update:own']);
 
   async function handleStatusChange(id: string, status: TaskStatus) {
     try {
@@ -63,20 +70,22 @@ export function KanbanBoard({ tasks, onOpenTask }: { tasks: TaskRecord[]; onOpen
                       </span>
                     )}
                   </div>
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <Select value={task.status} onValueChange={(value) => handleStatusChange(task.id, value as TaskStatus)}>
-                      <SelectTrigger className="h-7 text-[10px]" aria-label={`Change status for ${task.title}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TASK_STATUSES.map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {COLUMN_LABEL[status]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {canUpdateStatus && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Select value={task.status} onValueChange={(value) => handleStatusChange(task.id, value as TaskStatus)}>
+                        <SelectTrigger className="h-7 text-[10px]" aria-label={`Change status for ${task.title}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TASK_STATUSES.map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {COLUMN_LABEL[status]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

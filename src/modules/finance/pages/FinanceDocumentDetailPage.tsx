@@ -1,6 +1,7 @@
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useFinanceDocument, useSendFinanceDocument, useVoidFinanceDocument } from '../hooks/useFinance';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { RecordPaymentDialog } from '../components/RecordPaymentDialog';
 import { FinanceStatusBadge, TYPE_LABEL, formatMoney } from '../components/FinanceBadges';
 import { ApiError } from '../../../shared/lib/api-client';
@@ -16,6 +17,7 @@ export function FinanceDocumentDetailPage() {
   const { data: doc, isLoading, isError, refetch } = useFinanceDocument(id);
   const sendMutation = useSendFinanceDocument();
   const voidMutation = useVoidFinanceDocument();
+  const canManage = useHasPermission('finance:manage');
 
   async function send() {
     if (!id) return;
@@ -55,26 +57,28 @@ export function FinanceDocumentDetailPage() {
         </>
       }
       actions={
-        <>
-          {doc.status === 'DRAFT' && (
-            <Button onClick={send} loading={sendMutation.isPending}>
-              Send
-            </Button>
-          )}
-          {(doc.status === 'SENT' || doc.status === 'OVERDUE') && (
-            <>
+        canManage ? (
+          <>
+            {doc.status === 'DRAFT' && (
+              <Button onClick={send} loading={sendMutation.isPending}>
+                Send
+              </Button>
+            )}
+            {(doc.status === 'SENT' || doc.status === 'OVERDUE') && (
+              <>
+                <Button variant="ghost" onClick={voidDoc} loading={voidMutation.isPending}>
+                  Void
+                </Button>
+                {id && remaining > 0 && <RecordPaymentDialog documentId={id} remaining={remaining} />}
+              </>
+            )}
+            {doc.status === 'DRAFT' && (
               <Button variant="ghost" onClick={voidDoc} loading={voidMutation.isPending}>
                 Void
               </Button>
-              {id && remaining > 0 && <RecordPaymentDialog documentId={id} remaining={remaining} />}
-            </>
-          )}
-          {doc.status === 'DRAFT' && (
-            <Button variant="ghost" onClick={voidDoc} loading={voidMutation.isPending}>
-              Void
-            </Button>
-          )}
-        </>
+            )}
+          </>
+        ) : undefined
       }
     >
       <div className="space-y-6">

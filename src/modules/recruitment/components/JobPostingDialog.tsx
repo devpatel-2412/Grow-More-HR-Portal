@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { BriefcaseBusiness } from 'lucide-react';
 import { useCreateJobPosting } from '../hooks/useRecruitment';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -41,6 +42,7 @@ type JobPostingFormValues = z.infer<typeof jobPostingSchema>;
 export function JobPostingDialog() {
   const [open, setOpen] = useState(false);
   const createMutation = useCreateJobPosting();
+  const canManage = useHasPermission('recruitment:manage');
   const {
     register,
     control,
@@ -61,6 +63,8 @@ export function JobPostingDialog() {
       status: 'DRAFT',
     },
   });
+
+  if (!canManage) return null;
 
   async function onSubmit(values: JobPostingFormValues) {
     try {

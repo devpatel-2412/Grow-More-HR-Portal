@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { UserPlus } from 'lucide-react';
 import { useRegisterVisitor } from '../hooks/useWorkplace';
 import { useEmployees } from '../../employees/hooks/useEmployees';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -40,6 +41,7 @@ type VisitorFormValues = z.infer<typeof visitorSchema>;
 export function RegisterVisitorDialog() {
   const [open, setOpen] = useState(false);
   const registerMutation = useRegisterVisitor();
+  const canManage = useHasPermission('visitor:manage');
   const { data: employeePage } = useEmployees({ page: 1, limit: 100 });
   const {
     register,
@@ -52,6 +54,8 @@ export function RegisterVisitorDialog() {
     resolver: zodResolver(visitorSchema),
     defaultValues: { name: '', email: '', phone: '', hostEmployeeId: '', purpose: '', expectedAt: nowLocalInput() },
   });
+
+  if (!canManage) return null;
 
   async function onSubmit(values: VisitorFormValues) {
     try {

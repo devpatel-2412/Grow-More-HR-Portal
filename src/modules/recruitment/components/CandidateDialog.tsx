@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { UserPlus } from 'lucide-react';
 import { useCreateCandidate } from '../hooks/useRecruitment';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -37,6 +38,7 @@ type CandidateFormValues = z.infer<typeof candidateSchema>;
 export function CandidateDialog({ jobPostingId }: { jobPostingId: string }) {
   const [open, setOpen] = useState(false);
   const createMutation = useCreateCandidate();
+  const canManage = useHasPermission('recruitment:manage');
   const {
     register,
     handleSubmit,
@@ -47,6 +49,8 @@ export function CandidateDialog({ jobPostingId }: { jobPostingId: string }) {
     resolver: zodResolver(candidateSchema),
     defaultValues: { firstName: '', lastName: '', email: '', phone: '', resumeUrl: '', parsedSkills: '', source: '', notes: '' },
   });
+
+  if (!canManage) return null;
 
   async function onSubmit(values: CandidateFormValues) {
     try {

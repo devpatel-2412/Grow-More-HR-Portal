@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { FileOutput, Download, Mail, FileType, Printer, Image as ImageIcon } from 'lucide-react';
 import { useGenerateDocument } from '../hooks/useHrAutomation';
 import { useEmployees } from '../../employees/hooks/useEmployees';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { templateApi } from '../api/hrautomation.api';
 import { POSTER_TYPES } from '../types/hrautomation.types';
 import { ApiError } from '../../../shared/lib/api-client';
@@ -15,6 +16,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 import type { TemplateRecord } from '../types/hrautomation.types';
 
 export function GenerateDocumentDialog({ template, onOpenChange }: { template: TemplateRecord | undefined; onOpenChange: (open: boolean) => void }) {
+  const canGenerate = useHasPermission('template:manage');
   const generateMutation = useGenerateDocument();
   const { data: employeePage } = useEmployees({ page: 1, limit: 100 });
   const [employeeId, setEmployeeId] = useState('');
@@ -25,6 +27,8 @@ export function GenerateDocumentDialog({ template, onOpenChange }: { template: T
   const [printing, setPrinting] = useState(false);
   const [emailing, setEmailing] = useState(false);
   const [downloadingPng, setDownloadingPng] = useState(false);
+
+  if (!canGenerate) return null;
 
   const isPoster = !!template && POSTER_TYPES.includes(template.type);
   let posterFields: PosterCanvasField[] = [];

@@ -25,6 +25,18 @@ export const handlers = {
       },
     }),
   ),
+  /** Same as `meSuccess`, but with an explicit permission set — use via `server.use(meSuccessWithPermissions([...]))`
+   * in tests that exercise permission-gated UI (a create/edit/delete button, a gated route, etc). */
+  meSuccessWithPermissions: (permissions: string[]) =>
+    http.get('/api/v1/auth/me', () =>
+      HttpResponse.json({
+        data: {
+          user: { id: 'u1', email: 'admin@acme.com', role: 'ADMIN', status: 'ACTIVE', permissions },
+          profile: null,
+          tenant: { id: 't1', name: 'Acme Inc', domain: 'acme', logoUrl: null, primaryColor: '#16a34a', secondaryColor: '#0ea5e9' },
+        },
+      }),
+    ),
   refreshFails: http.post('/api/v1/auth/refresh', () =>
     HttpResponse.json({ error: { code: 'UNAUTHORIZED', message: 'No session cookie present' } }, { status: 401 }),
   ),

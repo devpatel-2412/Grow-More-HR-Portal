@@ -5,6 +5,7 @@ import { VendorFormDialog } from './VendorFormDialog';
 import { Button } from '../../../shared/components/ui/button';
 import { Badge } from '../../../shared/components/ui/badge';
 import { useDeleteVendor } from '../hooks/useInventory';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import type { VendorRecord } from '../types/inventory.types';
 
@@ -18,6 +19,7 @@ export function VendorTable({
   onSortChange?: (sort: string | undefined) => void;
 }) {
   const deleteMutation = useDeleteVendor();
+  const canManage = useHasPermission('vendor:manage');
 
   async function remove(id: string) {
     try {
@@ -61,19 +63,24 @@ export function VendorTable({
       csvValue: (v) => v.status,
       cell: (v) => <Badge variant={v.status === 'ACTIVE' ? 'success' : 'neutral'}>{v.status}</Badge>,
     },
-    {
-      id: 'actions',
-      header: 'Actions',
-      className: 'text-right',
-      cell: (v) => (
-        <div className="flex justify-end gap-2">
-          <VendorFormDialog mode="edit" vendor={v} />
-          <Button size="icon" variant="ghost" aria-label={`Delete ${v.name}`} onClick={() => remove(v.id)}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-    },
+    // Omitted entirely (not just emptied) when the user can't manage vendors — no dangling Actions column.
+    ...(canManage
+      ? [
+          {
+            id: 'actions',
+            header: 'Actions',
+            className: 'text-right',
+            cell: (v) => (
+              <div className="flex justify-end gap-2">
+                <VendorFormDialog mode="edit" vendor={v} />
+                <Button size="icon" variant="ghost" aria-label={`Delete ${v.name}`} onClick={() => remove(v.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ),
+          } satisfies DataTableColumn<VendorRecord>,
+        ]
+      : []),
   ];
 
   return (

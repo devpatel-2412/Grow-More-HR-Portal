@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import { useChangeLeadStage } from '../hooks/useCrm';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { LEAD_STAGE_LABEL } from './CrmBadges';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Card } from '../../../shared/components/ui/card';
@@ -22,6 +23,7 @@ export function LeadPipelineBoard({
   onOpenLead: (lead: LeadRecord) => void;
 }) {
   const changeStage = useChangeLeadStage();
+  const canManage = useHasPermission('crm:manage');
 
   async function move(lead: LeadRecord, status: LeadStatus) {
     try {
@@ -62,7 +64,7 @@ export function LeadPipelineBoard({
                     {lead.estimatedValue.toLocaleString()}
                   </p>
 
-                  {stage === 'PROPOSAL' ? (
+                  {canManage && (stage === 'PROPOSAL' ? (
                     <div className="flex gap-2">
                       <Button size="sm" variant="ghost" onClick={() => move(lead, 'LOST')}>
                         Mark lost
@@ -86,7 +88,7 @@ export function LeadPipelineBoard({
                         </SelectContent>
                       </Select>
                     )
-                  )}
+                  ))}
                 </Card>
               ))}
               {inStage.length === 0 && (
