@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { UserX } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../../shared/components/ui/data-table';
+import { Avatar } from '../../../shared/components/ui/avatar';
 import { EmployeeStatusBadge } from './EmployeeStatusBadge';
 import { EmployeeFormDialog } from './EmployeeFormDialog';
 import { useUpdateEmployee } from '../hooks/useUpdateEmployee';
@@ -31,11 +32,14 @@ export function EmployeeTable({
         alwaysVisible: true,
         csvValue: (e) => `${e.firstName} ${e.lastName}`,
         cell: (e) => (
-          <Link to={`/employees/${e.id}`} className="block hover:underline">
-            <div className="font-semibold">
-              {e.firstName} {e.lastName}
+          <Link to={`/employees/${e.id}`} className="flex items-center gap-3 hover:underline">
+            <Avatar name={`${e.firstName} ${e.lastName}`} size="sm" />
+            <div className="min-w-0">
+              <div className="truncate font-semibold">
+                {e.firstName} {e.lastName}
+              </div>
+              <div className="truncate text-[var(--muted-foreground)]">{e.employeeId}</div>
             </div>
-            <div className="text-[var(--muted-foreground)]">{e.employeeId}</div>
           </Link>
         ),
       },
@@ -114,15 +118,18 @@ export function EmployeeTable({
       exportFilename="employees"
       mobileCard={(e) => (
         <div className="flex items-center justify-between gap-3">
-          <Link to={`/employees/${e.id}`} className="min-w-0 hover:underline">
-            <div className="truncate font-semibold text-[var(--foreground)]">
-              {e.firstName} {e.lastName}
-            </div>
-            <div className="truncate text-xs text-[var(--muted-foreground)]">
-              {e.employeeId} · {e.designation} · {e.department}
-            </div>
-            <div className="mt-1">
-              <EmployeeStatusBadge status={e.status} />
+          <Link to={`/employees/${e.id}`} className="flex min-w-0 items-center gap-3 hover:underline">
+            <Avatar name={`${e.firstName} ${e.lastName}`} size="sm" />
+            <div className="min-w-0">
+              <div className="truncate font-semibold text-[var(--foreground)]">
+                {e.firstName} {e.lastName}
+              </div>
+              <div className="truncate text-xs text-[var(--muted-foreground)]">
+                {e.employeeId} · {e.designation} · {e.department}
+              </div>
+              <div className="mt-1">
+                <EmployeeStatusBadge status={e.status} />
+              </div>
             </div>
           </Link>
           <EmployeeFormDialog mode="edit" employee={e} />

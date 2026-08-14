@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui/table';
+import { Button } from '../../../shared/components/ui/button';
 import { InviteStatusBadge } from './InviteStatusBadge';
 import { useResendInvite, useRevokeInvite } from '../hooks/useInviteMutations';
 import { useHasPermission } from '../../auth/hooks/useHasPermission';
@@ -54,12 +55,18 @@ export function InvitationsTable({ invites }: { invites: Invite[] }) {
               <TableCell className="text-right">
                 {invite.status === 'PENDING' ? (
                   <div className="flex justify-end gap-3">
-                    <button type="button" onClick={() => handleResend(invite)} className="text-[var(--primary)] hover:underline">
+                    <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={() => handleResend(invite)}>
                       Resend
-                    </button>
-                    <button type="button" onClick={() => handleRevoke(invite)} className="text-[var(--destructive)] hover:underline">
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-[var(--destructive)]"
+                      onClick={() => handleRevoke(invite)}
+                    >
                       Revoke
-                    </button>
+                    </Button>
                   </div>
                 ) : (
                   <span className="text-[var(--muted-foreground)]">—</span>

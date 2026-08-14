@@ -8,6 +8,7 @@ import { useMilestones, useCreateMilestone, useUpdateMilestoneStatus } from '../
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
+import { Checkbox } from '../../../shared/components/ui/checkbox';
 import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
 import { EmptyState } from '../../../shared/components/feedback/EmptyState';
 
@@ -62,12 +63,7 @@ export function MilestoneList({ projectId }: { projectId: string }) {
           {milestones.map((m) => (
             <li key={m.id} className="flex items-center justify-between rounded-lg border border-[var(--border)] px-4 py-2 text-xs">
               <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="rounded"
-                  checked={m.status === 'COMPLETED'}
-                  onChange={() => handleToggle(m.id, m.status)}
-                />
+                <Checkbox checked={m.status === 'COMPLETED'} onCheckedChange={() => handleToggle(m.id, m.status)} />
                 <span className={m.status === 'COMPLETED' ? 'text-[var(--muted-foreground)] line-through' : 'text-[var(--foreground)]'}>
                   {m.name}
                 </span>

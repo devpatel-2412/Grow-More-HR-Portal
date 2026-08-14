@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui/table';
+import { Button } from '../../../shared/components/ui/button';
 import { LeaveStatusBadge } from './LeaveStatusBadge';
 import { useManagerReview, useHrReview } from '../hooks/useLeaveApprovalQueue';
 import { usePermissions } from '../../auth/hooks/useHasPermission';
@@ -60,12 +61,18 @@ export function LeaveApprovalTable({ records }: { records: LeaveRequestRecord[] 
                 <TableCell className="text-right">
                   {canReviewThisRow ? (
                     <div className="flex justify-end gap-2">
-                      <button type="button" className="text-emerald-500 hover:underline" onClick={() => handleReview(r, 'APPROVED')}>
+                      <Button type="button" variant="link" size="sm" className="h-auto p-0 text-emerald-500" onClick={() => handleReview(r, 'APPROVED')}>
                         Approve
-                      </button>
-                      <button type="button" className="text-[var(--destructive)] hover:underline" onClick={() => handleReview(r, 'REJECTED')}>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-[var(--destructive)]"
+                        onClick={() => handleReview(r, 'REJECTED')}
+                      >
                         Reject
-                      </button>
+                      </Button>
                     </div>
                   ) : (
                     <span className="text-[var(--muted-foreground)]">—</span>

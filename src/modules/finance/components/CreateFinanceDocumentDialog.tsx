@@ -152,36 +152,38 @@ export function CreateFinanceDocumentDialog() {
               </Button>
             </div>
             {fields.map((field, index) => (
-              <div key={field.id} className="grid grid-cols-[1fr_90px_80px_100px_32px] items-start gap-2">
-                <div>
-                  <Input placeholder="Description" {...register(`lineItems.${index}.description`)} />
-                  {errors.lineItems?.[index]?.description && (
-                    <p className="mt-1 text-xs text-[var(--destructive)]">{errors.lineItems[index]?.description?.message}</p>
-                  )}
+              <div key={field.id} className="-mx-1 overflow-x-auto px-1">
+                <div className="grid min-w-[420px] grid-cols-[1fr_90px_80px_100px_32px] items-start gap-2">
+                  <div>
+                    <Input placeholder="Description" {...register(`lineItems.${index}.description`)} />
+                    {errors.lineItems?.[index]?.description && (
+                      <p className="mt-1 text-xs text-[var(--destructive)]">{errors.lineItems[index]?.description?.message}</p>
+                    )}
+                  </div>
+                  <Input placeholder="HSN/SAC" {...register(`lineItems.${index}.hsnCode`)} />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Qty"
+                    {...register(`lineItems.${index}.quantity`, { valueAsNumber: true })}
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Unit price"
+                    {...register(`lineItems.${index}.unitPrice`, { valueAsNumber: true })}
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => remove(index)}
+                    disabled={fields.length === 1}
+                    aria-label="Remove line item"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Input placeholder="HSN/SAC" {...register(`lineItems.${index}.hsnCode`)} />
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="Qty"
-                  {...register(`lineItems.${index}.quantity`, { valueAsNumber: true })}
-                />
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="Unit price"
-                  {...register(`lineItems.${index}.unitPrice`, { valueAsNumber: true })}
-                />
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => remove(index)}
-                  disabled={fields.length === 1}
-                  aria-label="Remove line item"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
             ))}
             {errors.lineItems?.root && <p className="text-xs text-[var(--destructive)]">{errors.lineItems.root.message}</p>}

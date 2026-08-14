@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui/table';
+import { Button } from '../../../shared/components/ui/button';
 import { useForceLogoutUser } from '../hooks/useForceLogoutUser';
 import { ApiError } from '../../../shared/lib/api-client';
 import type { ActiveSession } from '../types/session.types';
@@ -48,13 +49,15 @@ export function SessionsTable({ sessions, currentUserId }: { sessions: ActiveSes
             </TableCell>
             <TableCell className="text-[var(--muted-foreground)]">{session.ipAddress ?? 'Unknown'}</TableCell>
             <TableCell className="text-right">
-              <button
+              <Button
                 type="button"
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-[var(--destructive)]"
                 onClick={() => handleForceLogout(session)}
-                className="text-[var(--destructive)] hover:underline"
               >
                 Force Logout
-              </button>
+              </Button>
             </TableCell>
           </TableRow>
         ))}

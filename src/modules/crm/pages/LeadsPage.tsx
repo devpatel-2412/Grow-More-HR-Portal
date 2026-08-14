@@ -42,9 +42,9 @@ export function LeadsPage() {
               <h3 className="text-sm font-bold text-[var(--foreground)]">Closed ({closed.length})</h3>
               <ul className="space-y-1">
                 {closed.map((lead) => (
-                  <li key={lead.id} className="flex items-center justify-between text-xs">
+                  <li key={lead.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
                     <span className="text-[var(--foreground)]">{lead.companyName}</span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {lead.status === 'LOST' && (
                         <span className="text-[var(--muted-foreground)]">{lead.lostReason ?? 'No reason given'}</span>
                       )}

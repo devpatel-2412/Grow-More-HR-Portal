@@ -6,6 +6,7 @@ import { TimerWidget } from '../components/TimerWidget';
 import { ManualLogDialog } from '../components/ManualLogDialog';
 import { TimeLogTable } from '../components/TimeLogTable';
 import { Card } from '../../../shared/components/ui/card';
+import { StatCard } from '../../../shared/components/ui/stat-card';
 import { PaginationBar } from '../../../shared/components/ui/pagination';
 import { ErrorState } from '../../../shared/components/feedback/ErrorState';
 import { Skeleton } from '../../../shared/components/feedback/LoadingSkeleton';
@@ -35,18 +36,9 @@ export function TimeTrackingPage() {
       <TimerWidget />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Total logged</p>
-          <p className="mt-1 text-2xl font-extrabold text-[var(--foreground)]">{summary?.totalHours ?? 0}h</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Minutes</p>
-          <p className="mt-1 text-2xl font-extrabold text-[var(--foreground)]">{summary?.totalMinutes ?? 0}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Entries</p>
-          <p className="mt-1 text-2xl font-extrabold text-[var(--foreground)]">{summary?.entryCount ?? 0}</p>
-        </Card>
+        <StatCard label="Total logged" value={`${summary?.totalHours ?? 0}h`} />
+        <StatCard label="Minutes" value={summary?.totalMinutes ?? 0} />
+        <StatCard label="Entries" value={summary?.entryCount ?? 0} />
       </div>
 
       <Card>

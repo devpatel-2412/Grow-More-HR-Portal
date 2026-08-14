@@ -40,11 +40,11 @@ export function JobPostingDetailPage() {
               <h3 className="text-sm font-bold text-[var(--foreground)]">Rejected ({rejected.length})</h3>
               <ul className="space-y-1">
                 {rejected.map((candidate) => (
-                  <li key={candidate.id} className="flex items-center justify-between text-xs">
+                  <li key={candidate.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
                     <button type="button" onClick={() => setOpenCandidateId(candidate.id)} className="text-[var(--foreground)] hover:underline">
                       {candidate.firstName} {candidate.lastName}
                     </button>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[var(--muted-foreground)]">{candidate.rejectionReason ?? 'No reason given'}</span>
                       <CandidateStatusBadge status={candidate.status} />
                     </div>

@@ -1,6 +1,8 @@
 import { toast } from 'sonner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui/table';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../shared/components/ui/select';
+import { Button } from '../../../shared/components/ui/button';
+import { Avatar } from '../../../shared/components/ui/avatar';
 import { RoleBadge, UserStatusBadge } from './UserBadges';
 import { useUpdateUserRole } from '../hooks/useUpdateUserRole';
 import { useUpdateUserStatus } from '../hooks/useUpdateUserStatus';
@@ -57,8 +59,13 @@ export function UserTable({ users, currentUserId }: { users: UserListItem[]; cur
         {users.map((u) => (
           <TableRow key={u.id}>
             <TableCell>
-              <div className="font-semibold">{u.profile ? `${u.profile.firstName} ${u.profile.lastName}` : u.email}</div>
-              {u.profile && <div className="text-[var(--muted-foreground)]">{u.email}</div>}
+              <div className="flex items-center gap-3">
+                <Avatar name={u.profile ? `${u.profile.firstName} ${u.profile.lastName}` : u.email} size="sm" />
+                <div className="min-w-0">
+                  <div className="truncate font-semibold">{u.profile ? `${u.profile.firstName} ${u.profile.lastName}` : u.email}</div>
+                  {u.profile && <div className="truncate text-[var(--muted-foreground)]">{u.email}</div>}
+                </div>
+              </div>
             </TableCell>
             <TableCell>
               {u.id === currentUserId || !canUpdateRole ? (
@@ -91,14 +98,16 @@ export function UserTable({ users, currentUserId }: { users: UserListItem[]; cur
                 ) : (
                   <div className="flex justify-end gap-2">
                     {STATUS_ACTIONS[u.status].map((action) => (
-                      <button
+                      <Button
                         key={action.next}
                         type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0"
                         onClick={() => handleStatusChange(u.id, u.email, action.next, action.label)}
-                        className="text-[var(--primary)] hover:underline"
                       >
                         {action.label}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 )}

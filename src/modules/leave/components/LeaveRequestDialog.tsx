@@ -10,6 +10,7 @@ import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
 import { Label } from '../../../shared/components/ui/label';
+import { Checkbox } from '../../../shared/components/ui/checkbox';
 import { InlineFormError } from '../../../shared/components/feedback/ErrorState';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '../../../shared/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../shared/components/ui/select';
@@ -36,6 +37,7 @@ export function LeaveRequestDialog() {
     control,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
     setError,
     reset,
@@ -96,7 +98,7 @@ export function LeaveRequestDialog() {
           </div>
 
           <label className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
-            <input type="checkbox" className="rounded" {...register('isHalfDay')} />
+            <Checkbox checked={isHalfDay} onCheckedChange={(checked) => setValue('isHalfDay', checked === true)} />
             Half day
           </label>
 

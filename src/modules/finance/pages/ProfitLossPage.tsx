@@ -33,7 +33,7 @@ export function ProfitLossPage() {
           <ArrowLeft className="h-4 w-4" />
           All documents
         </Link>
-        <h1 className="text-3xl font-extrabold tracking-tight text-[var(--foreground)]">Profit &amp; Loss</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-[var(--foreground)] sm:text-3xl">Profit &amp; Loss</h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           Accrual basis — revenue is recognized when an invoice is issued, not when it's paid.
         </p>

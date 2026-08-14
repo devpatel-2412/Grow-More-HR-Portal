@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui/table';
+import { Button } from '../../../shared/components/ui/button';
 import { LeaveStatusBadge } from './LeaveStatusBadge';
 import { useCancelLeave } from '../hooks/useCancelLeave';
 import { ApiError } from '../../../shared/lib/api-client';
@@ -43,9 +44,9 @@ export function LeaveHistoryTable({ records }: { records: LeaveRequestRecord[] }
             </TableCell>
             <TableCell className="text-right">
               {(r.status === 'PENDING_MANAGER' || r.status === 'PENDING_HR') && (
-                <button type="button" className="text-[var(--destructive)] hover:underline" onClick={() => handleCancel(r.id)}>
+                <Button type="button" variant="link" size="sm" className="h-auto p-0 text-[var(--destructive)]" onClick={() => handleCancel(r.id)}>
                   Cancel
-                </button>
+                </Button>
               )}
             </TableCell>
           </TableRow>

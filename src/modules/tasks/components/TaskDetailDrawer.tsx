@@ -12,10 +12,11 @@ import { usePermissions } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
+import { Checkbox } from '../../../shared/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../../shared/components/ui/dialog';
 import type { TaskRecord } from '../types/task.types';
 
-function SubtaskChecklist({ subtasks }: { subtasks: TaskRecord[] }) {
+function SubtaskChecklist({ subtasks }: { subtasks: TaskRecord[] | undefined }) {
   const updateStatus = useUpdateTaskStatus();
   const { hasAny } = usePermissions();
   // Same updateOwn gate as the Kanban board's status control (task.routes.ts) — task:manage or
@@ -30,19 +31,16 @@ function SubtaskChecklist({ subtasks }: { subtasks: TaskRecord[] }) {
     }
   }
 
-  if (subtasks.length === 0) return <p className="text-xs text-[var(--muted-foreground)]">No checklist items.</p>;
+  // Tasks opened from a list-sourced view (Kanban/List/Calendar) don't carry `subtasks` — only
+  // create/get-by-id/update responses include it (see task.repository.ts's findMany vs the rest).
+  const items = subtasks ?? [];
+  if (items.length === 0) return <p className="text-xs text-[var(--muted-foreground)]">No checklist items.</p>;
 
   return (
     <ul className="space-y-1">
-      {subtasks.map((s) => (
+      {items.map((s) => (
         <li key={s.id} className="flex items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            className="rounded"
-            checked={s.status === 'DONE'}
-            disabled={!canToggle}
-            onChange={() => canToggle && toggle(s)}
-          />
+          <Checkbox checked={s.status === 'DONE'} disabled={!canToggle} onCheckedChange={() => canToggle && toggle(s)} />
           <span className={s.status === 'DONE' ? 'text-[var(--muted-foreground)] line-through' : 'text-[var(--foreground)]'}>
             {s.title}
           </span>

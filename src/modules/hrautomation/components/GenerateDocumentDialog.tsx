@@ -164,7 +164,7 @@ export function GenerateDocumentDialog({ template, onOpenChange }: { template: T
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="flex-wrap">
             {documentId && isPoster && (
               <Button variant="outline" onClick={handleDownloadPng} loading={downloadingPng}>
                 <ImageIcon className="h-4 w-4" />

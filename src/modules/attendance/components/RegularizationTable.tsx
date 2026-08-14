@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import { Badge } from '../../../shared/components/ui/badge';
+import { Button } from '../../../shared/components/ui/button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui/table';
 import { useReviewRegularization } from '../hooks/useRegularizations';
 import { useHasPermission } from '../../auth/hooks/useHasPermission';
@@ -58,20 +59,24 @@ export function RegularizationTable({ requests }: { requests: RegularizationRequ
               <TableCell className="text-right">
                 {r.status === 'PENDING' ? (
                   <div className="flex justify-end gap-2">
-                    <button
+                    <Button
                       type="button"
-                      className="text-emerald-500 hover:underline"
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-emerald-500"
                       onClick={() => handleReview(r.id, 'APPROVED')}
                     >
                       Approve
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="text-[var(--destructive)] hover:underline"
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-[var(--destructive)]"
                       onClick={() => handleReview(r.id, 'REJECTED')}
                     >
                       Reject
-                    </button>
+                    </Button>
                   </div>
                 ) : (
                   <span className="text-[var(--muted-foreground)]">Reviewed</span>

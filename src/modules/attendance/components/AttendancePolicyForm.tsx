@@ -12,6 +12,7 @@ import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
 import { Label } from '../../../shared/components/ui/label';
+import { Checkbox } from '../../../shared/components/ui/checkbox';
 import { InlineFormError } from '../../../shared/components/feedback/ErrorState';
 import type { Tenant } from '../../auth/types/auth.types';
 
@@ -20,6 +21,8 @@ export function AttendancePolicyForm({ tenant }: { tenant: Tenant }) {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
     setError,
   } = useForm<AttendancePolicyFormValues>({
@@ -72,7 +75,10 @@ export function AttendancePolicyForm({ tenant }: { tenant: Tenant }) {
         {errors.allowedBreakMinutes && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.allowedBreakMinutes.message}</p>}
       </div>
       <label className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
-        <input type="checkbox" className="rounded" {...register('breakOverageExtendsLogout')} />
+        <Checkbox
+          checked={watch('breakOverageExtendsLogout')}
+          onCheckedChange={(checked) => setValue('breakOverageExtendsLogout', checked === true)}
+        />
         Extend required logout time when break time exceeds the allowance (otherwise it's just flagged)
       </label>
       <p className="text-[10px] text-[var(--muted-foreground)]">
