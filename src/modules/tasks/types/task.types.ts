@@ -12,7 +12,8 @@ export interface TaskRecord {
   assignedToId: string | null;
   loggedHours: number;
   parentTaskId: string | null;
-  subtasks: TaskRecord[];
+  /** Omitted by the list endpoint (GET /tasks); only populated by the single-task fetch. */
+  subtasks?: TaskRecord[];
   createdAt: string;
 }
 
