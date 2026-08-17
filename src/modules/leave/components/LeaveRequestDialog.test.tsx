@@ -7,10 +7,11 @@ import { server, handlers } from '../../../test/msw/server';
 
 describe('LeaveRequestDialog', () => {
   it('validates required fields before submitting', async () => {
+    server.use(handlers.meSuccessWithPermissions(['leave:apply']));
     const user = userEvent.setup();
     renderWithProviders(<LeaveRequestDialog />);
 
-    await user.click(screen.getByRole('button', { name: /request leave/i }));
+    await user.click(await screen.findByRole('button', { name: /request leave/i }));
     expect(await screen.findByText(/goes to your manager first/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /submit request/i }));
@@ -18,10 +19,11 @@ describe('LeaveRequestDialog', () => {
   });
 
   it('hides the end-date field once "half day" is checked', async () => {
+    server.use(handlers.meSuccessWithPermissions(['leave:apply']));
     const user = userEvent.setup();
     renderWithProviders(<LeaveRequestDialog />);
 
-    await user.click(screen.getByRole('button', { name: /request leave/i }));
+    await user.click(await screen.findByRole('button', { name: /request leave/i }));
     expect(await screen.findByLabelText(/end date/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('checkbox', { name: /half day/i }));
@@ -29,11 +31,11 @@ describe('LeaveRequestDialog', () => {
   });
 
   it('submits successfully with valid data', async () => {
-    server.use(handlers.leaveSubmitSuccess);
+    server.use(handlers.meSuccessWithPermissions(['leave:apply']), handlers.leaveSubmitSuccess);
     const user = userEvent.setup();
     renderWithProviders(<LeaveRequestDialog />);
 
-    await user.click(screen.getByRole('button', { name: /request leave/i }));
+    await user.click(await screen.findByRole('button', { name: /request leave/i }));
     await user.type(await screen.findByLabelText(/start date/i), '2026-02-10');
     await user.type(screen.getByLabelText(/end date/i), '2026-02-11');
     await user.type(screen.getByLabelText(/reason/i), 'Family trip');
@@ -45,11 +47,11 @@ describe('LeaveRequestDialog', () => {
   });
 
   it('surfaces a server conflict for an overlapping request', async () => {
-    server.use(handlers.leaveSubmitConflict);
+    server.use(handlers.meSuccessWithPermissions(['leave:apply']), handlers.leaveSubmitConflict);
     const user = userEvent.setup();
     renderWithProviders(<LeaveRequestDialog />);
 
-    await user.click(screen.getByRole('button', { name: /request leave/i }));
+    await user.click(await screen.findByRole('button', { name: /request leave/i }));
     await user.type(await screen.findByLabelText(/start date/i), '2026-02-10');
     await user.type(screen.getByLabelText(/end date/i), '2026-02-11');
     await user.type(screen.getByLabelText(/reason/i), 'Family trip');

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useTicket, useChangeTicketStatus, useAssignTicket, useAddTicketComment } from '../hooks/useWorkplace';
 import { useEmployees } from '../../employees/hooks/useEmployees';
+import { usePermissions } from '../../auth/hooks/useHasPermission';
 import { TicketStatusBadge } from '../components/TicketBadges';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Card } from '../../../shared/components/ui/card';
@@ -24,6 +25,12 @@ export function TicketDetailPage() {
   const assign = useAssignTicket();
   const addComment = useAddTicketComment();
   const [comment, setComment] = useState('');
+  const { hasAny, has } = usePermissions();
+  // Mirrors the backend guards exactly: status change accepts ticket:manage OR ticket:create,
+  // assignment is ticket:manage-only, comments accept ticket:manage OR ticket:view:self.
+  const canChangeStatus = hasAny(['ticket:manage', 'ticket:create']);
+  const canAssign = has('ticket:manage');
+  const canComment = hasAny(['ticket:manage', 'ticket:view:self']);
 
   async function move(status: TicketStatus) {
     if (!id) return;
@@ -70,29 +77,33 @@ export function TicketDetailPage() {
         <Card className="space-y-4">
           <p className="text-sm text-[var(--foreground)]">{ticket.description}</p>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {TICKET_FORWARD[ticket.status].map((next) => (
-              <Button key={next} size="sm" variant="outline" onClick={() => move(next)} loading={changeStatus.isPending}>
-                Move to {next.replace('_', ' ').toLowerCase()}
-              </Button>
-            ))}
-          </div>
+          {canChangeStatus && (
+            <div className="flex flex-wrap items-center gap-2">
+              {TICKET_FORWARD[ticket.status].map((next) => (
+                <Button key={next} size="sm" variant="outline" onClick={() => move(next)} loading={changeStatus.isPending}>
+                  Move to {next.replace('_', ' ').toLowerCase()}
+                </Button>
+              ))}
+            </div>
+          )}
 
-          <div className="max-w-xs">
-            <Select value={ticket.assignedToId ?? NO_ASSIGNEE} onValueChange={handleAssign}>
-              <SelectTrigger aria-label="Assign to">
-                <SelectValue placeholder="Unassigned" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NO_ASSIGNEE}>Unassigned</SelectItem>
-                {(employeePage?.data ?? []).map((employee) => (
-                  <SelectItem key={employee.id} value={employee.id}>
-                    {employee.firstName} {employee.lastName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {canAssign && (
+            <div className="max-w-xs">
+              <Select value={ticket.assignedToId ?? NO_ASSIGNEE} onValueChange={handleAssign}>
+                <SelectTrigger aria-label="Assign to">
+                  <SelectValue placeholder="Unassigned" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_ASSIGNEE}>Unassigned</SelectItem>
+                  {(employeePage?.data ?? []).map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.firstName} {employee.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </Card>
 
         <Card className="space-y-3">
@@ -105,17 +116,19 @@ export function TicketDetailPage() {
           ))}
           {(ticket.comments ?? []).length === 0 && <p className="text-xs text-[var(--muted-foreground)]">No comments yet.</p>}
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              placeholder="Add a comment"
-              value={comment}
-              onChange={(event) => setComment(event.target.value)}
-              onKeyDown={(event) => event.key === 'Enter' && submitComment()}
-            />
-            <Button onClick={submitComment} loading={addComment.isPending}>
-              Post
-            </Button>
-          </div>
+          {canComment && (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                placeholder="Add a comment"
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+                onKeyDown={(event) => event.key === 'Enter' && submitComment()}
+              />
+              <Button onClick={submitComment} loading={addComment.isPending}>
+                Post
+              </Button>
+            </div>
+          )}
         </Card>
       </div>
     </DetailPageShell>

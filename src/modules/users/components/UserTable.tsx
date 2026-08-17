@@ -4,6 +4,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 import { RoleBadge, UserStatusBadge } from './UserBadges';
 import { useUpdateUserRole } from '../hooks/useUpdateUserRole';
 import { useUpdateUserStatus } from '../hooks/useUpdateUserStatus';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { STAFF_ROLES } from '../schemas/user.schemas';
 import type { UserListItem } from '../types/user.types';
@@ -19,6 +20,8 @@ const STATUS_ACTIONS: Record<UserStatus, { label: string; next: UserStatus }[]> 
 export function UserTable({ users, currentUserId }: { users: UserListItem[]; currentUserId?: string }) {
   const updateRole = useUpdateUserRole();
   const updateStatus = useUpdateUserStatus();
+  const canUpdateRole = useHasPermission('user:role:update');
+  const canUpdateStatus = useHasPermission('user:status:update');
 
   async function handleRoleChange(id: string, role: UserRole) {
     try {
@@ -47,7 +50,7 @@ export function UserTable({ users, currentUserId }: { users: UserListItem[]; cur
           <TableHead>Role</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Last login</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
+          {canUpdateStatus && <TableHead className="text-right">Actions</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -58,7 +61,7 @@ export function UserTable({ users, currentUserId }: { users: UserListItem[]; cur
               {u.profile && <div className="text-[var(--muted-foreground)]">{u.email}</div>}
             </TableCell>
             <TableCell>
-              {u.id === currentUserId ? (
+              {u.id === currentUserId || !canUpdateRole ? (
                 <RoleBadge role={u.role} />
               ) : (
                 <Select value={u.role} onValueChange={(value) => handleRoleChange(u.id, value as UserRole)}>
@@ -81,24 +84,26 @@ export function UserTable({ users, currentUserId }: { users: UserListItem[]; cur
             <TableCell className="text-[var(--muted-foreground)]">
               {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Never'}
             </TableCell>
-            <TableCell className="text-right">
-              {u.id === currentUserId ? (
-                <span className="text-[var(--muted-foreground)]">You</span>
-              ) : (
-                <div className="flex justify-end gap-2">
-                  {STATUS_ACTIONS[u.status].map((action) => (
-                    <button
-                      key={action.next}
-                      type="button"
-                      onClick={() => handleStatusChange(u.id, u.email, action.next, action.label)}
-                      className="text-[var(--primary)] hover:underline"
-                    >
-                      {action.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </TableCell>
+            {canUpdateStatus && (
+              <TableCell className="text-right">
+                {u.id === currentUserId ? (
+                  <span className="text-[var(--muted-foreground)]">You</span>
+                ) : (
+                  <div className="flex justify-end gap-2">
+                    {STATUS_ACTIONS[u.status].map((action) => (
+                      <button
+                        key={action.next}
+                        type="button"
+                        onClick={() => handleStatusChange(u.id, u.email, action.next, action.label)}
+                        className="text-[var(--primary)] hover:underline"
+                      >
+                        {action.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>

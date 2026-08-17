@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Pencil } from 'lucide-react';
 import { useEmployee } from '../hooks/useEmployee';
 import { useAuth } from '../../auth/context/AuthContext';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { EmployeeStatusBadge } from '../components/EmployeeStatusBadge';
 import { ChecklistPanel } from '../../lifecycle/components/ChecklistPanel';
 import { LifecycleEventsPanel } from '../../lifecycle/components/LifecycleEventsPanel';
@@ -20,7 +21,7 @@ export function EmployeeDetailPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>('overview');
   const { data: employee, isLoading, isError, refetch } = useEmployee(id);
-  const canManage = !!user && ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'].includes(user.role);
+  const canManage = useHasPermission('employee:update');
   const isSelf = user?.id === employee?.userId;
   const [isEditing, setIsEditing] = useState(false);
 

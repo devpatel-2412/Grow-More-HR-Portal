@@ -1,6 +1,6 @@
 import { BookOpen } from 'lucide-react';
 import { useSops } from '../hooks/useSop';
-import { useAuth } from '../../auth/context/AuthContext';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { SopTable } from '../components/SopTable';
 import { SopFormDialog } from '../components/SopFormDialog';
 import { usePagination } from '../../../shared/hooks/usePagination';
@@ -11,8 +11,7 @@ import { ListPage } from '../../../shared/components/layout/ListPage';
 export function SopsPage() {
   const pagination = usePagination(20);
   const { data, isLoading, isError, refetch } = useSops(pagination.queryParams);
-  const { user } = useAuth();
-  const canManage = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'HR_MANAGER';
+  const canManage = useHasPermission('sop:manage');
   const state = isLoading ? 'loading' : isError ? 'error' : !data || data.data.length === 0 ? 'empty' : 'ready';
 
   return (

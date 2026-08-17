@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
-import { NAV_ITEMS, type NavItem } from '../../config/nav-items';
+import { NAV_ITEMS, isNavItemVisible, type NavItem } from '../../config/nav-items';
 import { cn } from '../../utils/cn';
 
 function isMac(): boolean {
@@ -33,8 +33,7 @@ export function CommandPalette() {
   const { user } = useAuth();
 
   const visibleItems = useMemo(() => {
-    if (!user) return [];
-    return NAV_ITEMS.filter((item) => !item.allow || item.allow.includes(user.role));
+    return NAV_ITEMS.filter((item) => isNavItemVisible(item, user));
   }, [user]);
 
   const results = useMemo(() => {

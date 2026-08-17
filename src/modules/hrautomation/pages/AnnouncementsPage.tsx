@@ -4,7 +4,7 @@ import { useAnnouncements, useDeleteAnnouncement } from '../hooks/useHrAutomatio
 import { usePagination } from '../../../shared/hooks/usePagination';
 import { PublishAnnouncementDialog } from '../components/PublishAnnouncementDialog';
 import { ApiError } from '../../../shared/lib/api-client';
-import { useAuth } from '../../auth/context/AuthContext';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { Card } from '../../../shared/components/ui/card';
 import { Button } from '../../../shared/components/ui/button';
 import { Badge } from '../../../shared/components/ui/badge';
@@ -15,8 +15,7 @@ export function AnnouncementsPage() {
   const pagination = usePagination(20);
   const { data, isLoading, isError, refetch } = useAnnouncements({ page: pagination.page, limit: pagination.limit });
   const deleteMutation = useDeleteAnnouncement();
-  const { user } = useAuth();
-  const canManage = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'HR_MANAGER' || user?.role === 'PROJECT_MANAGER';
+  const canManage = useHasPermission('announcement:manage');
   const state = isLoading ? 'loading' : isError ? 'error' : !data || data.data.length === 0 ? 'empty' : 'ready';
 
   async function remove(id: string) {

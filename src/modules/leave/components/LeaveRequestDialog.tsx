@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { CalendarPlus } from 'lucide-react';
 import { submitLeaveSchema, LEAVE_TYPES, type SubmitLeaveFormValues } from '../schemas/leave.schemas';
 import { useSubmitLeave } from '../hooks/useSubmitLeave';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -28,6 +29,7 @@ const LEAVE_TYPE_LABEL: Record<(typeof LEAVE_TYPES)[number], string> = {
 
 export function LeaveRequestDialog() {
   const [open, setOpen] = useState(false);
+  const canApply = useHasPermission('leave:apply');
   const submitMutation = useSubmitLeave();
   const {
     register,
@@ -42,6 +44,8 @@ export function LeaveRequestDialog() {
     defaultValues: { leaveType: 'CASUAL', isHalfDay: false, startDate: '', endDate: '', reason: '' },
   });
   const isHalfDay = watch('isHalfDay');
+
+  if (!canApply) return null;
 
   async function onSubmit(values: SubmitLeaveFormValues) {
     try {

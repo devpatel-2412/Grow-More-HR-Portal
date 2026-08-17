@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Users, UserCheck, Clock, CalendarOff, FolderKanban, ListChecks, Wallet, TrendingUp, Cake, PartyPopper, ScrollText } from 'lucide-react';
 import { useAdminSummary } from '../hooks/useDashboard';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { StatCard } from '../../../shared/components/ui/stat-card';
 import { Card } from '../../../shared/components/ui/card';
 import { DonutChart } from '../../../shared/components/charts/DonutChart';
@@ -19,6 +20,9 @@ function daysAwayLabel(daysAway: number): string {
 
 export function AdminKpiDashboard() {
   const { data: summary, isLoading, isError, refetch } = useAdminSummary();
+  const canReadFinance = useHasPermission('finance:read');
+  const canReadPayroll = useHasPermission('payroll:read:tenant');
+  const canReadAudit = useHasPermission('audit:read');
 
   if (isLoading) {
     return (
@@ -50,17 +54,15 @@ export function AdminKpiDashboard() {
         <StatCard label="On leave today" value={summary.attendanceToday.onLeave} icon={CalendarOff} />
         <StatCard label="Active projects" value={summary.projects.active} icon={FolderKanban} sublabel={`${summary.projects.completed} completed`} />
         <StatCard label="Pending tasks" value={summary.pendingTaskCount} icon={ListChecks} />
-        <StatCard
-          label="Revenue this month"
-          value={formatMoney(summary.revenueThisMonth)}
-          icon={TrendingUp}
-        />
-        <StatCard
-          label="Latest payroll"
-          value={summary.payroll ? formatMoney(summary.payroll.totalNet) : '—'}
-          icon={Wallet}
-          sublabel={summary.payroll ? `${summary.payroll.month}/${summary.payroll.year} · ${summary.payroll.status}` : 'No payroll run yet'}
-        />
+        {canReadFinance && <StatCard label="Revenue this month" value={formatMoney(summary.revenueThisMonth)} icon={TrendingUp} />}
+        {canReadPayroll && (
+          <StatCard
+            label="Latest payroll"
+            value={summary.payroll ? formatMoney(summary.payroll.totalNet) : '—'}
+            icon={Wallet}
+            sublabel={summary.payroll ? `${summary.payroll.month}/${summary.payroll.year} · ${summary.payroll.status}` : 'No payroll run yet'}
+          />
+        )}
       </div>
 
       <Card>
@@ -136,9 +138,11 @@ export function AdminKpiDashboard() {
               ))}
             </ul>
           )}
-          <Link to="/audit-log" className="block text-xs text-[var(--primary)] hover:underline">
-            View full audit log &rarr;
-          </Link>
+          {canReadAudit && (
+            <Link to="/audit-log" className="block text-xs text-[var(--primary)] hover:underline">
+              View full audit log &rarr;
+            </Link>
+          )}
         </Card>
       </div>
 

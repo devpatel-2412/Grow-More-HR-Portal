@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { Building2, Pencil } from 'lucide-react';
 import { useCreateBranch, useUpdateBranch } from '../hooks/useOrganization';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -44,6 +45,9 @@ interface EditModeProps {
 
 export function BranchFormDialog(props: CreateModeProps | EditModeProps) {
   const [open, setOpen] = useState(false);
+  const canManage = useHasPermission('org:manage');
+
+  if (!canManage) return null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

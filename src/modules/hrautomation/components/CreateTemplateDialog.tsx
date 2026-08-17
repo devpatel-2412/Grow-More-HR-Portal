@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { FilePlus2 } from 'lucide-react';
 import { useCreateTemplate } from '../hooks/useHrAutomation';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { POSTER_TYPES, TEMPLATE_VARIABLES, TEMPLATE_TYPE_LABELS } from '../types/hrautomation.types';
 import type { TemplateType } from '../types/hrautomation.types';
 import { TemplateCanvasEditor } from './TemplateCanvasEditor';
@@ -49,6 +50,7 @@ type TemplateFormValues = z.infer<typeof templateSchema>;
 export function CreateTemplateDialog() {
   const [open, setOpen] = useState(false);
   const createMutation = useCreateTemplate();
+  const canCreate = useHasPermission('template:manage');
   const {
     register,
     control,
@@ -65,6 +67,8 @@ export function CreateTemplateDialog() {
   const type = watch('type');
   const backgroundUrl = watch('backgroundUrl');
   const isPoster = useMemo(() => POSTER_TYPES.includes(type), [type]);
+
+  if (!canCreate) return null;
 
   async function onSubmit(values: TemplateFormValues) {
     try {

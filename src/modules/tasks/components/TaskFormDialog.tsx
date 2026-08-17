@@ -6,6 +6,7 @@ import { Plus } from 'lucide-react';
 import { createTaskSchema, TASK_PRIORITIES, type CreateTaskFormValues } from '../schemas/task.schemas';
 import { useCreateTask } from '../hooks/useTasks';
 import { useEmployees } from '../../employees/hooks/useEmployees';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -16,6 +17,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 
 export function TaskFormDialog({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false);
+  const canCreate = useHasPermission('task:manage');
   const createMutation = useCreateTask();
   const { data: employees } = useEmployees({ page: 1, limit: 100 });
   const {
@@ -29,6 +31,8 @@ export function TaskFormDialog({ projectId }: { projectId: string }) {
     resolver: zodResolver(createTaskSchema),
     defaultValues: { projectId, priority: 'MEDIUM' },
   });
+
+  if (!canCreate) return null;
 
   async function onSubmit(values: CreateTaskFormValues) {
     try {

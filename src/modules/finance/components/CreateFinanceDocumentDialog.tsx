@@ -9,6 +9,7 @@ import {
   type CreateFinanceDocumentFormValues,
 } from '../schemas/finance.schemas';
 import { useCreateFinanceDocument } from '../hooks/useFinance';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { TYPE_LABEL } from './FinanceBadges';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
@@ -34,6 +35,7 @@ function today(): string {
 export function CreateFinanceDocumentDialog() {
   const [open, setOpen] = useState(false);
   const createMutation = useCreateFinanceDocument();
+  const canManage = useHasPermission('finance:manage');
   const {
     register,
     control,
@@ -65,6 +67,8 @@ export function CreateFinanceDocumentDialog() {
     const tax = sub * ((taxRate || 0) / 100);
     return { subtotal: sub, taxAmount: tax, total: sub + tax };
   }, [lineItems, taxRate]);
+
+  if (!canManage) return null;
 
   async function onSubmit(values: CreateFinanceDocumentFormValues) {
     try {

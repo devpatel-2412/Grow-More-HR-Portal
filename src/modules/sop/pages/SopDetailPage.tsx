@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { History } from 'lucide-react';
 import { useSop, useUpdateSop, usePublishSop, useArchiveSop, useSopRevisions } from '../hooks/useSop';
-import { useAuth } from '../../auth/context/AuthContext';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { SopStatusBadge } from '../components/SopStatusBadge';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Card } from '../../../shared/components/ui/card';
@@ -30,8 +30,7 @@ export function SopDetailPage() {
   const archiveMutation = useArchiveSop();
   const [editing, setEditing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const { user } = useAuth();
-  const canManage = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'HR_MANAGER';
+  const canManage = useHasPermission('sop:manage');
 
   const {
     register,

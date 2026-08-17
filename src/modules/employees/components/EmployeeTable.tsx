@@ -6,6 +6,7 @@ import { DataTable, type DataTableColumn } from '../../../shared/components/ui/d
 import { EmployeeStatusBadge } from './EmployeeStatusBadge';
 import { EmployeeFormDialog } from './EmployeeFormDialog';
 import { useUpdateEmployee } from '../hooks/useUpdateEmployee';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import type { EmployeeListItem } from '../types/employee.types';
 
@@ -19,6 +20,7 @@ export function EmployeeTable({
   onSortChange?: (sort: string | undefined) => void;
 }) {
   const updateMutation = useUpdateEmployee();
+  const canUpdate = useHasPermission('employee:update');
 
   const columns: DataTableColumn<EmployeeListItem>[] = useMemo(
     () => [
@@ -63,14 +65,19 @@ export function EmployeeTable({
         csvValue: (e) => e.status,
         cell: (e) => <EmployeeStatusBadge status={e.status} />,
       },
-      {
-        id: 'actions',
-        header: 'Actions',
-        className: 'text-right',
-        cell: (e) => <EmployeeFormDialog mode="edit" employee={e} />,
-      },
+      // Omitted entirely (not just emptied) when the user can't edit — no dangling Actions column.
+      ...(canUpdate
+        ? [
+            {
+              id: 'actions',
+              header: 'Actions',
+              className: 'text-right',
+              cell: (e) => <EmployeeFormDialog mode="edit" employee={e} />,
+            } satisfies DataTableColumn<EmployeeListItem>,
+          ]
+        : []),
     ],
-    [],
+    [canUpdate],
   );
 
   async function markOffboarding(rows: EmployeeListItem[]) {
@@ -102,8 +109,8 @@ export function EmployeeTable({
       getRowId={(e) => e.id}
       sort={sort}
       onSortChange={onSortChange}
-      selectable
-      bulkActions={[{ label: 'Mark offboarding', icon: UserX, onAction: markOffboarding }]}
+      selectable={canUpdate}
+      bulkActions={canUpdate ? [{ label: 'Mark offboarding', icon: UserX, onAction: markOffboarding }] : []}
       exportFilename="employees"
       mobileCard={(e) => (
         <div className="flex items-center justify-between gap-3">

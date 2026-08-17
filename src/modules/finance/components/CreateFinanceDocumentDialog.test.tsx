@@ -7,10 +7,11 @@ import { server, handlers } from '../../../test/msw/server';
 
 describe('CreateFinanceDocumentDialog', () => {
   it('computes subtotal, tax, and total live as line items and tax rate change', async () => {
+    server.use(handlers.meSuccessWithPermissions(['finance:manage']));
     const user = userEvent.setup();
     renderWithProviders(<CreateFinanceDocumentDialog />);
 
-    await user.click(screen.getByRole('button', { name: /new document/i }));
+    await user.click(await screen.findByRole('button', { name: /new document/i }));
 
     const qtyInput = await screen.findByPlaceholderText('Qty');
     const priceInput = screen.getByPlaceholderText('Unit price');
@@ -32,10 +33,11 @@ describe('CreateFinanceDocumentDialog', () => {
   });
 
   it('requires at least one line item with a description', async () => {
+    server.use(handlers.meSuccessWithPermissions(['finance:manage']));
     const user = userEvent.setup();
     renderWithProviders(<CreateFinanceDocumentDialog />);
 
-    await user.click(screen.getByRole('button', { name: /new document/i }));
+    await user.click(await screen.findByRole('button', { name: /new document/i }));
     await user.click(await screen.findByRole('button', { name: /^create draft$/i }));
 
     expect(await screen.findByText(/^required$/i)).toBeInTheDocument();
@@ -43,10 +45,11 @@ describe('CreateFinanceDocumentDialog', () => {
 
   it('submits successfully and closes the dialog', async () => {
     server.use(handlers.financeCreateSuccess);
+    server.use(handlers.meSuccessWithPermissions(['finance:manage']));
     const user = userEvent.setup();
     renderWithProviders(<CreateFinanceDocumentDialog />);
 
-    await user.click(screen.getByRole('button', { name: /new document/i }));
+    await user.click(await screen.findByRole('button', { name: /new document/i }));
     await user.type(await screen.findByPlaceholderText('Description'), 'Consulting');
     await user.clear(screen.getByPlaceholderText('Unit price'));
     await user.type(screen.getByPlaceholderText('Unit price'), '500');

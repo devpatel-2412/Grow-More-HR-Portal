@@ -3,6 +3,7 @@ import { UserCheck } from 'lucide-react';
 import { useVisitors, useCheckInVisitor, useCheckOutVisitor } from '../hooks/useWorkplace';
 import { usePagination } from '../../../shared/hooks/usePagination';
 import { RegisterVisitorDialog } from '../components/RegisterVisitorDialog';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Badge } from '../../../shared/components/ui/badge';
@@ -22,6 +23,7 @@ export function VisitorsPage() {
   const { data, isLoading, isError, refetch } = useVisitors({ page: pagination.page, limit: pagination.limit });
   const checkInMutation = useCheckInVisitor();
   const checkOutMutation = useCheckOutVisitor();
+  const canManage = useHasPermission('visitor:manage');
   const state = isLoading ? 'loading' : isError ? 'error' : !data || data.data.length === 0 ? 'empty' : 'ready';
 
   async function checkIn(id: string) {
@@ -60,7 +62,7 @@ export function VisitorsPage() {
                 <TableHead>Purpose</TableHead>
                 <TableHead>Expected</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                {canManage && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -72,18 +74,20 @@ export function VisitorsPage() {
                   <TableCell>
                     <Badge variant={STATUS_VARIANT[visitor.status]}>{visitor.status.replace('_', ' ')}</Badge>
                   </TableCell>
-                  <TableCell className="text-right">
-                    {visitor.status === 'EXPECTED' && (
-                      <Button size="sm" onClick={() => checkIn(visitor.id)} loading={checkInMutation.isPending}>
-                        Check in
-                      </Button>
-                    )}
-                    {visitor.status === 'CHECKED_IN' && (
-                      <Button size="sm" variant="outline" onClick={() => checkOut(visitor.id)} loading={checkOutMutation.isPending}>
-                        Check out
-                      </Button>
-                    )}
-                  </TableCell>
+                  {canManage && (
+                    <TableCell className="text-right">
+                      {visitor.status === 'EXPECTED' && (
+                        <Button size="sm" onClick={() => checkIn(visitor.id)} loading={checkInMutation.isPending}>
+                          Check in
+                        </Button>
+                      )}
+                      {visitor.status === 'CHECKED_IN' && (
+                        <Button size="sm" variant="outline" onClick={() => checkOut(visitor.id)} loading={checkOutMutation.isPending}>
+                          Check out
+                        </Button>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

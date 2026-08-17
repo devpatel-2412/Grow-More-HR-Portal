@@ -3,6 +3,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CandidatePipeline } from './CandidatePipeline';
 import { renderWithProviders } from '../../../test/test-utils';
+import { server, handlers } from '../../../test/msw/server';
 import { STAGE_TRANSITIONS, type CandidateRecord } from '../types/recruitment.types';
 
 function makeCandidate(overrides: Partial<CandidateRecord> = {}): CandidateRecord {
@@ -53,10 +54,11 @@ describe('CandidatePipeline', () => {
     expect(onOpenCandidate).toHaveBeenCalledWith(expect.objectContaining({ id: 'cand-1' }));
   });
 
-  it('shows a move control for a candidate who can still advance', () => {
+  it('shows a move control for a candidate who can still advance', async () => {
+    server.use(handlers.meSuccessWithPermissions(['recruitment:manage']));
     renderWithProviders(<CandidatePipeline candidates={[makeCandidate({ status: 'APPLIED' })]} onOpenCandidate={vi.fn()} />);
 
-    expect(screen.getByRole('combobox', { name: /move casey candidate/i })).toBeInTheDocument();
+    expect(await screen.findByRole('combobox', { name: /move casey candidate/i })).toBeInTheDocument();
   });
 
   // The options inside the control come straight from STAGE_TRANSITIONS. Radix's Select cannot be

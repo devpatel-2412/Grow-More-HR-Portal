@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { CalendarClock } from 'lucide-react';
 import { regularizationRequestSchema, type RegularizationRequestFormValues } from '../schemas/attendance.schemas';
 import { useRequestRegularization } from '../hooks/useRegularizations';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -14,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 
 export function RegularizationRequestDialog() {
   const [open, setOpen] = useState(false);
+  const canRequest = useHasPermission('attendance:regularization:create');
   const requestMutation = useRequestRegularization();
   const {
     register,
@@ -22,6 +24,8 @@ export function RegularizationRequestDialog() {
     setError,
     reset,
   } = useForm<RegularizationRequestFormValues>({ resolver: zodResolver(regularizationRequestSchema) });
+
+  if (!canRequest) return null;
 
   async function onSubmit(values: RegularizationRequestFormValues) {
     try {
