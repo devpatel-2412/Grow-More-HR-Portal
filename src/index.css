@@ -32,6 +32,10 @@
   --card-foreground: #111827;
   --border: #e5e7eb;
   --input: #ffffff;
+  /* Opaque stand-in for --input, used only to paint over the browser's autofill background
+     (see the autofill rules below). Identical to --input here since it's already opaque;
+     dark mode's --input is translucent, so its --input-solid differs. */
+  --input-solid: #ffffff;
   --ring: #16a34a;
   --primary: #16a34a;
   --primary-hover: #15803d;
@@ -57,6 +61,8 @@
   --card-foreground: #f1f5f9;
   --border: rgba(255, 255, 255, 0.08);
   --input: rgba(255, 255, 255, 0.04);
+  /* Opaque equivalent of --input composited over --background — see the light theme block. */
+  --input-solid: #141a1c;
   --ring: #22c55e;
   --primary: #22c55e;
   --primary-hover: #4ade80;
@@ -83,6 +89,7 @@
     --card-foreground: #f1f5f9;
     --border: rgba(255, 255, 255, 0.08);
     --input: rgba(255, 255, 255, 0.04);
+    --input-solid: #141a1c;
     --ring: #22c55e;
     --primary: #22c55e;
     --primary-hover: #4ade80;
@@ -182,4 +189,58 @@ body {
 .dot-grid {
   background-image: radial-gradient(var(--border) 1px, transparent 1px);
   background-size: 24px 24px;
+}
+
+/* Chrome/Chromium paints autofilled fields with its own opaque background (pale blue or
+   yellow) via an internal UA style that ignores `background-color`/`color`. This is the only
+   reliable override: an inset box-shadow large enough to fully repaint the field's interior
+   (box-shadow respects border-radius, so rounded corners are preserved), plus
+   -webkit-text-fill-color since `color` alone is ignored on autofilled text. The long
+   background-color/box-shadow transition delays Chrome's own instant repaint just long enough
+   for ours to win, avoiding a flash of the browser's default colors on autofill.
+   Global + element-scoped (input/textarea/select) so every form control inherits this
+   automatically — including the shared Input/PasswordInput/Textarea primitives and any raw
+   <input> — without per-page or per-component styling. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:active,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+  -webkit-box-shadow: 0 0 0 1000px var(--input-solid) inset;
+  box-shadow: 0 0 0 1000px var(--input-solid) inset;
+  transition: background-color 9999s ease-in-out 0s, box-shadow 9999s ease-in-out 0s;
+}
+
+/* Layer in the same primary-colored ring the base Input/Textarea use on :focus (their own
+   focus:ring utility is a plain box-shadow too, so it would otherwise be replaced outright by
+   the rule above rather than merged with it). */
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+  -webkit-box-shadow: 0 0 0 1000px var(--input-solid) inset, 0 0 0 1px var(--primary);
+  box-shadow: 0 0 0 1000px var(--input-solid) inset, 0 0 0 1px var(--primary);
+}
+
+/* Standard (unprefixed) equivalent for browsers that support it (Firefox 111+, Safari) —
+   kept as its own rule so an unrecognized pseudo-class can't invalidate the -webkit- rules. */
+input:autofill,
+textarea:autofill,
+select:autofill {
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+  box-shadow: 0 0 0 1000px var(--input-solid) inset;
+}
+
+input:autofill:focus,
+textarea:autofill:focus,
+select:autofill:focus {
+  box-shadow: 0 0 0 1000px var(--input-solid) inset, 0 0 0 1px var(--primary);
 }
