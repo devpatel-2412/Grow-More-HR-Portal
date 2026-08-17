@@ -15,8 +15,9 @@ import { Input } from '../../../shared/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../../shared/components/ui/dialog';
 import type { TaskRecord } from '../types/task.types';
 
-function SubtaskChecklist({ subtasks }: { subtasks: TaskRecord[] }) {
+function SubtaskChecklist({ subtasks }: { subtasks: TaskRecord[] | null | undefined }) {
   const updateStatus = useUpdateTaskStatus();
+  const items = subtasks ?? [];
   const { hasAny } = usePermissions();
   // Same updateOwn gate as the Kanban board's status control (task.routes.ts) — task:manage or
   // task:update:own, with ownership scoping enforced server-side.
@@ -30,11 +31,11 @@ function SubtaskChecklist({ subtasks }: { subtasks: TaskRecord[] }) {
     }
   }
 
-  if (subtasks.length === 0) return <p className="text-xs text-[var(--muted-foreground)]">No checklist items.</p>;
+  if (items.length === 0) return <p className="text-xs text-[var(--muted-foreground)]">No checklist items.</p>;
 
   return (
     <ul className="space-y-1">
-      {subtasks.map((s) => (
+      {items.map((s) => (
         <li key={s.id} className="flex items-center gap-2 text-xs">
           <input
             type="checkbox"
