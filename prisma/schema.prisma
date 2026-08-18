@@ -759,6 +759,9 @@ model EmployeeProfile {
   @@unique([tenantId, employeeId])
   @@index([tenantId])
   @@index([tenantId, department])
+  // Backs EmployeeRepository.findManyByTenant's status filter (employee.service.ts's status-
+  // filtered list view, e.g. "Active" vs "Onboarding" vs "Offboarding").
+  @@index([tenantId, status])
   @@index([managerId])
   @@index([branchId])
   @@index([teamId])
@@ -1081,6 +1084,9 @@ model LeaveRequest {
   @@index([tenantId, status])
   @@index([employeeId])
   @@index([managerId, status])
+  // Backs LeaveRepository.findMany's default sort (createdAt desc, no status filter) — the
+  // unfiltered "recent leave requests" view had no index to lean on before this.
+  @@index([tenantId, createdAt])
 }
 
 /**
@@ -1268,6 +1274,9 @@ model Project {
   financeDocuments FinanceDocument[]
 
   @@index([tenantId])
+  // Backs ProjectRepository.findMany's status filter (project.service.ts's status-filtered list
+  // view) — the bare tenantId index above doesn't help once a status filter narrows the scan.
+  @@index([tenantId, status])
 }
 
 model Milestone {
