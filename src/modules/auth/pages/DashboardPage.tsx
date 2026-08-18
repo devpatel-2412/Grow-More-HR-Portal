@@ -47,7 +47,7 @@ export function DashboardPage() {
 
   return (
     <div className={showAdminDashboard ? 'mx-auto max-w-6xl space-y-6' : 'mx-auto max-w-4xl space-y-6'}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start abc sm:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-[var(--foreground)] sm:text-3xl">
             Welcome back{profile ? `, ${profile.firstName}` : ''}
