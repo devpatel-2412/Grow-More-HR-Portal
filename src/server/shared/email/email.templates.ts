@@ -157,10 +157,11 @@ export function interviewScheduledEmailTemplate(input: {
 }
 
 /**
- * Generic wrapper used for every notification routed through NotificationService.notify() —
- * title/body/link there are already meaningful human-readable text (see the existing call sites
- * in leave/task/ticket services), so a bespoke template per NotificationType would just repeat
- * the same content in a different font. One reusable template, real per-notification content.
+ * Generic wrapper used for every notification routed through NotificationService.notify() that
+ * doesn't supply a richer `emailOverride` — title/body/link there are already meaningful
+ * human-readable text (see the existing call sites in leave/task/ticket services), so a bespoke
+ * template per NotificationType would just repeat the same content in a different font. One
+ * reusable template, real per-notification content.
  */
 export function notificationEmailTemplate(input: { title: string; body: string; link?: string; appUrl: string; tenantName?: string }): RenderedEmail {
   const fullLink = input.link ? `${input.appUrl}${input.link}` : undefined;
@@ -175,5 +176,180 @@ export function notificationEmailTemplate(input: { title: string; body: string; 
       tenantName: input.tenantName,
     }),
     text: fullLink ? `${input.title}\n\n${input.body}\n\n${fullLink}` : `${input.title}\n\n${input.body}`,
+  };
+}
+
+// --- Project/task assignment & lifecycle notifications --------------------------------------
+// Richer than the generic wrapper above — a detail table (project, priority, due date, ...) plus
+// a "View Project"/"View Task" CTA, passed to NotificationService.notify() as `emailOverride`.
+// The in-app notification's own title/body stay short (see task.service.ts / project.service.ts);
+// these carry the fuller context that only makes sense in an email.
+
+function detailRow(label: string, value: string): string {
+  return `<tr><td style="padding:4px 12px 4px 0;color:#64748b;">${label}</td><td style="font-weight:600;">${value}</td></tr>`;
+}
+
+function detailTable(rows: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;font-size:14px;">${rows}</table>`;
+}
+
+export function projectAssignedEmailTemplate(input: {
+  employeeName: string;
+  projectName: string;
+  managerName: string;
+  projectLink: string;
+  appUrl: string;
+  tenantName?: string;
+}): RenderedEmail {
+  const fullLink = `${input.appUrl}${input.projectLink}`;
+  const subject = `You've been assigned to ${input.projectName}`;
+  return {
+    subject,
+    html: renderLayout({
+      previewText: subject,
+      heading: 'New project assignment',
+      bodyHtml: `<p>Hi ${input.employeeName},</p>
+        <p>You have been assigned to the project <strong>${input.projectName}</strong> by <strong>${input.managerName}</strong>.</p>`,
+      ctaText: 'View Project',
+      ctaLink: fullLink,
+      tenantName: input.tenantName,
+    }),
+    text: `Hi ${input.employeeName},\n\nYou have been assigned to the project ${input.projectName} by ${input.managerName}.\n\nView the project:\n${fullLink}`,
+  };
+}
+
+export function taskAssignedEmailTemplate(input: {
+  employeeName: string;
+  taskTitle: string;
+  projectName: string;
+  priority: string;
+  dueDate: Date | null;
+  taskLink: string;
+  appUrl: string;
+  tenantName?: string;
+}): RenderedEmail {
+  const fullLink = `${input.appUrl}${input.taskLink}`;
+  const dueDateText = input.dueDate ? input.dueDate.toLocaleDateString('en-US', { dateStyle: 'medium' }) : 'Not set';
+  const subject = `New task assigned: ${input.taskTitle}`;
+  const rows = detailTable(
+    detailRow('Project', input.projectName) + detailRow('Priority', input.priority) + detailRow('Due date', dueDateText),
+  );
+  return {
+    subject,
+    html: renderLayout({
+      previewText: subject,
+      heading: 'New task assigned to you',
+      bodyHtml: `<p>Hi ${input.employeeName},</p>
+        <p>You've been assigned a new task: <strong>${input.taskTitle}</strong>.</p>
+        ${rows}`,
+      ctaText: 'View Task',
+      ctaLink: fullLink,
+      tenantName: input.tenantName,
+    }),
+    text: `Hi ${input.employeeName},\n\nYou've been assigned a new task: ${input.taskTitle}\n\nProject: ${input.projectName}\nPriority: ${input.priority}\nDue date: ${dueDateText}\n\nView the task:\n${fullLink}`,
+  };
+}
+
+export function taskReadyForReviewEmailTemplate(input: {
+  managerName: string;
+  employeeName: string;
+  taskTitle: string;
+  projectName: string;
+  taskLink: string;
+  appUrl: string;
+  tenantName?: string;
+}): RenderedEmail {
+  const fullLink = `${input.appUrl}${input.taskLink}`;
+  const subject = `Ready for review: ${input.taskTitle}`;
+  return {
+    subject,
+    html: renderLayout({
+      previewText: subject,
+      heading: 'A task is ready for your review',
+      bodyHtml: `<p>Hi ${input.managerName},</p>
+        <p><strong>${input.employeeName}</strong> marked <strong>${input.taskTitle}</strong> in <strong>${input.projectName}</strong> as ready for review.</p>`,
+      ctaText: 'View Task',
+      ctaLink: fullLink,
+      tenantName: input.tenantName,
+    }),
+    text: `Hi ${input.managerName},\n\n${input.employeeName} marked "${input.taskTitle}" in ${input.projectName} as ready for review.\n\nView the task:\n${fullLink}`,
+  };
+}
+
+export function taskCompletedEmailTemplate(input: {
+  employeeName: string;
+  taskTitle: string;
+  projectName: string;
+  taskLink: string;
+  appUrl: string;
+  tenantName?: string;
+}): RenderedEmail {
+  const fullLink = `${input.appUrl}${input.taskLink}`;
+  const subject = `Task completed: ${input.taskTitle}`;
+  return {
+    subject,
+    html: renderLayout({
+      previewText: subject,
+      heading: 'Your task has been marked complete',
+      bodyHtml: `<p>Hi ${input.employeeName},</p>
+        <p><strong>${input.taskTitle}</strong> in <strong>${input.projectName}</strong> has been marked as done. Nice work.</p>`,
+      ctaText: 'View Task',
+      ctaLink: fullLink,
+      tenantName: input.tenantName,
+    }),
+    text: `Hi ${input.employeeName},\n\n"${input.taskTitle}" in ${input.projectName} has been marked as done. Nice work.\n\nView the task:\n${fullLink}`,
+  };
+}
+
+export function taskReopenedEmailTemplate(input: {
+  recipientName: string;
+  taskTitle: string;
+  projectName: string;
+  taskLink: string;
+  appUrl: string;
+  tenantName?: string;
+}): RenderedEmail {
+  const fullLink = `${input.appUrl}${input.taskLink}`;
+  const subject = `Task reopened: ${input.taskTitle}`;
+  return {
+    subject,
+    html: renderLayout({
+      previewText: subject,
+      heading: 'A task has been reopened',
+      bodyHtml: `<p>Hi ${input.recipientName},</p>
+        <p><strong>${input.taskTitle}</strong> in <strong>${input.projectName}</strong> was reopened and needs further work.</p>`,
+      ctaText: 'View Task',
+      ctaLink: fullLink,
+      tenantName: input.tenantName,
+    }),
+    text: `Hi ${input.recipientName},\n\n"${input.taskTitle}" in ${input.projectName} was reopened and needs further work.\n\nView the task:\n${fullLink}`,
+  };
+}
+
+export function taskOverdueEmailTemplate(input: {
+  recipientName: string;
+  taskTitle: string;
+  projectName: string;
+  dueDate: Date;
+  taskLink: string;
+  appUrl: string;
+  tenantName?: string;
+}): RenderedEmail {
+  const fullLink = `${input.appUrl}${input.taskLink}`;
+  const dueDateText = input.dueDate.toLocaleDateString('en-US', { dateStyle: 'medium' });
+  const subject = `Overdue: ${input.taskTitle}`;
+  return {
+    subject,
+    html: renderLayout({
+      previewText: subject,
+      heading: 'A task is overdue',
+      brandColor: '#b91c1c',
+      bodyHtml: `<p>Hi ${input.recipientName},</p>
+        <p><strong>${input.taskTitle}</strong> in <strong>${input.projectName}</strong> was due on <strong>${dueDateText}</strong> and is still open.</p>`,
+      ctaText: 'View Task',
+      ctaLink: fullLink,
+      tenantName: input.tenantName,
+    }),
+    text: `Hi ${input.recipientName},\n\n"${input.taskTitle}" in ${input.projectName} was due on ${dueDateText} and is still open.\n\nView the task:\n${fullLink}`,
   };
 }

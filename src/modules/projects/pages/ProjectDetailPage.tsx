@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useProject } from '../hooks/useProjects';
 import { MilestoneList } from '../components/MilestoneList';
+import { ProjectProgressBar } from '../components/ProjectProgressBar';
 import { useTasks } from '../../tasks/hooks/useTasks';
 import { TaskFormDialog } from '../../tasks/components/TaskFormDialog';
 import { KanbanBoard } from '../../tasks/components/KanbanBoard';
@@ -43,7 +44,17 @@ export function ProjectDetailPage() {
         maxWidth="6xl"
         breadcrumb={[{ label: 'Projects', to: '/projects' }, { label: project.name }]}
         title={project.name}
-        subtitle={project.description}
+        subtitle={
+          <div className="space-y-2">
+            {project.description && <p>{project.description}</p>}
+            {project.progress !== undefined && (
+              <div className="flex items-center gap-3">
+                <ProjectProgressBar value={project.progress} />
+                <span>{project.openTasksCount ?? 0} open tasks</span>
+              </div>
+            )}
+          </div>
+        }
         actions={id ? <TaskFormDialog projectId={id} /> : undefined}
         activeTab={tab}
         onTabChange={(v) => setTab(v as Tab)}

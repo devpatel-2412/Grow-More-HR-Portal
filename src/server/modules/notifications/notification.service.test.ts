@@ -75,6 +75,50 @@ describe('NotificationService.notify', () => {
     ).resolves.toBeUndefined();
     expect(deps.repository.create).toHaveBeenCalledOnce();
   });
+
+  it('creates the in-app notification but skips the email entirely when skipEmail is set', async () => {
+    const deps = makeDeps();
+    await build(deps).notify({
+      tenantId: 'tenant-1',
+      userId: 'user-1',
+      type: 'TASK_DUE_SOON',
+      title: 'Task due soon',
+      body: 'Body',
+      skipEmail: true,
+    });
+    expect(deps.repository.create).toHaveBeenCalledOnce();
+    expect(emailSend).not.toHaveBeenCalled();
+  });
+
+  it('does not leak skipEmail/emailOverride into the notification row written to the database', async () => {
+    const deps = makeDeps();
+    await build(deps).notify({
+      tenantId: 'tenant-1',
+      userId: 'user-1',
+      type: 'TASK_OVERDUE',
+      title: 'Overdue',
+      body: 'Body',
+      emailOverride: { subject: 'Custom subject', html: '<p>x</p>', text: 'x' },
+    });
+    const createArg = deps.repository.create.mock.calls[0][0];
+    expect(createArg).not.toHaveProperty('skipEmail');
+    expect(createArg).not.toHaveProperty('emailOverride');
+  });
+
+  it('sends the richer emailOverride template instead of the generic wrapper when supplied', async () => {
+    const deps = makeDeps();
+    await build(deps).notify({
+      tenantId: 'tenant-1',
+      userId: 'user-1',
+      type: 'TASK_ASSIGNED',
+      title: 'New task assigned to you',
+      body: 'Design homepage',
+      emailOverride: { subject: 'Custom subject', html: '<p>custom html</p>', text: 'custom text' },
+    });
+    expect(emailSend).toHaveBeenCalledWith(
+      expect.objectContaining({ subject: 'Custom subject', html: '<p>custom html</p>', text: 'custom text' }),
+    );
+  });
 });
 
 describe('NotificationService.markRead', () => {

@@ -45,4 +45,14 @@ export class TaskRepository {
     ]);
     return { rows, total };
   }
+
+  /** Whether `employeeId` has any task in `projectId` other than `excludeTaskId` — the signal used
+   * to decide whether an assignment is this employee's first task on the project (see
+   * TaskService.handleAssignment), since there's no separate ProjectMember concept in this schema. */
+  async existsForEmployeeInProject(projectId: string, employeeId: string, excludeTaskId: string): Promise<boolean> {
+    const count = await prisma.task.count({
+      where: { projectId, assignedToId: employeeId, id: { not: excludeTaskId } },
+    });
+    return count > 0;
+  }
 }

@@ -110,7 +110,7 @@ describe('Projects & Tasks — full flow', () => {
     expect(reassignRes.status).toBe(403);
   });
 
-  it('assigning a task notifies the assignee, and the notification can be listed and marked read', async () => {
+  it('assigning a task notifies the assignee (task + first-time project assignment), and the notification can be listed and marked read', async () => {
     const { res: signupRes, domain } = await signupTenant();
     const adminToken = signupRes.body.data.accessToken;
     const adminMe = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${adminToken}`);
@@ -133,14 +133,19 @@ describe('Projects & Tasks — full flow', () => {
       .send({ projectId, title: 'Design homepage', assignedToId: workerEmployeeId });
     expect(taskRes.status).toBe(201);
 
+    // Two notifications: TASK_ASSIGNED for the task itself, plus PROJECT_ASSIGNED since this is
+    // the worker's first task on this project (see TaskService.handleAssignment).
     const afterCount = await request(app).get('/api/v1/notifications/unread-count').set('Authorization', `Bearer ${workerToken}`);
-    expect(afterCount.body.data.count).toBe(1);
+    expect(afterCount.body.data.count).toBe(2);
 
     const listRes = await request(app).get('/api/v1/notifications').set('Authorization', `Bearer ${workerToken}`);
     expect(listRes.status).toBe(200);
-    expect(listRes.body.data).toHaveLength(1);
-    expect(listRes.body.data[0]).toMatchObject({ type: 'TASK_ASSIGNED', body: 'Design homepage', link: `/projects/${projectId}` });
-    const notificationId = listRes.body.data[0].id;
+    expect(listRes.body.data).toHaveLength(2);
+    const taskAssignedNotification = listRes.body.data.find((n: { type: string }) => n.type === 'TASK_ASSIGNED');
+    const projectAssignedNotification = listRes.body.data.find((n: { type: string }) => n.type === 'PROJECT_ASSIGNED');
+    expect(taskAssignedNotification).toMatchObject({ body: 'Design homepage', link: `/projects/${projectId}` });
+    expect(projectAssignedNotification).toMatchObject({ link: `/projects/${projectId}` });
+    const notificationId = taskAssignedNotification.id;
 
     // The admin who created the task has no notifications of their own.
     const adminListRes = await request(app).get('/api/v1/notifications').set('Authorization', `Bearer ${adminToken}`);
@@ -159,8 +164,9 @@ describe('Projects & Tasks — full flow', () => {
     expect(readRes.status).toBe(200);
     expect(readRes.body.data.readAt).not.toBeNull();
 
+    // Only the TASK_ASSIGNED notification was marked read — PROJECT_ASSIGNED is still unread.
     const finalCount = await request(app).get('/api/v1/notifications/unread-count').set('Authorization', `Bearer ${workerToken}`);
-    expect(finalCount.body.data.count).toBe(0);
+    expect(finalCount.body.data.count).toBe(1);
   });
 
   it('a comment and a milestone can be added, and the board list filters by project', async () => {
@@ -225,5 +231,56 @@ describe('Projects & Tasks — tenant isolation', () => {
       .get(`/api/v1/projects/${projectRes.body.data.id}`)
       .set('Authorization', `Bearer ${tenantARes.body.data.accessToken}`);
     expect(res.status).toBe(404);
+  });
+});
+
+describe('Projects & Tasks — non-manager visibility (no project:manage)', () => {
+  it('shows only projects the employee has a task assigned in, and blocks the rest end-to-end', async () => {
+    const { res: signupRes, domain } = await signupTenant();
+    const adminToken = signupRes.body.data.accessToken;
+    const adminMe = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${adminToken}`);
+    const tenantId = adminMe.body.data.tenant.id;
+    const { token: workerToken, employeeId: workerEmployeeId } = await createEmployeeAccount(tenantId, domain);
+
+    const visibleProjectRes = await request(app)
+      .post('/api/v1/projects')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Visible To Worker', startDate: '2026-03-01' });
+    const visibleProjectId = visibleProjectRes.body.data.id;
+
+    const hiddenProjectRes = await request(app)
+      .post('/api/v1/projects')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Hidden From Worker', startDate: '2026-03-01' });
+    const hiddenProjectId = hiddenProjectRes.body.data.id;
+
+    await request(app)
+      .post('/api/v1/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ projectId: visibleProjectId, title: 'Do the thing', assignedToId: workerEmployeeId });
+
+    // List: only the project with a task assigned to the worker appears — not the whole tenant.
+    const listRes = await request(app).get('/api/v1/projects').set('Authorization', `Bearer ${workerToken}`);
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.data.map((p: { id: string }) => p.id)).toEqual([visibleProjectId]);
+    expect(listRes.body.data[0].openTasksCount).toBe(1);
+
+    // Detail: the visible project 200s...
+    const visibleDetailRes = await request(app).get(`/api/v1/projects/${visibleProjectId}`).set('Authorization', `Bearer ${workerToken}`);
+    expect(visibleDetailRes.status).toBe(200);
+
+    // ...the hidden one 404s (not 403) — its existence isn't leaked to a non-member either.
+    const hiddenDetailRes = await request(app).get(`/api/v1/projects/${hiddenProjectId}`).set('Authorization', `Bearer ${workerToken}`);
+    expect(hiddenDetailRes.status).toBe(404);
+
+    // The task list can't be used to route around the block by targeting the hidden project id directly.
+    const hiddenTasksRes = await request(app).get(`/api/v1/tasks?projectId=${hiddenProjectId}`).set('Authorization', `Bearer ${workerToken}`);
+    expect(hiddenTasksRes.status).toBe(404);
+
+    // Nor can milestones.
+    const hiddenMilestonesRes = await request(app)
+      .get(`/api/v1/projects/${hiddenProjectId}/milestones`)
+      .set('Authorization', `Bearer ${workerToken}`);
+    expect(hiddenMilestonesRes.status).toBe(404);
   });
 });
