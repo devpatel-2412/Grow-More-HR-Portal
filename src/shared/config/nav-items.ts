@@ -23,13 +23,10 @@ import {
   BookOpen,
   FileText,
   Boxes,
-  UserCheck,
   LayoutTemplate,
   Megaphone,
   Network,
   Users2,
-  Truck,
-  Package,
   BookMarked,
   MonitorSmartphone,
   ShieldCheck,
@@ -110,9 +107,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Announcements', path: '/announcements', icon: Megaphone, group: 'Workplace', permission: 'announcement:read' },
   { label: 'SOP Library', path: '/sops', icon: BookMarked, group: 'Workplace', permission: 'sop:read' },
   { label: 'Templates', path: '/templates', icon: LayoutTemplate, group: 'Workplace', permission: 'template:manage' },
-  { label: 'Visitors', path: '/visitors', icon: UserCheck, group: 'Workplace', permission: 'visitor:manage' },
-  { label: 'Vendors', path: '/vendors', icon: Truck, group: 'Workplace', permission: 'vendor:manage' },
-  { label: 'Inventory', path: '/inventory', icon: Package, group: 'Workplace', permission: 'inventory:manage' },
 
   // Admin
   // No permission concept for role/permission administration — hardcoded to SUPER_ADMIN server-side.

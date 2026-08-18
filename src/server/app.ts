@@ -26,7 +26,6 @@ import { ticketRouter } from './modules/workplace/ticket.routes.js';
 import { kbRouter } from './modules/workplace/kb.routes.js';
 import { documentRouter } from './modules/workplace/document.routes.js';
 import { assetRouter } from './modules/workplace/asset.routes.js';
-import { visitorRouter } from './modules/workplace/visitor.routes.js';
 import { roomBookingRouter } from './modules/workplace/roombooking.routes.js';
 import { templateRouter } from './modules/hrautomation/template.routes.js';
 import { verifyRouter } from './modules/hrautomation/verify.routes.js';
@@ -34,8 +33,6 @@ import { announcementRouter } from './modules/hrautomation/announcement.routes.j
 import { branchRouter } from './modules/organization/branch.routes.js';
 import { teamRouter } from './modules/organization/team.routes.js';
 import { checklistItemRouter } from './modules/lifecycle/checklist.routes.js';
-import { vendorRouter } from './modules/inventory/vendor.routes.js';
-import { inventoryRouter } from './modules/inventory/inventory.routes.js';
 import { sopRouter } from './modules/sop/sop.routes.js';
 import { dashboardRouter } from './modules/dashboard/dashboard.routes.js';
 import { notificationRouter } from './modules/notifications/notification.routes.js';
@@ -101,7 +98,6 @@ export function createApp() {
   app.use('/api/v1/kb-articles', kbRouter);
   app.use('/api/v1/documents', documentRouter);
   app.use('/api/v1/assets', assetRouter);
-  app.use('/api/v1/visitors', visitorRouter);
   app.use('/api/v1/room-bookings', roomBookingRouter);
   app.use('/api/v1/templates', templateRouter);
   app.use('/api/v1/verify', verifyRouter);
@@ -109,8 +105,6 @@ export function createApp() {
   app.use('/api/v1/branches', branchRouter);
   app.use('/api/v1/teams', teamRouter);
   app.use('/api/v1/checklist-items', checklistItemRouter);
-  app.use('/api/v1/vendors', vendorRouter);
-  app.use('/api/v1/inventory-items', inventoryRouter);
   app.use('/api/v1/sops', sopRouter);
 
   // Only mounted when Supabase Storage isn't configured — this is the local-disk fallback's own

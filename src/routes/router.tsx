@@ -47,14 +47,11 @@ const TicketDetailPage = lazy(() => import('../modules/workplace/pages/TicketDet
 const KnowledgeBasePage = lazy(() => import('../modules/workplace/pages/KnowledgeBasePage').then((m) => ({ default: m.KnowledgeBasePage })));
 const DocumentsPage = lazy(() => import('../modules/workplace/pages/DocumentsPage').then((m) => ({ default: m.DocumentsPage })));
 const AssetsPage = lazy(() => import('../modules/workplace/pages/AssetsPage').then((m) => ({ default: m.AssetsPage })));
-const VisitorsPage = lazy(() => import('../modules/workplace/pages/VisitorsPage').then((m) => ({ default: m.VisitorsPage })));
 const TemplatesPage = lazy(() => import('../modules/hrautomation/pages/TemplatesPage').then((m) => ({ default: m.TemplatesPage })));
 const AnnouncementsPage = lazy(() => import('../modules/hrautomation/pages/AnnouncementsPage').then((m) => ({ default: m.AnnouncementsPage })));
 const BranchesPage = lazy(() => import('../modules/organization/pages/BranchesPage').then((m) => ({ default: m.BranchesPage })));
 const TeamsPage = lazy(() => import('../modules/organization/pages/TeamsPage').then((m) => ({ default: m.TeamsPage })));
 const OrgChartPage = lazy(() => import('../modules/organization/pages/OrgChartPage').then((m) => ({ default: m.OrgChartPage })));
-const VendorsPage = lazy(() => import('../modules/inventory/pages/VendorsPage').then((m) => ({ default: m.VendorsPage })));
-const InventoryItemsPage = lazy(() => import('../modules/inventory/pages/InventoryItemsPage').then((m) => ({ default: m.InventoryItemsPage })));
 const SopsPage = lazy(() => import('../modules/sop/pages/SopsPage').then((m) => ({ default: m.SopsPage })));
 const SopDetailPage = lazy(() => import('../modules/sop/pages/SopDetailPage').then((m) => ({ default: m.SopDetailPage })));
 const VerifyDocumentPage = lazy(() => import('../modules/hrautomation/pages/VerifyDocumentPage').then((m) => ({ default: m.VerifyDocumentPage })));
@@ -190,18 +187,6 @@ export const router = createBrowserRouter([
           {
             element: <RequirePermission permission="template:manage" />,
             children: [{ path: '/templates', element: lazyRoute(<TemplatesPage />) }],
-          },
-          {
-            element: <RequirePermission permission="visitor:manage" />,
-            children: [{ path: '/visitors', element: lazyRoute(<VisitorsPage />) }],
-          },
-          {
-            element: <RequirePermission permission="vendor:manage" />,
-            children: [{ path: '/vendors', element: lazyRoute(<VendorsPage />) }],
-          },
-          {
-            element: <RequirePermission permission="inventory:manage" />,
-            children: [{ path: '/inventory', element: lazyRoute(<InventoryItemsPage />) }],
           },
           {
             element: <RequirePermission permission="audit:read" />,

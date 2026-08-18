@@ -9,8 +9,6 @@ import type {
   AssetRecord,
   AssetType,
   AssetStatus,
-  VisitorRecord,
-  VisitorStatus,
 } from '../types/workplace.types';
 
 export const ticketApi = {
@@ -90,12 +88,4 @@ export const assetApi = {
   unassign: (id: string) => api.patch<AssetRecord>(`/assets/${id}/unassign`),
   changeStatus: (id: string, status: 'AVAILABLE' | 'UNDER_REPAIR' | 'RETIRED') =>
     api.patch<AssetRecord>(`/assets/${id}/status`, { status }),
-};
-
-export const visitorApi = {
-  register: (payload: { name: string; email: string; phone: string; hostEmployeeId: string; purpose: string; expectedAt: string }) =>
-    api.post<VisitorRecord>('/visitors', payload),
-  list: (query: { page: number; limit: number; status?: VisitorStatus }) => api.getPaginated<VisitorRecord>('/visitors', query),
-  checkIn: (id: string) => api.post<VisitorRecord>(`/visitors/${id}/check-in`),
-  checkOut: (id: string) => api.post<VisitorRecord>(`/visitors/${id}/check-out`),
 };
