@@ -55,7 +55,10 @@ export class RefreshTokenRepository {
   }
 
   /** Every currently-live session across the tenant, newest activity first — the data behind the
-   * session management dashboard. A "session" here is one un-revoked, un-expired refresh token. */
+   * session management dashboard. A "session" here is one un-revoked, un-expired refresh token.
+   * The dashboard has no pagination UI, so this stays a single unpaginated fetch (unchanged
+   * behavior for any realistic tenant) — the `take` is only a safety ceiling against a pathological
+   * tenant with an unbounded number of stale-but-not-yet-expired sessions, not a page size. */
   findActiveByTenant(tenantId: string) {
     return prisma.refreshToken.findMany({
       where: { revokedAt: null, expiresAt: { gt: new Date() }, user: { tenantId } },
@@ -63,6 +66,7 @@ export class RefreshTokenRepository {
         user: { select: { id: true, email: true, role: true, avatarStorageKey: true, profile: { select: { firstName: true, lastName: true } } } },
       },
       orderBy: { lastUsedAt: 'desc' },
+      take: 500,
     });
   }
 

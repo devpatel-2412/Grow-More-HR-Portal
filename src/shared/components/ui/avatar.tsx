@@ -38,6 +38,11 @@ export function Avatar({ name, imageUrl, size = 'md', className }: AvatarProps) 
         src={imageUrl}
         alt={name}
         onError={() => setBroken(true)}
+        // A table page can render 20+ of these at once — lazy avoids fetching every offscreen row's
+        // avatar upfront (browsers still load an already-in-viewport image, like the header's,
+        // eagerly regardless), and async decode keeps that decode work off the main thread.
+        loading="lazy"
+        decoding="async"
         className={cn('shrink-0 rounded-full border border-[var(--border)] object-cover', SIZE_CLASSES[size], className)}
       />
     );
