@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { waitFor } from '@testing-library/react';
-import { broadcastLogout, subscribeToLogout } from './session-broadcast';
+import { broadcastLogout, subscribeToLogout, broadcastAccessToken, subscribeToAccessToken } from './session-broadcast';
 
 // BroadcastChannel doesn't loop a message back to the same channel instance that sent it (by
 // design — that's exactly what makes it safe against self-triggered logout loops), so these tests
@@ -41,6 +41,32 @@ describe('session-broadcast', () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     expect(onLogout).not.toHaveBeenCalled();
+    otherTab.close();
+  });
+
+  it('broadcastAccessToken delivers the new token to another same-origin listener', async () => {
+    const otherTab = new BroadcastChannel('grow-more-session');
+    const received = vi.fn();
+    otherTab.addEventListener('message', (event) => received(event.data));
+
+    broadcastAccessToken('new-access-token');
+
+    await waitFor(() => expect(received).toHaveBeenCalledWith({ type: 'access-token', token: 'new-access-token' }));
+    otherTab.close();
+  });
+
+  it('subscribeToAccessToken fires with the token from another tab, ignoring unrelated messages', async () => {
+    const onToken = vi.fn();
+    const unsubscribe = subscribeToAccessToken(onToken);
+    const otherTab = new BroadcastChannel('grow-more-session');
+
+    otherTab.postMessage({ type: 'logout' }); // unrelated — must not fire onToken
+    otherTab.postMessage({ type: 'access-token', token: 'shared-token' });
+
+    await waitFor(() => expect(onToken).toHaveBeenCalledWith('shared-token'));
+    expect(onToken).toHaveBeenCalledOnce();
+
+    unsubscribe();
     otherTab.close();
   });
 });

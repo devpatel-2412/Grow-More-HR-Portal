@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { waitFor } from '@testing-library/react';
 import { api, ApiError, setAccessToken, getAccessToken, registerAuthExpiredHandler } from './api-client';
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -185,5 +186,70 @@ describe('api-client — token usage and refresh', () => {
     // Proves the refresh cycle DID run for this endpoint (3 calls: original, refresh, retry) —
     // a startsWith('/auth/login') check would wrongly treat this as excluded and stop at 1 call.
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  // --- cross-tab refresh coordination (navigator.locks) ---------------------------------------
+
+  it('acquires the cross-tab refresh lock and broadcasts the new token to sibling tabs on success', async () => {
+    setAccessToken('expired-token');
+    const lockRequest = vi.fn(async (_name: string, callback: () => Promise<unknown>) => callback());
+    vi.stubGlobal('navigator', { locks: { request: lockRequest } });
+    const otherTab = new BroadcastChannel('grow-more-session');
+    const received = vi.fn();
+    otherTab.addEventListener('message', (event) => received(event.data));
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(401, { error: { code: 'UNAUTHORIZED', message: 'expired' } }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: { accessToken: 'new-token' } }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: { ok: true } }));
+
+    await api.get('/employees');
+
+    expect(lockRequest).toHaveBeenCalledWith('grow-more-auth-refresh', expect.any(Function));
+    await waitFor(() => expect(received).toHaveBeenCalledWith({ type: 'access-token', token: 'new-token' }));
+    otherTab.close();
+  });
+
+  it('adopts a token a sibling tab already refreshed, instead of making its own network refresh call', async () => {
+    // Simulates: this tab queued behind a sibling tab's lock hold, and by the time it's our turn,
+    // the sibling has already rotated the refresh-token cookie and broadcast the new access token.
+    // A raw second BroadcastChannel instance stands in for "another tab" — a channel never
+    // delivers a message back to the very instance that sent it (see session-broadcast.test.ts),
+    // so this can't be simulated via this module's own broadcastAccessToken() call.
+    setAccessToken('stale-token');
+    const otherTab = new BroadcastChannel('grow-more-session');
+    const lockRequest = vi.fn(async (_name: string, callback: () => Promise<unknown>) => {
+      otherTab.postMessage({ type: 'access-token', token: 'token-from-sibling-tab' });
+      await new Promise((resolve) => setTimeout(resolve, 10)); // let the broadcast's message event land
+      return callback();
+    });
+    vi.stubGlobal('navigator', { locks: { request: lockRequest } });
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(401, { error: { code: 'UNAUTHORIZED', message: 'expired' } })) // original request
+      .mockResolvedValueOnce(jsonResponse(200, { data: { ok: true } })); // retried request, with the adopted token
+
+    const result = await api.get('/employees');
+
+    expect(result).toEqual({ ok: true });
+    // Exactly 2 calls (original + retry) — no network call to /auth/refresh at all, since the
+    // sibling tab's broadcast token was adopted while waiting for the lock.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.some((call) => urlOf(call).includes('/auth/refresh'))).toBe(false);
+    expect(authHeader(fetchMock.mock.calls[1])).toBe('Bearer token-from-sibling-tab');
+    expect(getAccessToken()).toBe('token-from-sibling-tab');
+    otherTab.close();
+  });
+
+  it('falls back to a same-tab-only refresh when navigator.locks is unavailable', async () => {
+    vi.stubGlobal('navigator', {});
+    setAccessToken('expired-token');
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(401, { error: { code: 'UNAUTHORIZED', message: 'expired' } }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: { accessToken: 'new-token' } }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: { ok: true } }));
+
+    const result = await api.get('/employees');
+
+    expect(result).toEqual({ ok: true });
+    expect(getAccessToken()).toBe('new-token');
   });
 });

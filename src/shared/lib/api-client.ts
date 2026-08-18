@@ -1,4 +1,5 @@
 import type { PaginatedResponse } from '../types/pagination.types';
+import { broadcastAccessToken, subscribeToAccessToken } from './session-broadcast';
 
 const API_BASE = '/api/v1';
 
@@ -44,25 +45,57 @@ export function registerActivitySignal(handler: (() => void) | null): void {
   onActivity = handler;
 }
 
+// Adopt a sibling tab's freshly-rotated access token as soon as it's broadcast, so this tab's own
+// next 401 (if any) sees an already-current token and may not need to refresh at all.
+subscribeToAccessToken((token) => {
+  if (token) setAccessToken(token);
+});
+
+const REFRESH_LOCK_NAME = 'grow-more-auth-refresh';
+
+async function performRefreshRequest(): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh`, { method: 'POST', credentials: 'include' });
+    if (!res.ok) return false;
+    const body = await res.json();
+    const newToken = body.data.accessToken as string;
+    setAccessToken(newToken);
+    broadcastAccessToken(newToken);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 let refreshPromise: Promise<boolean> | null = null;
 
+/**
+ * Single-flight within this tab (the `refreshPromise` guard below) AND, where the browser
+ * supports it, single-flight across every tab sharing this session (the navigator.locks request).
+ * The refresh token is a rotating, single-use cookie with reuse detection — two tabs both racing
+ * to present it to POST /auth/refresh at the same moment makes the second one look like a stolen
+ * token, and the backend revokes the whole session as a result (see auth.service.ts's refresh()).
+ * The lock serializes that: a tab that was merely waiting re-checks whether a sibling tab already
+ * refreshed (via the broadcast above) before ever making its own network call.
+ */
 async function attemptSilentRefresh(): Promise<boolean> {
   if (!refreshPromise) {
-    refreshPromise = (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/auth/refresh`, { method: 'POST', credentials: 'include' });
-        if (!res.ok) return false;
-        const body = await res.json();
-        setAccessToken(body.data.accessToken);
-        return true;
-      } catch {
-        return false;
-      } finally {
-        refreshPromise = null;
-      }
-    })();
+    const tokenBeforeRefresh = accessToken;
+    refreshPromise = runCrossTabCoordinatedRefresh(tokenBeforeRefresh).finally(() => {
+      refreshPromise = null;
+    });
   }
   return refreshPromise;
+}
+
+async function runCrossTabCoordinatedRefresh(tokenBeforeRefresh: string | null): Promise<boolean> {
+  if (typeof navigator === 'undefined' || !navigator.locks) {
+    return performRefreshRequest();
+  }
+  return navigator.locks.request(REFRESH_LOCK_NAME, async () => {
+    if (accessToken !== tokenBeforeRefresh) return true; // a sibling tab already refreshed for us
+    return performRefreshRequest();
+  });
 }
 
 interface RequestOptions extends Omit<RequestInit, 'body'> {
