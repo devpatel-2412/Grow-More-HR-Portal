@@ -47,7 +47,7 @@ export function DashboardPage() {
 
   return (
     <div className={showAdminDashboard ? 'mx-auto max-w-6xl space-y-6' : 'mx-auto max-w-4xl space-y-6'}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start abc sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-[var(--foreground)] sm:text-3xl">
             Welcome back{profile ? `, ${profile.firstName}` : ''}
@@ -70,7 +70,7 @@ export function DashboardPage() {
           recent sign-ins) is naturally much taller than "Today"/"Two-factor authentication" —
           without this, CSS Grid's default align-items:stretch forces every card in the row to
           match the tallest one, leaving the shorter cards mostly empty space. */}
-      <div className={showAdminDashboard ? 'grid grid-cols-1 items-start gap-6 md:grid-cols-3' : 'grid grid-cols-1 items-start gap-6 md:grid-cols-2'}>
+      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
         {profile && (
           <Card>
             <h3 className="mb-4 text-sm font-bold text-[var(--foreground)]">Today</h3>
