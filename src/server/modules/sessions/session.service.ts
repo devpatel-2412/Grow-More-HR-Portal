@@ -3,6 +3,7 @@ import { UserRepository } from '../users/user.repository.js';
 import { TenantRepository } from '../tenants/tenant.repository.js';
 import { auditLogService } from '../audit/audit.service.js';
 import { NotFoundError } from '../../shared/errors/app-error.js';
+import { resolveAvatarUrl } from '../../shared/utils/avatar-url.util.js';
 import type { RequestMeta } from '../auth/auth.types.js';
 
 interface ActorContext extends RequestMeta {
@@ -52,23 +53,26 @@ export class SessionService {
       ? tokens.filter((token) => token.createdAt >= tenant.forceLogoutAllAt!)
       : tokens;
 
-    return visible.map((token) => {
-      const { browser, device } = parseUserAgent(token.userAgent);
-      const profile = token.user.profile;
-      return {
-        id: token.id,
-        userId: token.user.id,
-        userName: profile ? `${profile.firstName} ${profile.lastName}` : token.user.email,
-        userEmail: token.user.email,
-        role: token.user.role,
-        loginTime: token.createdAt,
-        lastActivity: token.lastUsedAt,
-        browser,
-        device,
-        ipAddress: token.ipAddress,
-        rememberMe: token.rememberMe,
-      };
-    });
+    return Promise.all(
+      visible.map(async (token) => {
+        const { browser, device } = parseUserAgent(token.userAgent);
+        const profile = token.user.profile;
+        return {
+          id: token.id,
+          userId: token.user.id,
+          userName: profile ? `${profile.firstName} ${profile.lastName}` : token.user.email,
+          userEmail: token.user.email,
+          avatarUrl: await resolveAvatarUrl(token.user.avatarStorageKey),
+          role: token.user.role,
+          loginTime: token.createdAt,
+          lastActivity: token.lastUsedAt,
+          browser,
+          device,
+          ipAddress: token.ipAddress,
+          rememberMe: token.rememberMe,
+        };
+      }),
+    );
   }
 
   /** Ends every session belonging to one user — the dashboard's per-row "Force Logout" action. */

@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui/table';
+import { Avatar } from '../../../shared/components/ui/avatar';
 import { useForceLogoutUser } from '../hooks/useForceLogoutUser';
 import { ApiError } from '../../../shared/lib/api-client';
 import type { ActiveSession } from '../types/session.types';
@@ -38,8 +39,13 @@ export function SessionsTable({ sessions, currentUserId }: { sessions: ActiveSes
         {sessions.map((session) => (
           <TableRow key={session.id}>
             <TableCell>
-              <div className="font-semibold">{session.userName}</div>
-              <div className="text-[var(--muted-foreground)]">{session.userEmail}</div>
+              <div className="flex items-center gap-3">
+                <Avatar name={session.userName} imageUrl={session.avatarUrl} size="sm" />
+                <div>
+                  <div className="font-semibold">{session.userName}</div>
+                  <div className="text-[var(--muted-foreground)]">{session.userEmail}</div>
+                </div>
+              </div>
             </TableCell>
             <TableCell className="text-[var(--muted-foreground)]">{new Date(session.loginTime).toLocaleString()}</TableCell>
             <TableCell className="text-[var(--muted-foreground)]">{new Date(session.lastActivity).toLocaleString()}</TableCell>

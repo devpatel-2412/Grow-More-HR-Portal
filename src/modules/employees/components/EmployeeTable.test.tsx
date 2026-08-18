@@ -22,6 +22,7 @@ const employee: EmployeeListItem = {
   managerId: null,
   branchId: null,
   teamId: null,
+  avatarUrl: null,
 };
 
 describe('EmployeeTable', () => {

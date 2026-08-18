@@ -57,7 +57,7 @@ export function TopHeader({ onOpenMobileNav }: TopHeaderProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button type="button" className="ml-1 rounded-full transition hover:opacity-80" aria-label="Account menu">
-              <Avatar name={profile ? `${profile.firstName} ${profile.lastName}` : (user?.email ?? '?')} />
+              <Avatar name={profile ? `${profile.firstName} ${profile.lastName}` : (user?.email ?? '?')} imageUrl={user?.avatarUrl} />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">

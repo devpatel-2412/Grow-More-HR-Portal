@@ -192,6 +192,8 @@ enum AuditAction {
   USER_INVITE_REVOKED
   COMPANY_ADMIN_INVITED
   SUPER_ADMIN_BOOTSTRAPPED
+  USER_AVATAR_UPDATED
+  USER_AVATAR_REMOVED
 }
 
 enum EmployeeStatus {
@@ -522,6 +524,11 @@ model User {
   lastLoginAt                DateTime?
   failedLoginCount           Int        @default(0)
   lockedUntil                DateTime?
+  // Storage key (not a URL) for the private bucket object — see storage.service.ts. Resolved to a
+  // fresh signed URL on every response that needs it, never persisted as a long-lived/public URL.
+  // Lives on User (not EmployeeProfile) so every account can have an avatar, including ones with
+  // no employee record yet (e.g. a bootstrapped SUPER_ADMIN).
+  avatarStorageKey           String?
   createdAt                  DateTime   @default(now())
   updatedAt                  DateTime   @updatedAt
 

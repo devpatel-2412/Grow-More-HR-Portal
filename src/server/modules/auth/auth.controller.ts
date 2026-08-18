@@ -1,8 +1,11 @@
 import type { Request, Response } from 'express';
 import { authService } from './auth.service.js';
-import { sendOk, sendPaginated } from '../../shared/utils/response.util.js';
-import { UnauthorizedError } from '../../shared/errors/app-error.js';
+import { userService } from '../users/user.service.js';
+import { sendOk, sendPaginated, sendNoContent } from '../../shared/utils/response.util.js';
+import { BadRequestError, UnauthorizedError } from '../../shared/errors/app-error.js';
 import { env, isProduction } from '../../shared/config/env.js';
+import { logger } from '../../shared/logger.js';
+import type { UploadedFileInput } from '../../shared/storage/storage.service.js';
 import type { z } from 'zod';
 import type {
   loginSchema,
@@ -62,7 +65,23 @@ export async function verifyTwoFactor(req: Request, res: Response): Promise<void
 
 export async function refresh(req: Request, res: Response): Promise<void> {
   const rawToken = readRefreshCookie(req);
-  if (!rawToken) throw new UnauthorizedError('No session cookie present');
+
+  // Temporary diagnostic logging — never logs the cookie/token value itself, only whether one
+  // arrived at all. Remove once the production 401 root cause is confirmed and fixed.
+  logger.info({
+    msg: '[AUTH REFRESH]',
+    cookiePresent: !!rawToken,
+    cookieNameConfigured: env.REFRESH_COOKIE_NAME,
+    originHeader: req.headers.origin ?? null,
+    hostHeader: req.headers.host ?? null,
+    forwardedHost: req.headers['x-forwarded-host'] ?? null,
+    forwardedProto: req.headers['x-forwarded-proto'] ?? null,
+  });
+
+  if (!rawToken) {
+    logger.warn({ msg: '[AUTH REFRESH] rejected', reason: 'no_cookie_present' });
+    throw new UnauthorizedError('No session cookie present');
+  }
 
   const result = await authService.refresh(rawToken, requestMeta(req));
   setRefreshCookie(res, result.refreshToken, result.refreshTokenExpiresAt, result.rememberMe);
@@ -84,6 +103,27 @@ export async function logoutAll(req: Request, res: Response): Promise<void> {
 export async function me(req: Request, res: Response): Promise<void> {
   const result = await authService.getMe(req.user!.sub);
   sendOk(res, result);
+}
+
+function toUploadedAvatarFile(file: Express.Multer.File): UploadedFileInput {
+  return { buffer: file.buffer, mimeType: file.mimetype, fileName: file.originalname };
+}
+
+/** Self-only, like /auth/password/change above it — no requirePermission gate, since every
+ * authenticated user manages their own profile picture regardless of role/permissions. */
+export async function uploadMyAvatar(req: Request, res: Response): Promise<void> {
+  const file = req.file as Express.Multer.File | undefined;
+  if (!file) throw new BadRequestError('A profile picture file is required');
+  const user = await userService.updateAvatar(req.user!.tenantId, req.user!.sub, toUploadedAvatarFile(file), {
+    actorUserId: req.user!.sub,
+    ...requestMeta(req),
+  });
+  sendOk(res, { avatarUrl: user.avatarUrl });
+}
+
+export async function removeMyAvatar(req: Request, res: Response): Promise<void> {
+  await userService.removeAvatar(req.user!.tenantId, req.user!.sub, { actorUserId: req.user!.sub, ...requestMeta(req) });
+  sendNoContent(res);
 }
 
 export async function loginHistory(req: Request, res: Response): Promise<void> {

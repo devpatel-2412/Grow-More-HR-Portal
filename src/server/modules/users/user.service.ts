@@ -11,6 +11,9 @@ import { env } from '../../shared/config/env.js';
 import { logger } from '../../shared/logger.js';
 import { buildPaginationMeta, toPrismaOrderBy, toPrismaSkipTake, type PaginationQuery } from '../../shared/utils/pagination.util.js';
 import { INVITABLE_ROLES } from '../../shared/permissions/permissions.js';
+import { storageService, type UploadedFileInput } from '../../shared/storage/storage.service.js';
+import { processAvatarImage } from '../../shared/utils/avatar-image.util.js';
+import { resolveAvatarUrl, invalidateAvatarUrlCache } from '../../shared/utils/avatar-url.util.js';
 import type { RequestContext } from '../tenants/tenant.service.js';
 import type { UserRole, UserStatus } from '@prisma/client';
 import type { z } from 'zod';
@@ -204,6 +207,71 @@ export class UserService {
     });
 
     return user;
+  }
+
+  /**
+   * Replaces this user's profile picture. `processAvatarImage` is the authoritative validation —
+   * it decodes and re-encodes the file content itself, so the earlier multer fileFilter (which
+   * only trusts the client-declared MIME type + filename extension) is a fast rejection, not the
+   * real gate. The old file (if any) is deleted only after the new one is safely stored and the
+   * User row updated, and only best-effort — a stale orphaned object in storage is harmless; a
+   * user stuck with no avatar because cleanup 500'd would not be.
+   */
+  async updateAvatar(tenantId: string, id: string, file: UploadedFileInput, ctx: RequestContext = {}) {
+    const existing = await this.getById(tenantId, id);
+    const processed = await processAvatarImage(file.buffer);
+
+    const { storageKey } = await storageService.upload(tenantId, 'avatars', {
+      buffer: processed.buffer,
+      mimeType: processed.mimeType,
+      fileName: processed.fileName,
+    });
+
+    const user = await this.repository.update(id, { avatarStorageKey: storageKey });
+
+    if (existing.avatarStorageKey) {
+      invalidateAvatarUrlCache(existing.avatarStorageKey);
+      await storageService.delete(existing.avatarStorageKey).catch((err) => {
+        logger.warn({ err, tenantId, userId: id }, 'Failed to delete previous avatar file');
+      });
+    }
+
+    await auditLogService.record({
+      tenantId,
+      actorUserId: ctx.actorUserId,
+      action: 'USER_AVATAR_UPDATED',
+      targetType: 'User',
+      targetId: id,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+    });
+
+    return { ...user, avatarUrl: await resolveAvatarUrl(user.avatarStorageKey) };
+  }
+
+  /** Idempotent — removing an already-absent avatar is a no-op, not an error (handles a slow
+   * double-click on "Remove" or a stale UI state gracefully instead of surfacing a 404/409). */
+  async removeAvatar(tenantId: string, id: string, ctx: RequestContext = {}) {
+    const existing = await this.getById(tenantId, id);
+    if (!existing.avatarStorageKey) return { ...existing, avatarUrl: null as string | null };
+
+    const user = await this.repository.update(id, { avatarStorageKey: null });
+    invalidateAvatarUrlCache(existing.avatarStorageKey);
+    await storageService.delete(existing.avatarStorageKey).catch((err) => {
+      logger.warn({ err, tenantId, userId: id }, 'Failed to delete avatar file');
+    });
+
+    await auditLogService.record({
+      tenantId,
+      actorUserId: ctx.actorUserId,
+      action: 'USER_AVATAR_REMOVED',
+      targetType: 'User',
+      targetId: id,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+    });
+
+    return { ...user, avatarUrl: null as string | null };
   }
 
   /** The caller's own allowed invite-target roles — drives the invite dialog's role dropdown so a role without USER_INVITE granted simply sees an empty list rather than a 403 on submit. */

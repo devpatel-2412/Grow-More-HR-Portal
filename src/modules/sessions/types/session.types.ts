@@ -5,6 +5,7 @@ export interface ActiveSession {
   userId: string;
   userName: string;
   userEmail: string;
+  avatarUrl: string | null;
   role: UserRole;
   loginTime: string;
   lastActivity: string;

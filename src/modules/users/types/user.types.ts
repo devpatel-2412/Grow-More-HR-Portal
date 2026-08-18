@@ -6,6 +6,7 @@ export interface UserListItem {
   role: UserRole;
   status: UserStatus;
   lastLoginAt: string | null;
+  avatarUrl: string | null;
   profile: { firstName: string; lastName: string } | null;
 }
 

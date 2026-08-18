@@ -10,6 +10,9 @@ export interface AuthUser {
   status: UserStatus;
   /** The caller's own effective permission set (resource:action strings) — drives permission-aware UI, e.g. useHasPermission(). */
   permissions: string[];
+  /** A freshly-signed, time-limited download URL (or null if no picture is set) — never cache this
+   * beyond the current page load, it will eventually expire; refetch/re-login mints a new one. */
+  avatarUrl: string | null;
 }
 
 export interface EmployeeProfile {

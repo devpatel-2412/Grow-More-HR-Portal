@@ -17,4 +17,5 @@ export interface EmployeeListItem {
   managerId: string | null;
   branchId: string | null;
   teamId: string | null;
+  avatarUrl: string | null;
 }
