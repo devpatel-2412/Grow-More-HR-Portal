@@ -6,6 +6,12 @@ import {
   welcomeEmailTemplate,
   interviewScheduledEmailTemplate,
   notificationEmailTemplate,
+  projectAssignedEmailTemplate,
+  taskAssignedEmailTemplate,
+  taskReadyForReviewEmailTemplate,
+  taskCompletedEmailTemplate,
+  taskReopenedEmailTemplate,
+  taskOverdueEmailTemplate,
 } from './email.templates.js';
 
 /** Every template must produce all three: a non-empty subject, valid-looking HTML, and a plain-text
@@ -101,5 +107,113 @@ describe('notificationEmailTemplate', () => {
   it('omits the CTA/link section entirely when no link is given', () => {
     const rendered = notificationEmailTemplate({ title: 'FYI', body: 'Just a heads up.', appUrl: 'https://app.example.com' });
     expect(rendered.text).not.toContain('https://app.example.com');
+  });
+});
+
+describe('projectAssignedEmailTemplate', () => {
+  it('is well-formed and names the project and the manager who assigned it', () => {
+    const rendered = projectAssignedEmailTemplate({
+      employeeName: 'Ada',
+      projectName: 'Website Relaunch',
+      managerName: 'Grace Manager',
+      projectLink: '/projects/proj-1',
+      appUrl: 'https://app.example.com',
+    });
+    expectWellFormed(rendered);
+    expect(rendered.text).toContain('Website Relaunch');
+    expect(rendered.text).toContain('Grace Manager');
+    expect(rendered.text).toContain('https://app.example.com/projects/proj-1');
+  });
+});
+
+describe('taskAssignedEmailTemplate', () => {
+  it('includes task, project, priority, and due date', () => {
+    const rendered = taskAssignedEmailTemplate({
+      employeeName: 'Ada',
+      taskTitle: 'Design homepage',
+      projectName: 'Website Relaunch',
+      priority: 'HIGH',
+      dueDate: new Date('2026-09-01'),
+      taskLink: '/projects/proj-1',
+      appUrl: 'https://app.example.com',
+    });
+    expectWellFormed(rendered);
+    expect(rendered.html).toContain('Design homepage');
+    expect(rendered.html).toContain('Website Relaunch');
+    expect(rendered.html).toContain('HIGH');
+    expect(rendered.text).toContain('https://app.example.com/projects/proj-1');
+  });
+
+  it('shows "Not set" for a task with no due date, rather than an invalid date string', () => {
+    const rendered = taskAssignedEmailTemplate({
+      employeeName: 'Ada',
+      taskTitle: 'Design homepage',
+      projectName: 'Website Relaunch',
+      priority: 'LOW',
+      dueDate: null,
+      taskLink: '/projects/proj-1',
+      appUrl: 'https://app.example.com',
+    });
+    expect(rendered.text).toContain('Not set');
+  });
+});
+
+describe('taskReadyForReviewEmailTemplate', () => {
+  it('names the employee who submitted the task for review', () => {
+    const rendered = taskReadyForReviewEmailTemplate({
+      managerName: 'Grace',
+      employeeName: 'Ada Lovelace',
+      taskTitle: 'Design homepage',
+      projectName: 'Website Relaunch',
+      taskLink: '/projects/proj-1',
+      appUrl: 'https://app.example.com',
+    });
+    expectWellFormed(rendered);
+    expect(rendered.text).toContain('Ada Lovelace');
+    expect(rendered.text).toContain('Design homepage');
+  });
+});
+
+describe('taskCompletedEmailTemplate', () => {
+  it('is well-formed and names the completed task', () => {
+    const rendered = taskCompletedEmailTemplate({
+      employeeName: 'Ada',
+      taskTitle: 'Design homepage',
+      projectName: 'Website Relaunch',
+      taskLink: '/projects/proj-1',
+      appUrl: 'https://app.example.com',
+    });
+    expectWellFormed(rendered);
+    expect(rendered.text).toContain('Design homepage');
+  });
+});
+
+describe('taskReopenedEmailTemplate', () => {
+  it('is well-formed and names the reopened task', () => {
+    const rendered = taskReopenedEmailTemplate({
+      recipientName: 'Ada',
+      taskTitle: 'Design homepage',
+      projectName: 'Website Relaunch',
+      taskLink: '/projects/proj-1',
+      appUrl: 'https://app.example.com',
+    });
+    expectWellFormed(rendered);
+    expect(rendered.text).toContain('Design homepage');
+  });
+});
+
+describe('taskOverdueEmailTemplate', () => {
+  it('includes the original due date', () => {
+    const rendered = taskOverdueEmailTemplate({
+      recipientName: 'Ada',
+      taskTitle: 'Design homepage',
+      projectName: 'Website Relaunch',
+      dueDate: new Date('2026-08-01'),
+      taskLink: '/projects/proj-1',
+      appUrl: 'https://app.example.com',
+    });
+    expectWellFormed(rendered);
+    expect(rendered.text).toContain('Design homepage');
+    expect(rendered.text).toContain('2026');
   });
 });

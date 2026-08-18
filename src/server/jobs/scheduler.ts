@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { runDocumentExpiryCheck } from './document-expiry.job.js';
 import { runBirthdayDigest } from './birthday-digest.job.js';
 import { runRetryFailedEmails } from './retry-failed-emails.job.js';
+import { runTaskDueCheck } from './task-due.job.js';
 import { logger } from '../shared/logger.js';
 
 function guarded(name: string, task: () => Promise<unknown>) {
@@ -25,7 +26,8 @@ export function startScheduledJobs(): void {
   // single timezone, so a fresh day's reminders are waiting before anyone signs in.
   cron.schedule('0 8 * * *', guarded('document-expiry', () => runDocumentExpiryCheck()));
   cron.schedule('0 8 * * *', guarded('birthday-digest', () => runBirthdayDigest()));
+  cron.schedule('0 8 * * *', guarded('task-due', () => runTaskDueCheck()));
   // Hourly, on the hour — see retry-failed-emails.job.ts for why this cadence is fine.
   cron.schedule('0 * * * *', guarded('retry-failed-emails', () => runRetryFailedEmails()));
-  logger.info('Scheduled jobs registered (document-expiry, birthday-digest, retry-failed-emails)');
+  logger.info('Scheduled jobs registered (document-expiry, birthday-digest, task-due, retry-failed-emails)');
 }

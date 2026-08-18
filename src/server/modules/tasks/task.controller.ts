@@ -44,7 +44,9 @@ export async function deleteTask(req: Request, res: Response): Promise<void> {
 
 export async function listTasks(req: Request, res: Response): Promise<void> {
   const query = req.query as unknown as z.infer<typeof listTasksQuerySchema>;
-  const { rows, meta } = await taskService.list(req.user!.tenantId, query);
+  const effective = await resolveEffectivePermissions(req.user!.sub, req.user!.tenantId, req.user!.role);
+  const viewer = { userId: req.user!.sub, hasProjectManage: effective.has(PERMISSIONS.PROJECT_MANAGE) };
+  const { rows, meta } = await taskService.list(req.user!.tenantId, query, viewer);
   sendPaginated(res, rows, meta);
 }
 

@@ -71,9 +71,16 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
   _isRetry?: boolean;
 }
 
+// Endpoints that must never go through the silent-refresh-and-retry cycle: /auth/refresh 401ing
+// and triggering another refresh would be a literal infinite loop, and /auth/login/-logout 401ing
+// means "no session to refresh" or "already logging out" — refreshing there is meaningless at
+// best. Exact match, not startsWith — a prefix check would also swallow the unrelated
+// /auth/login-history endpoint (a real bug this exact-match fixes).
+const AUTH_REFRESH_EXCLUDED_PATHS = new Set(['/auth/login', '/auth/refresh', '/auth/logout']);
+
 async function rawRequest(path: string, options: RequestOptions = {}): Promise<{ status: number; payload: unknown }> {
   const { body, _isRetry, headers, ...rest } = options;
-  const isAuthEndpoint = path.startsWith('/auth/login') || path.startsWith('/auth/refresh');
+  const isAuthEndpoint = AUTH_REFRESH_EXCLUDED_PATHS.has(path);
   // A FormData body (file uploads) must NOT be JSON-stringified or given an explicit Content-Type
   // — the browser sets `multipart/form-data; boundary=...` itself, and overriding it breaks parsing.
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;

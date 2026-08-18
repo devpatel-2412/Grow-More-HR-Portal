@@ -1,4 +1,5 @@
-import { ProjectRepository } from './project.repository.js';
+import { ProjectRepository, type ProjectTaskSummary } from './project.repository.js';
+import { EmployeeRepository } from '../employees/employee.repository.js';
 import { NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
 import { buildPaginationMeta, toPrismaOrderBy } from '../../shared/utils/pagination.util.js';
@@ -13,8 +14,40 @@ export interface RequestMeta {
   userAgent?: string;
 }
 
+/**
+ * Caller context for visibility scoping. Omit entirely for internal/trusted call sites (already
+ * permission-gated at the route level, or a plain existence check) — only pass it where the
+ * caller might lack `project:manage` and needs their view scoped to projects they're actually on.
+ */
+export interface ProjectViewer {
+  userId: string;
+  hasProjectManage: boolean;
+}
+
+const EMPTY_SUMMARY: ProjectTaskSummary = { totalTasks: 0, openTasks: 0, completedTasks: 0, members: [], myOpenTasks: 0 };
+
+function withSummary<T extends { id: string }>(project: T, summary: ProjectTaskSummary | undefined) {
+  const s = summary ?? EMPTY_SUMMARY;
+  return {
+    ...project,
+    progress: s.totalTasks === 0 ? 0 : Math.round((s.completedTasks / s.totalTasks) * 100),
+    openTasksCount: s.openTasks,
+    totalTasksCount: s.totalTasks,
+    members: s.members,
+    myOpenTasksCount: s.myOpenTasks,
+  };
+}
+
 export class ProjectService {
-  constructor(private readonly repository: ProjectRepository = new ProjectRepository()) {}
+  constructor(
+    private readonly repository: ProjectRepository = new ProjectRepository(),
+    private readonly employeeRepository: EmployeeRepository = new EmployeeRepository(),
+  ) {}
+
+  private async resolveViewerEmployeeId(userId: string): Promise<string | null> {
+    const profile = await this.employeeRepository.findByUserId(userId);
+    return profile?.id ?? null;
+  }
 
   async create(tenantId: string, input: z.infer<typeof createProjectSchema>, meta: RequestMeta = {}) {
     const project = await this.repository.create({
@@ -36,13 +69,31 @@ export class ProjectService {
       userAgent: meta.userAgent,
     });
 
-    return project;
+    return withSummary(project, undefined);
   }
 
-  async getById(tenantId: string, id: string) {
-    const project = await this.repository.findById(id);
-    if (!project || project.tenantId !== tenantId) throw new NotFoundError('Project not found');
-    return project;
+  /**
+   * `viewer` omitted → unrestricted tenant lookup (existing behavior — used by internal call sites
+   * that are already permission-gated at the route, e.g. task/milestone creation's existence check).
+   * `viewer` given and lacking project:manage → 404s unless the viewer has ≥1 task assigned to them
+   * in this project (the only real "project membership" signal this schema has — see
+   * Task.assignedToId. No ProjectMember table exists, and none is being introduced here).
+   */
+  async getById(tenantId: string, id: string, viewer?: ProjectViewer) {
+    if (!viewer || viewer.hasProjectManage) {
+      const project = await this.repository.findById(id);
+      if (!project || project.tenantId !== tenantId) throw new NotFoundError('Project not found');
+      const viewerEmployeeId = viewer ? await this.resolveViewerEmployeeId(viewer.userId) : null;
+      const summary = (await this.repository.getTaskSummaries([id], viewerEmployeeId)).get(id);
+      return withSummary(project, summary);
+    }
+
+    const employeeId = await this.resolveViewerEmployeeId(viewer.userId);
+    if (!employeeId) throw new NotFoundError('Project not found');
+    const project = await this.repository.findByIdForEmployee(id, tenantId, employeeId);
+    if (!project) throw new NotFoundError('Project not found');
+    const summary = (await this.repository.getTaskSummaries([id], employeeId)).get(id);
+    return withSummary(project, summary);
   }
 
   async update(tenantId: string, id: string, input: z.infer<typeof updateProjectSchema>, meta: RequestMeta = {}) {
@@ -59,7 +110,7 @@ export class ProjectService {
       userAgent: meta.userAgent,
     });
 
-    return updated;
+    return withSummary(updated, undefined);
   }
 
   async delete(tenantId: string, id: string, meta: RequestMeta = {}) {
@@ -77,16 +128,34 @@ export class ProjectService {
     });
   }
 
-  async list(tenantId: string, query: z.infer<typeof listProjectsQuerySchema>) {
+  async list(tenantId: string, query: z.infer<typeof listProjectsQuerySchema>, viewer?: ProjectViewer) {
+    let scopeEmployeeId: string | undefined;
+    let viewerEmployeeId: string | null = null;
+
+    if (viewer) {
+      viewerEmployeeId = await this.resolveViewerEmployeeId(viewer.userId);
+      if (!viewer.hasProjectManage) {
+        if (!viewerEmployeeId) return { rows: [], meta: buildPaginationMeta(query.page, query.limit, 0) };
+        scopeEmployeeId = viewerEmployeeId;
+      }
+    }
+
     const orderBy = toPrismaOrderBy(query.sort, PROJECT_SORTABLE_FIELDS, { field: 'startDate', direction: 'desc' });
     const { rows, total } = await this.repository.findMany(
       tenantId,
-      { status: query.status, search: query.search },
+      { status: query.status, search: query.search, assignedEmployeeId: scopeEmployeeId },
       orderBy,
       (query.page - 1) * query.limit,
       query.limit,
     );
-    return { rows, meta: buildPaginationMeta(query.page, query.limit, total) };
+
+    const summaries = await this.repository.getTaskSummaries(
+      rows.map((r) => r.id),
+      viewerEmployeeId,
+    );
+    const enriched = rows.map((r) => withSummary(r, summaries.get(r.id)));
+
+    return { rows: enriched, meta: buildPaginationMeta(query.page, query.limit, total) };
   }
 }
 

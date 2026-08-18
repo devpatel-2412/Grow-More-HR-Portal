@@ -1,5 +1,5 @@
 import { MilestoneRepository } from './milestone.repository.js';
-import { ProjectService, type RequestMeta } from './project.service.js';
+import { ProjectService, type ProjectViewer, type RequestMeta } from './project.service.js';
 import { NotFoundError } from '../../shared/errors/app-error.js';
 import { auditLogService } from '../audit/audit.service.js';
 import type { z } from 'zod';
@@ -39,8 +39,8 @@ export class MilestoneService {
     return milestone;
   }
 
-  async listForProject(tenantId: string, projectId: string) {
-    await this.projectService.getById(tenantId, projectId);
+  async listForProject(tenantId: string, projectId: string, viewer?: ProjectViewer) {
+    await this.projectService.getById(tenantId, projectId, viewer); // 404s if the viewer can't access this project
     return this.repository.findByProject(projectId);
   }
 

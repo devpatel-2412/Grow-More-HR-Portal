@@ -40,6 +40,31 @@ export const handlers = {
   refreshFails: http.post('/api/v1/auth/refresh', () =>
     HttpResponse.json({ error: { code: 'UNAUTHORIZED', message: 'No session cookie present' } }, { status: 401 }),
   ),
+  refreshSuccess: http.post('/api/v1/auth/refresh', () =>
+    HttpResponse.json({
+      data: { accessToken: 'refreshed-access-token', user: { id: 'u1', email: 'admin@acme.com', role: 'ADMIN', status: 'ACTIVE', permissions: [] } },
+    }),
+  ),
+  /** First call 401s (an expired access token on page reload); every call after that succeeds —
+   * pairs with `refreshSuccess` to exercise "expired token → refresh once → retry /me". A fresh
+   * counter per call (factory function, like meSuccessWithPermissions) so tests don't leak state. */
+  meExpiredThenSuccess: () => {
+    let callCount = 0;
+    return http.get('/api/v1/auth/me', () => {
+      callCount++;
+      if (callCount === 1) {
+        return HttpResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Access token expired' } }, { status: 401 });
+      }
+      return HttpResponse.json({
+        data: {
+          user: { id: 'u1', email: 'admin@acme.com', role: 'ADMIN', status: 'ACTIVE', permissions: [] },
+          profile: null,
+          tenant: { id: 't1', name: 'Acme Inc', domain: 'acme', logoUrl: null, primaryColor: '#16a34a', secondaryColor: '#0ea5e9' },
+        },
+      });
+    });
+  },
+  logoutSuccess: http.post('/api/v1/auth/logout', () => new HttpResponse(null, { status: 204 })),
   invitableRolesSuccess: http.get('/api/v1/users/invitable-roles', () =>
     HttpResponse.json({ data: { roles: ['ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'] } }),
   ),

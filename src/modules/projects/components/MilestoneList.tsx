@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Flag, Plus } from 'lucide-react';
 import { createMilestoneSchema, type CreateMilestoneFormValues } from '../schemas/project.schemas';
 import { useMilestones, useCreateMilestone, useUpdateMilestoneStatus } from '../hooks/useMilestones';
+import { useHasPermission } from '../../auth/hooks/useHasPermission';
 import { ApiError } from '../../../shared/lib/api-client';
 import { Button } from '../../../shared/components/ui/button';
 import { Input } from '../../../shared/components/ui/input';
@@ -13,6 +14,7 @@ import { EmptyState } from '../../../shared/components/feedback/EmptyState';
 
 export function MilestoneList({ projectId }: { projectId: string }) {
   const [showForm, setShowForm] = useState(false);
+  const canManage = useHasPermission('project:manage');
   const { data: milestones, isLoading } = useMilestones(projectId);
   const createMutation = useCreateMilestone(projectId);
   const toggleMutation = useUpdateMilestoneStatus(projectId);
@@ -66,7 +68,8 @@ export function MilestoneList({ projectId }: { projectId: string }) {
                   type="checkbox"
                   className="rounded"
                   checked={m.status === 'COMPLETED'}
-                  onChange={() => handleToggle(m.id, m.status)}
+                  disabled={!canManage}
+                  onChange={() => canManage && handleToggle(m.id, m.status)}
                 />
                 <span className={m.status === 'COMPLETED' ? 'text-[var(--muted-foreground)] line-through' : 'text-[var(--foreground)]'}>
                   {m.name}
@@ -78,23 +81,24 @@ export function MilestoneList({ projectId }: { projectId: string }) {
         </ul>
       )}
 
-      {showForm ? (
-        <form onSubmit={handleSubmit(onSubmit)} className="flex items-end gap-2" noValidate>
-          <div className="flex-1">
-            <Input placeholder="Milestone name" {...register('name')} />
-            {errors.name && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.name.message}</p>}
-          </div>
-          <Input type="date" className="w-40" {...register('dueDate')} />
-          <Button type="submit" size="sm" loading={createMutation.isPending}>
-            Add
+      {canManage &&
+        (showForm ? (
+          <form onSubmit={handleSubmit(onSubmit)} className="flex items-end gap-2" noValidate>
+            <div className="flex-1">
+              <Input placeholder="Milestone name" {...register('name')} />
+              {errors.name && <p className="mt-1 text-xs text-[var(--destructive)]">{errors.name.message}</p>}
+            </div>
+            <Input type="date" className="w-40" {...register('dueDate')} />
+            <Button type="submit" size="sm" loading={createMutation.isPending}>
+              Add
+            </Button>
+          </form>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => setShowForm(true)}>
+            <Plus className="h-3.5 w-3.5" />
+            Add milestone
           </Button>
-        </form>
-      ) : (
-        <Button variant="outline" size="sm" onClick={() => setShowForm(true)}>
-          <Plus className="h-3.5 w-3.5" />
-          Add milestone
-        </Button>
-      )}
+        ))}
     </div>
   );
 }
