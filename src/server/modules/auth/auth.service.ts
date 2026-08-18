@@ -160,22 +160,25 @@ export class AuthService {
     const tokenHash = sha256(rawRefreshToken);
     const existing = await this.refreshTokenRepository.findByTokenHash(tokenHash);
     if (!existing) {
-      // Temporary diagnostic — see auth.controller.ts's refresh() for the matching cookiePresent
-      // log. Never logs the token/hash itself, only that no DB row matched it.
-      logger.warn({ msg: '[AUTH REFRESH]', sessionFound: false, reason: 'no_matching_session_for_cookie' });
       throw new UnauthorizedError('Invalid session. Please log in again.');
     }
 
     if (existing.revokedAt) {
-      logger.warn({
-        msg: '[AUTH REFRESH]',
-        sessionFound: true,
-        sessionRevoked: true,
-        reuseDetected: true,
+      // error, not warn: this is the strongest available signal of an actual credential-theft
+      // attempt in progress — it only fires when a refresh token that was *already rotated* gets
+      // presented again, which happens if a token was copied (a stolen cookie, a synced/leaked
+      // device) and the thief and the legitimate owner are now racing to use it. Logged at error
+      // level specifically so it surfaces in whatever alerting is wired to this log stream,
+      // instead of blending in with routine warn-level rejections (expired session, inactive
+      // account, etc.) that need no one's attention. Never logs the token/hash itself.
+      logger.error({
+        msg: 'Refresh-token reuse detected — session family revoked',
         tokenId: existing.id,
         familyId: existing.familyId,
+        userId: existing.userId,
         previousRevokedReason: existing.revokedReason,
         tokenAgeMs: existing.createdAt ? Date.now() - existing.createdAt.getTime() : null,
+        ipAddress: meta.ipAddress,
       });
       // Token was already rotated (or explicitly revoked) — presenting it again means theft/reuse.
       // Nuke the whole family so a stolen token can't keep producing new sessions.
@@ -191,13 +194,11 @@ export class AuthService {
     }
 
     if (existing.expiresAt < new Date()) {
-      logger.warn({ msg: '[AUTH REFRESH]', sessionFound: true, sessionRevoked: false, sessionExpired: true, tokenId: existing.id });
       throw new UnauthorizedError('Session expired. Please log in again.');
     }
 
     const user = await this.userRepository.findById(existing.userId);
     if (!user || user.status !== 'ACTIVE') {
-      logger.warn({ msg: '[AUTH REFRESH]', sessionFound: true, reason: 'user_missing_or_inactive', tokenId: existing.id });
       throw new UnauthorizedError('Account is not active');
     }
 
@@ -206,7 +207,6 @@ export class AuthService {
     // A tenant-wide "force logout all" bumps forceLogoutAllAt — any token issued before that
     // instant is treated as invalid on its next use, without having to touch every row up front.
     if (tenant?.forceLogoutAllAt && existing.createdAt < tenant.forceLogoutAllAt) {
-      logger.warn({ msg: '[AUTH REFRESH]', sessionFound: true, reason: 'force_logout_all', tokenId: existing.id });
       await this.refreshTokenRepository.revokeFamily(existing.familyId, 'force_logout_all');
       throw new UnauthorizedError('Your session was ended by an administrator. Please log in again.');
     }
@@ -218,14 +218,6 @@ export class AuthService {
     if (tenant?.sessionTimeoutMinutes != null) {
       const idleMs = Date.now() - existing.lastUsedAt.getTime();
       if (idleMs > tenant.sessionTimeoutMinutes * 60_000) {
-        logger.warn({
-          msg: '[AUTH REFRESH]',
-          sessionFound: true,
-          reason: 'inactivity_timeout',
-          tokenId: existing.id,
-          idleMs,
-          sessionTimeoutMinutes: tenant.sessionTimeoutMinutes,
-        });
         await this.refreshTokenRepository.revokeFamily(existing.familyId, 'inactivity_timeout');
         await auditLogService.record({
           tenantId: user.tenantId,
@@ -238,8 +230,6 @@ export class AuthService {
         throw new UnauthorizedError('Session expired due to inactivity. Please log in again.');
       }
     }
-
-    logger.info({ msg: '[AUTH REFRESH]', sessionFound: true, sessionRevoked: false, sessionExpired: false, reason: 'ok', tokenId: existing.id });
 
     const rawNewToken = generateOpaqueToken();
     const newTokenHash = sha256(rawNewToken);

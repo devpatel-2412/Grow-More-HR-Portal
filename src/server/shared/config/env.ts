@@ -18,9 +18,19 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
 
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
+  // Set only during a secret-rotation window: verifyAccessToken() falls back to this if
+  // verification against the current JWT_ACCESS_SECRET fails, so already-issued access tokens
+  // keep working until they naturally expire instead of invalidating every session the instant
+  // the secret rotates. Remove it once JWT_ACCESS_TTL has elapsed since the rotation. Optional —
+  // leaving it unset (the default) is a no-op, identical to today's behavior.
+  JWT_ACCESS_SECRET_PREVIOUS: z.string().optional().default(''),
   JWT_ACCESS_TTL: z.string().default('15m'),
   JWT_REFRESH_TTL: z.string().default('7d'),
   JWT_REFRESH_TTL_REMEMBER_ME: z.string().default('30d'),
+  // Optional, separate secret for the short-lived (5m) 2FA challenge token issued between "password
+  // correct" and "TOTP code verified". Falls back to JWT_ACCESS_SECRET when unset (today's existing
+  // behavior — this is purely additive hardening, not a required migration).
+  JWT_TWO_FA_SECRET: z.string().optional().default(''),
 
   TWO_FA_ENCRYPTION_KEY: z.string().min(1, 'TWO_FA_ENCRYPTION_KEY is required'),
   TWO_FA_ISSUER: z.string().default('Grow More'),

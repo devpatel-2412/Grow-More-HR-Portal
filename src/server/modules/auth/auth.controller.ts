@@ -4,7 +4,6 @@ import { userService } from '../users/user.service.js';
 import { sendOk, sendPaginated, sendNoContent } from '../../shared/utils/response.util.js';
 import { BadRequestError, UnauthorizedError } from '../../shared/errors/app-error.js';
 import { env, isProduction } from '../../shared/config/env.js';
-import { logger } from '../../shared/logger.js';
 import type { UploadedFileInput } from '../../shared/storage/storage.service.js';
 import type { z } from 'zod';
 import type {
@@ -65,23 +64,7 @@ export async function verifyTwoFactor(req: Request, res: Response): Promise<void
 
 export async function refresh(req: Request, res: Response): Promise<void> {
   const rawToken = readRefreshCookie(req);
-
-  // Temporary diagnostic logging — never logs the cookie/token value itself, only whether one
-  // arrived at all. Remove once the production 401 root cause is confirmed and fixed.
-  logger.info({
-    msg: '[AUTH REFRESH]',
-    cookiePresent: !!rawToken,
-    cookieNameConfigured: env.REFRESH_COOKIE_NAME,
-    originHeader: req.headers.origin ?? null,
-    hostHeader: req.headers.host ?? null,
-    forwardedHost: req.headers['x-forwarded-host'] ?? null,
-    forwardedProto: req.headers['x-forwarded-proto'] ?? null,
-  });
-
-  if (!rawToken) {
-    logger.warn({ msg: '[AUTH REFRESH] rejected', reason: 'no_cookie_present' });
-    throw new UnauthorizedError('No session cookie present');
-  }
+  if (!rawToken) throw new UnauthorizedError('No session cookie present');
 
   const result = await authService.refresh(rawToken, requestMeta(req));
   setRefreshCookie(res, result.refreshToken, result.refreshTokenExpiresAt, result.rememberMe);

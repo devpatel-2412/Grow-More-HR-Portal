@@ -5,6 +5,15 @@ import { encrypt, decrypt } from '../../shared/utils/encryption.util.js';
 import { sha256 } from '../../shared/utils/hash.util.js';
 import { env } from '../../shared/config/env.js';
 
+/** crypto.timingSafeEqual requires equal-length buffers (it throws otherwise) — the length check
+ * here is just that guard, not a security-relevant early exit: every hash compared against this
+ * is a fixed-length SHA-256 hex digest, so a length mismatch only ever means malformed input. */
+function timingSafeHashEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, 'utf8');
+  const bufB = Buffer.from(b, 'utf8');
+  return bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB);
+}
+
 export interface TwoFactorEnrollment {
   secret: string; // raw, shown once to the user for manual entry
   qrCodeDataUrl: string;
@@ -36,7 +45,11 @@ export class TwoFactorService {
 
   verifyRecoveryCode(hashedCodes: string[], candidate: string): { valid: boolean; remaining: string[] } {
     const candidateHash = sha256(candidate.trim().toLowerCase());
-    const index = hashedCodes.indexOf(candidateHash);
+    // Constant-time per-hash comparison (not indexOf's ordinary, early-exiting string equality) —
+    // the same defense-in-depth a password-hash comparison gets, closing off any timing
+    // side-channel on the individual hash bytes even though these are hashes of high-entropy
+    // random codes rather than directly guessable secrets.
+    const index = hashedCodes.findIndex((hash) => timingSafeHashEqual(hash, candidateHash));
     if (index === -1) return { valid: false, remaining: hashedCodes };
     const remaining = [...hashedCodes.slice(0, index), ...hashedCodes.slice(index + 1)];
     return { valid: true, remaining };
