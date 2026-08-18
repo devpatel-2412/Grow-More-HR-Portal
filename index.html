@@ -11,7 +11,21 @@
          HTML parsing, and preconnect warms up the cross-origin connection in parallel with it. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <!-- `&display=swap` only controls the font *files* (browser paints with a fallback font
+         immediately, swaps to Inter once it arrives) — it does nothing for the small CSS document
+         that declares those @font-face rules, which a plain <link rel="stylesheet"> still fetches
+         synchronously and blocks first paint on. preload+swap-on-load applies that exact same
+         non-blocking behavior to the CSS itself: fetched at high priority in parallel with
+         everything else, applied the instant it's ready, but never gates initial render. -->
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+    </noscript>
     <!-- Paints the correct brand background before any bundled CSS/JS loads, so the preloader's
          first frame never flashes white (or the wrong theme) on a cold load. -->
     <style>
