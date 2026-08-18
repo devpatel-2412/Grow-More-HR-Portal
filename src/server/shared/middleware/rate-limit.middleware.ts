@@ -1,11 +1,27 @@
-import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator, type Store } from 'express-rate-limit';
+import { RedisStore, type RedisReply } from 'rate-limit-redis';
 import type { Request } from 'express';
+import { getRedisClient } from '../redis.client.js';
 
 /**
- * In-memory rate-limit store — correct for a single-instance launch. Flagged in the
- * architecture plan: this MUST move to a Redis-backed store (rate-limit-redis) before the
- * API runs behind more than one process/instance, since counters are per-process otherwise.
+ * In-memory store (the previous, and still-default, behavior of this file) is correct for a
+ * single-instance deployment. The moment this app runs behind more than one server process,
+ * that silently weakens every limiter below — each instance would enforce its own separate "10
+ * attempts" instead of 10 total across the fleet — without anything erroring to say so. Once
+ * REDIS_URL is configured (see env.ts / .env.example), every limiter here switches to a
+ * Redis-backed store instead, so counters are shared across every instance. Falls back to
+ * undefined (express-rate-limit's own in-memory MemoryStore) when Redis isn't configured or
+ * isn't reachable — this file's behavior is unchanged for any deployment that hasn't set
+ * REDIS_URL, which today is all of them.
  */
+function redisStore(prefix: string): Store | undefined {
+  const redis = getRedisClient();
+  if (!redis) return undefined;
+  return new RedisStore({
+    sendCommand: (...args: string[]) => redis.call(...(args as [string, ...string[]])) as Promise<RedisReply>,
+    prefix,
+  });
+}
 
 function keyByIpAndEmail(req: Request): string {
   const email = typeof req.body?.email === 'string' ? req.body.email.toLowerCase() : 'unknown';
@@ -20,6 +36,7 @@ export const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: keyByIpAndEmail,
+  store: redisStore('rl:login:'),
   message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many login attempts. Please try again later.' } },
 });
 
@@ -28,6 +45,7 @@ export const refreshLimiter = rateLimit({
   limit: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  store: redisStore('rl:refresh:'),
   message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many token refresh attempts.' } },
 });
 
@@ -37,6 +55,7 @@ export const passwordResetLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: keyByIpAndEmail,
+  store: redisStore('rl:pwreset:'),
   message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many password reset requests.' } },
 });
 
@@ -45,6 +64,7 @@ export const twoFaVerifyLimiter = rateLimit({
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  store: redisStore('rl:2fa:'),
   message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many verification attempts.' } },
 });
 
@@ -54,4 +74,5 @@ export const globalApiLimiter = rateLimit({
   limit: 300,
   standardHeaders: true,
   legacyHeaders: false,
+  store: redisStore('rl:global:'),
 });

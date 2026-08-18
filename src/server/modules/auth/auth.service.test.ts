@@ -5,6 +5,7 @@ import { UnauthorizedError, ForbiddenError, ConflictError } from '../../shared/e
 import { signTwoFactorChallengeToken } from '../../shared/utils/jwt.util.js';
 import { twoFactorService } from '../two-factor/two-factor.service.js';
 import { auditLogService } from '../audit/audit.service.js';
+import { logger } from '../../shared/logger.js';
 
 vi.mock('../audit/audit.service.js', () => ({
   auditLogService: {
@@ -238,8 +239,16 @@ describe('AuthService.refresh — rotation and reuse detection', () => {
     });
     const service = new AuthService(userRepository as never, tenantRepository as never, refreshTokenRepository as never);
 
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => logger);
+
     await expect(service.refresh('stolen-token', {})).rejects.toThrow(UnauthorizedError);
     expect(refreshTokenRepository.revokeFamily).toHaveBeenCalledWith('family-1', 'reuse_detected');
+    // Reuse detection is logged at error level specifically (not warn, like every other rejection
+    // reason in this method) so it stands out to whatever alerting is wired to the log stream —
+    // this is the strongest available signal of an actual credential-theft attempt in progress.
+    expect(errorSpy).toHaveBeenCalledWith(expect.objectContaining({ tokenId: 'rt-stolen', familyId: 'family-1', userId: user.id }));
+
+    errorSpy.mockRestore();
   });
 
   it('rejects an unknown refresh token', async () => {

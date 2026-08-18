@@ -1,8 +1,9 @@
-// This file is a route manifest, not a component module — the lazy() route constants below are
-// never hot-reloaded as components, so the fast-refresh rule does not apply here.
+// This file is a route manifest, not a component module — the lazyWithRetry() route constants
+// below are never hot-reloaded as components, so the fast-refresh rule does not apply here.
 /* eslint-disable react/only-export-components */
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
+import { lazyWithRetry } from './lazy-retry';
 import { LoginPage } from '../modules/auth/pages/LoginPage';
 import { ProtectedRoute } from '../shared/components/layout/ProtectedRoute';
 import { AppShell } from '../shared/components/layout/AppShell';
@@ -11,50 +12,50 @@ import { RequirePermission } from '../shared/components/layout/RequirePermission
 import { PageLoadingSkeleton } from '../shared/components/feedback/LoadingSkeleton';
 import { NotFoundPage } from '../shared/components/feedback/NotFoundPage';
 
-const TwoFactorPage = lazy(() => import('../modules/auth/pages/TwoFactorPage').then((m) => ({ default: m.TwoFactorPage })));
-const ForgotPasswordPage = lazy(() => import('../modules/auth/pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
-const ResetPasswordPage = lazy(() => import('../modules/auth/pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
-const DashboardPage = lazy(() => import('../modules/auth/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
-const AcceptInvitePage = lazy(() => import('../modules/users/pages/AcceptInvitePage').then((m) => ({ default: m.AcceptInvitePage })));
-const UsersPage = lazy(() => import('../modules/users/pages/UsersPage').then((m) => ({ default: m.UsersPage })));
-const EmployeesPage = lazy(() => import('../modules/employees/pages/EmployeesPage').then((m) => ({ default: m.EmployeesPage })));
-const EmployeeDetailPage = lazy(() => import('../modules/employees/pages/EmployeeDetailPage').then((m) => ({ default: m.EmployeeDetailPage })));
-const TenantSettingsPage = lazy(() => import('../modules/tenants/pages/TenantSettingsPage').then((m) => ({ default: m.TenantSettingsPage })));
-const SessionsPage = lazy(() => import('../modules/sessions/pages/SessionsPage').then((m) => ({ default: m.SessionsPage })));
-const AuditLogPage = lazy(() => import('../modules/audit/pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
-const RolesPage = lazy(() => import('../modules/rbac/pages/RolesPage').then((m) => ({ default: m.RolesPage })));
-const CompaniesPage = lazy(() => import('../modules/tenants/pages/CompaniesPage').then((m) => ({ default: m.CompaniesPage })));
-const AttendancePage = lazy(() => import('../modules/attendance/pages/AttendancePage').then((m) => ({ default: m.AttendancePage })));
-const RegularizationsPage = lazy(() => import('../modules/attendance/pages/RegularizationsPage').then((m) => ({ default: m.RegularizationsPage })));
-const LeavePage = lazy(() => import('../modules/leave/pages/LeavePage').then((m) => ({ default: m.LeavePage })));
-const LeaveApprovalsPage = lazy(() => import('../modules/leave/pages/LeaveApprovalsPage').then((m) => ({ default: m.LeaveApprovalsPage })));
-const ProjectsPage = lazy(() => import('../modules/projects/pages/ProjectsPage').then((m) => ({ default: m.ProjectsPage })));
-const ProjectDetailPage = lazy(() => import('../modules/projects/pages/ProjectDetailPage').then((m) => ({ default: m.ProjectDetailPage })));
-const WorkReportsPage = lazy(() => import('../modules/workreports/pages/WorkReportsPage').then((m) => ({ default: m.WorkReportsPage })));
-const WorkReportReviewPage = lazy(() => import('../modules/workreports/pages/WorkReportReviewPage').then((m) => ({ default: m.WorkReportReviewPage })));
-const TimeTrackingPage = lazy(() => import('../modules/timetracking/pages/TimeTrackingPage').then((m) => ({ default: m.TimeTrackingPage })));
-const PayrollRunsPage = lazy(() => import('../modules/payroll/pages/PayrollRunsPage').then((m) => ({ default: m.PayrollRunsPage })));
-const PayrollRunDetailPage = lazy(() => import('../modules/payroll/pages/PayrollRunDetailPage').then((m) => ({ default: m.PayrollRunDetailPage })));
-const MyPayslipsPage = lazy(() => import('../modules/payroll/pages/MyPayslipsPage').then((m) => ({ default: m.MyPayslipsPage })));
-const JobPostingsPage = lazy(() => import('../modules/recruitment/pages/JobPostingsPage').then((m) => ({ default: m.JobPostingsPage })));
-const JobPostingDetailPage = lazy(() => import('../modules/recruitment/pages/JobPostingDetailPage').then((m) => ({ default: m.JobPostingDetailPage })));
-const LeadsPage = lazy(() => import('../modules/crm/pages/LeadsPage').then((m) => ({ default: m.LeadsPage })));
-const FinanceDocumentsPage = lazy(() => import('../modules/finance/pages/FinanceDocumentsPage').then((m) => ({ default: m.FinanceDocumentsPage })));
-const FinanceDocumentDetailPage = lazy(() => import('../modules/finance/pages/FinanceDocumentDetailPage').then((m) => ({ default: m.FinanceDocumentDetailPage })));
-const ProfitLossPage = lazy(() => import('../modules/finance/pages/ProfitLossPage').then((m) => ({ default: m.ProfitLossPage })));
-const TicketsPage = lazy(() => import('../modules/workplace/pages/TicketsPage').then((m) => ({ default: m.TicketsPage })));
-const TicketDetailPage = lazy(() => import('../modules/workplace/pages/TicketDetailPage').then((m) => ({ default: m.TicketDetailPage })));
-const KnowledgeBasePage = lazy(() => import('../modules/workplace/pages/KnowledgeBasePage').then((m) => ({ default: m.KnowledgeBasePage })));
-const DocumentsPage = lazy(() => import('../modules/workplace/pages/DocumentsPage').then((m) => ({ default: m.DocumentsPage })));
-const AssetsPage = lazy(() => import('../modules/workplace/pages/AssetsPage').then((m) => ({ default: m.AssetsPage })));
-const TemplatesPage = lazy(() => import('../modules/hrautomation/pages/TemplatesPage').then((m) => ({ default: m.TemplatesPage })));
-const AnnouncementsPage = lazy(() => import('../modules/hrautomation/pages/AnnouncementsPage').then((m) => ({ default: m.AnnouncementsPage })));
-const BranchesPage = lazy(() => import('../modules/organization/pages/BranchesPage').then((m) => ({ default: m.BranchesPage })));
-const TeamsPage = lazy(() => import('../modules/organization/pages/TeamsPage').then((m) => ({ default: m.TeamsPage })));
-const OrgChartPage = lazy(() => import('../modules/organization/pages/OrgChartPage').then((m) => ({ default: m.OrgChartPage })));
-const SopsPage = lazy(() => import('../modules/sop/pages/SopsPage').then((m) => ({ default: m.SopsPage })));
-const SopDetailPage = lazy(() => import('../modules/sop/pages/SopDetailPage').then((m) => ({ default: m.SopDetailPage })));
-const VerifyDocumentPage = lazy(() => import('../modules/hrautomation/pages/VerifyDocumentPage').then((m) => ({ default: m.VerifyDocumentPage })));
+const TwoFactorPage = lazyWithRetry(() => import('../modules/auth/pages/TwoFactorPage').then((m) => ({ default: m.TwoFactorPage })));
+const ForgotPasswordPage = lazyWithRetry(() => import('../modules/auth/pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazyWithRetry(() => import('../modules/auth/pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
+const DashboardPage = lazyWithRetry(() => import('../modules/auth/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const AcceptInvitePage = lazyWithRetry(() => import('../modules/users/pages/AcceptInvitePage').then((m) => ({ default: m.AcceptInvitePage })));
+const UsersPage = lazyWithRetry(() => import('../modules/users/pages/UsersPage').then((m) => ({ default: m.UsersPage })));
+const EmployeesPage = lazyWithRetry(() => import('../modules/employees/pages/EmployeesPage').then((m) => ({ default: m.EmployeesPage })));
+const EmployeeDetailPage = lazyWithRetry(() => import('../modules/employees/pages/EmployeeDetailPage').then((m) => ({ default: m.EmployeeDetailPage })));
+const TenantSettingsPage = lazyWithRetry(() => import('../modules/tenants/pages/TenantSettingsPage').then((m) => ({ default: m.TenantSettingsPage })));
+const SessionsPage = lazyWithRetry(() => import('../modules/sessions/pages/SessionsPage').then((m) => ({ default: m.SessionsPage })));
+const AuditLogPage = lazyWithRetry(() => import('../modules/audit/pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
+const RolesPage = lazyWithRetry(() => import('../modules/rbac/pages/RolesPage').then((m) => ({ default: m.RolesPage })));
+const CompaniesPage = lazyWithRetry(() => import('../modules/tenants/pages/CompaniesPage').then((m) => ({ default: m.CompaniesPage })));
+const AttendancePage = lazyWithRetry(() => import('../modules/attendance/pages/AttendancePage').then((m) => ({ default: m.AttendancePage })));
+const RegularizationsPage = lazyWithRetry(() => import('../modules/attendance/pages/RegularizationsPage').then((m) => ({ default: m.RegularizationsPage })));
+const LeavePage = lazyWithRetry(() => import('../modules/leave/pages/LeavePage').then((m) => ({ default: m.LeavePage })));
+const LeaveApprovalsPage = lazyWithRetry(() => import('../modules/leave/pages/LeaveApprovalsPage').then((m) => ({ default: m.LeaveApprovalsPage })));
+const ProjectsPage = lazyWithRetry(() => import('../modules/projects/pages/ProjectsPage').then((m) => ({ default: m.ProjectsPage })));
+const ProjectDetailPage = lazyWithRetry(() => import('../modules/projects/pages/ProjectDetailPage').then((m) => ({ default: m.ProjectDetailPage })));
+const WorkReportsPage = lazyWithRetry(() => import('../modules/workreports/pages/WorkReportsPage').then((m) => ({ default: m.WorkReportsPage })));
+const WorkReportReviewPage = lazyWithRetry(() => import('../modules/workreports/pages/WorkReportReviewPage').then((m) => ({ default: m.WorkReportReviewPage })));
+const TimeTrackingPage = lazyWithRetry(() => import('../modules/timetracking/pages/TimeTrackingPage').then((m) => ({ default: m.TimeTrackingPage })));
+const PayrollRunsPage = lazyWithRetry(() => import('../modules/payroll/pages/PayrollRunsPage').then((m) => ({ default: m.PayrollRunsPage })));
+const PayrollRunDetailPage = lazyWithRetry(() => import('../modules/payroll/pages/PayrollRunDetailPage').then((m) => ({ default: m.PayrollRunDetailPage })));
+const MyPayslipsPage = lazyWithRetry(() => import('../modules/payroll/pages/MyPayslipsPage').then((m) => ({ default: m.MyPayslipsPage })));
+const JobPostingsPage = lazyWithRetry(() => import('../modules/recruitment/pages/JobPostingsPage').then((m) => ({ default: m.JobPostingsPage })));
+const JobPostingDetailPage = lazyWithRetry(() => import('../modules/recruitment/pages/JobPostingDetailPage').then((m) => ({ default: m.JobPostingDetailPage })));
+const LeadsPage = lazyWithRetry(() => import('../modules/crm/pages/LeadsPage').then((m) => ({ default: m.LeadsPage })));
+const FinanceDocumentsPage = lazyWithRetry(() => import('../modules/finance/pages/FinanceDocumentsPage').then((m) => ({ default: m.FinanceDocumentsPage })));
+const FinanceDocumentDetailPage = lazyWithRetry(() => import('../modules/finance/pages/FinanceDocumentDetailPage').then((m) => ({ default: m.FinanceDocumentDetailPage })));
+const ProfitLossPage = lazyWithRetry(() => import('../modules/finance/pages/ProfitLossPage').then((m) => ({ default: m.ProfitLossPage })));
+const TicketsPage = lazyWithRetry(() => import('../modules/workplace/pages/TicketsPage').then((m) => ({ default: m.TicketsPage })));
+const TicketDetailPage = lazyWithRetry(() => import('../modules/workplace/pages/TicketDetailPage').then((m) => ({ default: m.TicketDetailPage })));
+const KnowledgeBasePage = lazyWithRetry(() => import('../modules/workplace/pages/KnowledgeBasePage').then((m) => ({ default: m.KnowledgeBasePage })));
+const DocumentsPage = lazyWithRetry(() => import('../modules/workplace/pages/DocumentsPage').then((m) => ({ default: m.DocumentsPage })));
+const AssetsPage = lazyWithRetry(() => import('../modules/workplace/pages/AssetsPage').then((m) => ({ default: m.AssetsPage })));
+const TemplatesPage = lazyWithRetry(() => import('../modules/hrautomation/pages/TemplatesPage').then((m) => ({ default: m.TemplatesPage })));
+const AnnouncementsPage = lazyWithRetry(() => import('../modules/hrautomation/pages/AnnouncementsPage').then((m) => ({ default: m.AnnouncementsPage })));
+const BranchesPage = lazyWithRetry(() => import('../modules/organization/pages/BranchesPage').then((m) => ({ default: m.BranchesPage })));
+const TeamsPage = lazyWithRetry(() => import('../modules/organization/pages/TeamsPage').then((m) => ({ default: m.TeamsPage })));
+const OrgChartPage = lazyWithRetry(() => import('../modules/organization/pages/OrgChartPage').then((m) => ({ default: m.OrgChartPage })));
+const SopsPage = lazyWithRetry(() => import('../modules/sop/pages/SopsPage').then((m) => ({ default: m.SopsPage })));
+const SopDetailPage = lazyWithRetry(() => import('../modules/sop/pages/SopDetailPage').then((m) => ({ default: m.SopDetailPage })));
+const VerifyDocumentPage = lazyWithRetry(() => import('../modules/hrautomation/pages/VerifyDocumentPage').then((m) => ({ default: m.VerifyDocumentPage })));
 
 function lazyRoute(element: React.ReactNode) {
   return <Suspense fallback={<PageLoadingSkeleton />}>{element}</Suspense>;

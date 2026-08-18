@@ -90,8 +90,9 @@ Before deploying to production:
       and `GOOGLE_SENDER_EMAIL` (see `gmail-api-setup.md`) — the built-in Gmail API `EmailService`
       throws on startup-adjacent send attempts in production rather than silently dropping
       invite/reset emails if any of these are missing.
-- [ ] Set `REDIS_URL` and switch the rate limiters to a Redis-backed store before running more
-      than one API instance — the current limiters use an in-memory, per-process counter.
+- [ ] Set `REDIS_URL` before running more than one API instance — the rate limiters and the RBAC
+      permission cache both automatically switch from their in-memory, per-process store to a
+      shared Redis-backed one the moment it's configured; no code change needed, just the env var.
 - [ ] Set `DATABASE_URL` and `DIRECT_URL` on Render to the Supabase pooler connection strings —
       `prisma migrate deploy` runs automatically on every build, so schema drift shouldn't recur.
 - [ ] Confirm `DATABASE_URL` uses a least-privilege Postgres role, and TLS if the DB isn't on a private network.

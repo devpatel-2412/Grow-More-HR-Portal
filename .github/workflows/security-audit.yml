@@ -1,0 +1,38 @@
+name: Security audit
+
+# Read-only dependency vulnerability check — never auto-installs/auto-fixes anything, just
+# surfaces findings for a human to review. Runs alongside whatever else CI already does, doesn't
+# replace or modify any existing workflow.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Catches a CVE disclosed against an already-installed version, not just ones introduced by a
+    # new PR — weekly is enough for a dependency audit; catching it a few days late here doesn't
+    # move the needle, since Dependabot (see dependabot.yml) is already watching continuously too.
+    - cron: "0 6 * * 1"
+
+jobs:
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Non-blocking for now: as of this workflow's introduction, `npm audit --audit-level=high`
+      # reports one known finding (deepmerge-ts, pulled in transitively by the Prisma CLI —
+      # devDependency only, never present in the deployed server process, so not attacker-
+      # reachable in production). `npm audit --omit=dev` does not reliably exclude it in this
+      # npm version's audit-report behavior, so rather than build a fragile prod/dev split around
+      # that, this stays informational until that one item is deliberately resolved (a compatible
+      # Prisma release, or an evaluated `npm audit fix --force`) — see
+      # docs/security-hardening-decisions.md. Flip continue-on-error to false once `npm audit
+      # --audit-level=high` is clean, so this becomes a real gate rather than training everyone to
+      # ignore a permanently-red check.
+      - name: npm audit (high/critical)
+        continue-on-error: true
+        run: npm audit --audit-level=high

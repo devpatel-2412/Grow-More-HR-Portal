@@ -1,0 +1,14 @@
+version: 2
+updates:
+  # Weekly PRs for outdated/vulnerable npm dependencies — grouped so a routine update doesn't
+  # spam a dozen separate PRs, but a flagged CVE still gets its own visible entry.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
