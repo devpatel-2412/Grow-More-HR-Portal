@@ -65,7 +65,17 @@ export function AppShell() {
   }, [collapsed]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--background)]">
+    // min-h-dvh (not h-screen + overflow-hidden): the old rigid 100vh clamp on this wrapper meant
+    // any content that ended up even slightly taller than the viewport — a subpixel rounding
+    // difference, a mobile browser's address bar changing the *actual* visible height after
+    // 100vh was computed, anything — pushed the outer page itself into a scroll state the
+    // overflow-hidden here couldn't actually prevent (overflow-hidden only clips this element's
+    // own children, not itself), revealing blank space below the shell with nothing accounting
+    // for it. min-h-dvh lets the shell grow to fit real content instead of fighting it; the
+    // common case (content fits, <main>'s own overflow-y-auto below handles scrolling) is
+    // pixel-identical to before, since flex-1 on <main> still resolves against the actual
+    // rendered height either way.
+    <div className="flex min-h-dvh bg-[var(--background)]">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-[var(--primary)] focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
@@ -92,8 +102,15 @@ export function AppShell() {
       )}
 
       <aside
+        // Off-canvas below lg: fixed + h-dvh (dvh, not vh, so the drawer's own height tracks the
+        // *actual* visible viewport on mobile browsers whose address bar shows/hides). At lg+:
+        // sticky instead of the old static — static only worked because the shell above was
+        // force-clamped to exactly 100vh; now that the shell can grow to fit real content, a
+        // static sidebar would simply scroll away past one viewport's worth of page scroll.
+        // sticky (with its own explicit lg:h-screen) keeps it pinned through that, and is a
+        // pure no-op in the unchanged common case where <main> absorbs all the scrolling itself.
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex h-screen w-64 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--card)] transition-[width,transform] duration-200 ease-in-out lg:static lg:z-20 lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex h-dvh w-64 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--card)] transition-[width,transform] duration-200 ease-in-out lg:sticky lg:top-0 lg:z-20 lg:h-screen lg:translate-x-0',
           collapsed && 'lg:w-19',
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full',
         )}
