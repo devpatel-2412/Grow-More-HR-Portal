@@ -93,22 +93,3 @@ export interface AssetRecord {
   assignedAt: string | null;
   createdAt: string;
 }
-
-// Visitors
-export type VisitorStatus = 'EXPECTED' | 'CHECKED_IN' | 'CHECKED_OUT';
-
-export interface VisitorRecord {
-  id: string;
-  tenantId: string;
-  name: string;
-  email: string;
-  phone: string;
-  hostEmployeeId: string;
-  purpose: string;
-  expectedAt: string;
-  qrPassCode: string;
-  checkInTime: string | null;
-  checkOutTime: string | null;
-  status: VisitorStatus;
-  createdAt: string;
-}

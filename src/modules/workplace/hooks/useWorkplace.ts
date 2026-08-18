@@ -1,12 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ticketApi, kbApi, documentApi, assetApi, visitorApi } from '../api/workplace.api';
+import { ticketApi, kbApi, documentApi, assetApi } from '../api/workplace.api';
 import type { UploadDocumentPayload } from '../api/workplace.api';
 import type {
   TicketCategory,
   TicketStatus,
   AssetType,
   AssetStatus,
-  VisitorStatus,
 } from '../types/workplace.types';
 
 // ---------------------------------------------------------------- tickets
@@ -195,40 +194,5 @@ export function useChangeAssetStatus() {
     mutationFn: ({ id, status }: { id: string; status: 'AVAILABLE' | 'UNDER_REPAIR' | 'RETIRED' }) =>
       assetApi.changeStatus(id, status),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workplace', 'assets'] }),
-  });
-}
-
-// ---------------------------------------------------------------- visitors
-
-export function useVisitors(query: { page: number; limit: number; status?: VisitorStatus }) {
-  return useQuery({
-    queryKey: ['workplace', 'visitors', query],
-    queryFn: () => visitorApi.list(query),
-    placeholderData: (previous) => previous,
-  });
-}
-
-export function useRegisterVisitor() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: { name: string; email: string; phone: string; hostEmployeeId: string; purpose: string; expectedAt: string }) =>
-      visitorApi.register(payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workplace', 'visitors'] }),
-  });
-}
-
-export function useCheckInVisitor() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => visitorApi.checkIn(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workplace', 'visitors'] }),
-  });
-}
-
-export function useCheckOutVisitor() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => visitorApi.checkOut(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workplace', 'visitors'] }),
   });
 }

@@ -436,67 +436,6 @@ describe('Assets', () => {
   });
 });
 
-describe('Visitors', () => {
-  it('registers, checks in, and checks out a visitor in order', async () => {
-    const { res: signupRes, domain } = await signupTenant();
-    const adminToken = signupRes.body.data.accessToken;
-    const me = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${adminToken}`);
-    const host = await createEmployeeAccount(me.body.data.tenant.id, domain);
-
-    const registerRes = await request(app)
-      .post('/api/v1/visitors')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({
-        name: 'Vic Visitor',
-        email: 'vic@example.com',
-        phone: '555-0100',
-        hostEmployeeId: host.employeeId,
-        purpose: 'Interview',
-        expectedAt: '2026-08-01T10:00:00.000Z',
-      });
-    expect(registerRes.status).toBe(201);
-    expect(registerRes.body.data.status).toBe('EXPECTED');
-    const visitorId = registerRes.body.data.id;
-
-    const checkOutTooSoonRes = await request(app)
-      .post(`/api/v1/visitors/${visitorId}/check-out`)
-      .set('Authorization', `Bearer ${adminToken}`);
-    expect(checkOutTooSoonRes.status).toBe(409);
-
-    const checkInRes = await request(app)
-      .post(`/api/v1/visitors/${visitorId}/check-in`)
-      .set('Authorization', `Bearer ${adminToken}`);
-    expect(checkInRes.status).toBe(200);
-    expect(checkInRes.body.data.status).toBe('CHECKED_IN');
-
-    const checkOutRes = await request(app)
-      .post(`/api/v1/visitors/${visitorId}/check-out`)
-      .set('Authorization', `Bearer ${adminToken}`);
-    expect(checkOutRes.status).toBe(200);
-    expect(checkOutRes.body.data.status).toBe('CHECKED_OUT');
-  });
-
-  it('blocks a plain employee from the front-desk endpoints', async () => {
-    const { res: signupRes, domain } = await signupTenant();
-    const adminToken = signupRes.body.data.accessToken;
-    const me = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${adminToken}`);
-    const worker = await createEmployeeAccount(me.body.data.tenant.id, domain);
-
-    const res = await request(app)
-      .post('/api/v1/visitors')
-      .set('Authorization', `Bearer ${worker.token}`)
-      .send({
-        name: 'Vic',
-        email: 'vic2@example.com',
-        phone: '555',
-        hostEmployeeId: worker.employeeId,
-        purpose: 'x',
-        expectedAt: '2026-08-01T10:00:00.000Z',
-      });
-    expect(res.status).toBe(403);
-  });
-});
-
 describe('Room bookings', () => {
   it('lets any employee book a free room and blocks an overlapping booking', async () => {
     const { res: signupRes, domain } = await signupTenant();
