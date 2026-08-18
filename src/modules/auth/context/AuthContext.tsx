@@ -1,9 +1,9 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
 import { setAccessToken, registerAuthExpiredHandler } from '../../../shared/lib/api-client';
 import { broadcastLogout, subscribeToLogout } from '../../../shared/lib/session-broadcast';
-import type { AuthUser, EmployeeProfile, Tenant } from '../types/auth.types';
+import type { AuthUser, EmployeeProfile, MeResponse, Tenant } from '../types/auth.types';
 
 // Removes every cached query except ['auth', 'me']. Plain queryClient.clear() would drop that
 // entry too, and since the auth/me observer stays mounted with enabled:true whenever there's no
@@ -21,6 +21,11 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   setSession: (accessToken: string, user: AuthUser) => void;
   logout: () => Promise<void>;
+  /** Patches fields on the caller's own user object (e.g. after an avatar upload) so every
+   * consumer of useAuth() re-renders with the new value immediately — no refetch, no page reload.
+   * Updates whichever of the two possible sources (`sessionUser` state, or the ['auth','me'] query
+   * cache) is currently populated; `user` itself is always derived from one of those, never both. */
+  updateUser: (patch: Partial<AuthUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -59,12 +64,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, [queryClient]);
 
-  function setSession(accessToken: string, user: AuthUser) {
+  // Stable function identities + a memoized value object below — AuthProvider wraps the entire
+  // app, and useHasPermission (used on nearly every page) reads this context, so a value object
+  // recreated on every AuthProvider render was forcing a re-render cascade across most of the app
+  // on every unrelated state change anywhere above it, not just on a real auth-state change.
+  const setSession = useCallback((accessToken: string, user: AuthUser) => {
     setAccessToken(accessToken);
     setSessionUser(user);
-  }
+  }, []);
 
-  async function logout() {
+  const updateUser = useCallback(
+    (patch: Partial<AuthUser>) => {
+      setSessionUser((prev) => (prev ? { ...prev, ...patch } : prev));
+      queryClient.setQueryData<MeResponse | null>(['auth', 'me'], (old) => (old ? { ...old, user: { ...old.user, ...patch } } : old));
+    },
+    [queryClient],
+  );
+
+  const logout = useCallback(async () => {
     try {
       await authApi.logout();
     } finally {
@@ -74,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData(['auth', 'me'], null);
       broadcastLogout();
     }
-  }
+  }, [queryClient]);
 
   const user = sessionUser ?? meQuery.data?.user ?? null;
   const profile = meQuery.data?.profile ?? null;
@@ -82,11 +99,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isLoading = !sessionUser && meQuery.isLoading;
   const isAuthenticated = !!sessionUser || !!meQuery.data;
 
-  return (
-    <AuthContext.Provider value={{ user, profile, tenant, isLoading, isAuthenticated, setSession, logout }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ user, profile, tenant, isLoading, isAuthenticated, setSession, logout, updateUser }),
+    [user, profile, tenant, isLoading, isAuthenticated, setSession, logout, updateUser],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {

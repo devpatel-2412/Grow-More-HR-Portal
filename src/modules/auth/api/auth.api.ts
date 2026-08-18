@@ -18,4 +18,10 @@ export const authApi = {
   enableTwoFactor: (code: string) => api.post<{ recoveryCodes: string[] }>('/auth/2fa/enable', { code }),
   disableTwoFactor: (password: string, code: string) => api.post<void>('/auth/2fa/disable', { password, code }),
   loginHistory: (query: { page: number; limit: number }) => api.getPaginated<LoginHistoryEntry>('/auth/login-history', query),
+  uploadAvatar: (file: File) => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    return api.post<{ avatarUrl: string | null }>('/auth/me/avatar', formData);
+  },
+  removeAvatar: () => api.delete<void>('/auth/me/avatar'),
 };

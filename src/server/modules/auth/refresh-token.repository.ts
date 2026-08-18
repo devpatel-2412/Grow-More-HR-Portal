@@ -59,7 +59,9 @@ export class RefreshTokenRepository {
   findActiveByTenant(tenantId: string) {
     return prisma.refreshToken.findMany({
       where: { revokedAt: null, expiresAt: { gt: new Date() }, user: { tenantId } },
-      include: { user: { select: { id: true, email: true, role: true, profile: { select: { firstName: true, lastName: true } } } } },
+      include: {
+        user: { select: { id: true, email: true, role: true, avatarStorageKey: true, profile: { select: { firstName: true, lastName: true } } } },
+      },
       orderBy: { lastUsedAt: 'desc' },
     });
   }

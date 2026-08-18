@@ -5,6 +5,13 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Grow More</title>
+    <!-- Moved out of a CSS @import (src/index.css) — an @import isn't discovered until the
+         stylesheet that contains it has itself been fetched and parsed, so the font request used
+         to start a full round trip late. A <link> here is discovered immediately during initial
+         HTML parsing, and preconnect warms up the cross-origin connection in parallel with it. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <!-- Paints the correct brand background before any bundled CSS/JS loads, so the preloader's
          first frame never flashes white (or the wrong theme) on a cold load. -->
     <style>

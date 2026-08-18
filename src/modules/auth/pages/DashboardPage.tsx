@@ -10,6 +10,7 @@ import { Button } from '../../../shared/components/ui/button';
 import { TwoFactorSettings } from '../components/TwoFactorSettings';
 import { ChangePasswordForm } from '../components/ChangePasswordForm';
 import { LoginHistoryPanel } from '../components/LoginHistoryPanel';
+import { ProfilePictureUpload } from '../components/ProfilePictureUpload';
 import { PunchWidget } from '../../attendance/components/PunchWidget';
 import { AdminKpiDashboard } from '../../dashboard/components/AdminKpiDashboard';
 
@@ -75,6 +76,11 @@ export function DashboardPage() {
 
         <Card>
           <h3 className="mb-4 text-sm font-bold text-[var(--foreground)]">Account</h3>
+
+          <div className="mb-4 border-b border-[var(--border)] pb-4">
+            <ProfilePictureUpload />
+          </div>
+
           <dl className="space-y-2 text-xs">
             <div className="flex justify-between">
               <dt className="text-[var(--muted-foreground)]">Email</dt>

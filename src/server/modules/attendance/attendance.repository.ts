@@ -45,8 +45,13 @@ export class AttendanceRepository {
       employeeId: filter.employeeId,
       date: filter.from || filter.to ? { gte: filter.from, lte: filter.to } : undefined,
     };
+    // No `include: { breaks: true }` here (unlike the single-record methods above) — the paginated
+    // list/history view (AttendanceHistoryTable) only ever renders date/checkIn/checkOut/lateMinutes/
+    // overBreakMinutes/status, all of which are stored columns on Attendance itself, computed once at
+    // check-in/check-out time (see attendance.service.ts). The full per-break join was dead weight on
+    // every page of every list fetch.
     const [rows, total] = await Promise.all([
-      prisma.attendance.findMany({ where, orderBy, skip, take, include: { breaks: true } }),
+      prisma.attendance.findMany({ where, orderBy, skip, take }),
       prisma.attendance.count({ where }),
     ]);
     return { rows, total };

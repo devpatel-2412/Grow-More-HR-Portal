@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* The Inter font itself is now loaded via <link rel="stylesheet"> in index.html (see the comment
+   there) — this file only needs Tailwind. */
 @import "tailwindcss";
 
 @theme {
@@ -106,6 +107,17 @@
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.24);
     --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.36);
   }
+}
+
+/* index.html's pre-mount inline style paints html/body from the OS's prefers-color-scheme
+   (needed before this stylesheet loads, to avoid a flash). That guess can be wrong once React
+   mounts and applies the user's actual stored/toggled theme to data-theme — and since that
+   inline style gives `html` its own explicit background, the browser's usual "propagate body's
+   background to the whole canvas" behavior is suppressed, leaving html's stale color visible
+   wherever body's box doesn't exactly cover it. Keeping html's background on the same token
+   closes that gap for every theme state (default, explicit light/dark, OS fallback). */
+html {
+  background-color: var(--background);
 }
 
 body {

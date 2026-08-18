@@ -1,0 +1,6 @@
+-- AlterEnum
+ALTER TYPE "AuditAction" ADD VALUE 'USER_AVATAR_UPDATED';
+ALTER TYPE "AuditAction" ADD VALUE 'USER_AVATAR_REMOVED';
+
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN     "avatarStorageKey" TEXT;

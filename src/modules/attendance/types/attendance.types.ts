@@ -19,7 +19,9 @@ export interface AttendanceRecord {
   requiredLogoutTime: string | null;
   gpsCoordinates: string | null;
   deviceType: string | null;
-  breaks: AttendanceBreakEntry[];
+  /** Present on a single-record fetch (e.g. today's attendance); omitted from the paginated list
+   * response, which never needs per-break detail — see attendance.repository.ts's findManyByTenant. */
+  breaks?: AttendanceBreakEntry[];
 }
 
 export interface TodayAttendance extends AttendanceRecord {

@@ -11,7 +11,9 @@ import { twoFactorService } from '../two-factor/two-factor.service.js';
 import { emailService } from '../../shared/email/email.service.js';
 import { passwordResetEmailTemplate } from '../../shared/email/email.templates.js';
 import { env } from '../../shared/config/env.js';
+import { logger } from '../../shared/logger.js';
 import { resolveEffectivePermissions } from '../../shared/permissions/permission-resolver.service.js';
+import { resolveAvatarUrl } from '../../shared/utils/avatar-url.util.js';
 import type { RequestMeta } from './auth.types.js';
 import type { UserRole } from '@prisma/client';
 import type { z } from 'zod';
@@ -32,9 +34,19 @@ const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 // Attaches the caller's own effective permission set — see permission-resolver.service.ts — so the
 // frontend can gate UI (e.g. hiding "Add Employee") without a round trip. The resolver is already
 // 60s-cached, so this costs a DB hit only on a cache miss.
-async function toPublicUser(user: { id: string; email: string; role: UserRole; status: string; tenantId: string }) {
-  const permissions = await resolveEffectivePermissions(user.id, user.tenantId, user.role);
-  return { id: user.id, email: user.email, role: user.role, status: user.status, permissions: [...permissions] };
+async function toPublicUser(user: {
+  id: string;
+  email: string;
+  role: UserRole;
+  status: string;
+  tenantId: string;
+  avatarStorageKey?: string | null;
+}) {
+  const [permissions, avatarUrl] = await Promise.all([
+    resolveEffectivePermissions(user.id, user.tenantId, user.role),
+    resolveAvatarUrl(user.avatarStorageKey),
+  ]);
+  return { id: user.id, email: user.email, role: user.role, status: user.status, permissions: [...permissions], avatarUrl };
 }
 
 export class AuthService {
@@ -147,9 +159,24 @@ export class AuthService {
   async refresh(rawRefreshToken: string, meta: RequestMeta) {
     const tokenHash = sha256(rawRefreshToken);
     const existing = await this.refreshTokenRepository.findByTokenHash(tokenHash);
-    if (!existing) throw new UnauthorizedError('Invalid session. Please log in again.');
+    if (!existing) {
+      // Temporary diagnostic — see auth.controller.ts's refresh() for the matching cookiePresent
+      // log. Never logs the token/hash itself, only that no DB row matched it.
+      logger.warn({ msg: '[AUTH REFRESH]', sessionFound: false, reason: 'no_matching_session_for_cookie' });
+      throw new UnauthorizedError('Invalid session. Please log in again.');
+    }
 
     if (existing.revokedAt) {
+      logger.warn({
+        msg: '[AUTH REFRESH]',
+        sessionFound: true,
+        sessionRevoked: true,
+        reuseDetected: true,
+        tokenId: existing.id,
+        familyId: existing.familyId,
+        previousRevokedReason: existing.revokedReason,
+        tokenAgeMs: existing.createdAt ? Date.now() - existing.createdAt.getTime() : null,
+      });
       // Token was already rotated (or explicitly revoked) — presenting it again means theft/reuse.
       // Nuke the whole family so a stolen token can't keep producing new sessions.
       await this.refreshTokenRepository.revokeFamily(existing.familyId, 'reuse_detected');
@@ -164,17 +191,22 @@ export class AuthService {
     }
 
     if (existing.expiresAt < new Date()) {
+      logger.warn({ msg: '[AUTH REFRESH]', sessionFound: true, sessionRevoked: false, sessionExpired: true, tokenId: existing.id });
       throw new UnauthorizedError('Session expired. Please log in again.');
     }
 
     const user = await this.userRepository.findById(existing.userId);
-    if (!user || user.status !== 'ACTIVE') throw new UnauthorizedError('Account is not active');
+    if (!user || user.status !== 'ACTIVE') {
+      logger.warn({ msg: '[AUTH REFRESH]', sessionFound: true, reason: 'user_missing_or_inactive', tokenId: existing.id });
+      throw new UnauthorizedError('Account is not active');
+    }
 
     const tenant = await this.tenantRepository.findById(user.tenantId);
 
     // A tenant-wide "force logout all" bumps forceLogoutAllAt — any token issued before that
     // instant is treated as invalid on its next use, without having to touch every row up front.
     if (tenant?.forceLogoutAllAt && existing.createdAt < tenant.forceLogoutAllAt) {
+      logger.warn({ msg: '[AUTH REFRESH]', sessionFound: true, reason: 'force_logout_all', tokenId: existing.id });
       await this.refreshTokenRepository.revokeFamily(existing.familyId, 'force_logout_all');
       throw new UnauthorizedError('Your session was ended by an administrator. Please log in again.');
     }
@@ -186,6 +218,14 @@ export class AuthService {
     if (tenant?.sessionTimeoutMinutes != null) {
       const idleMs = Date.now() - existing.lastUsedAt.getTime();
       if (idleMs > tenant.sessionTimeoutMinutes * 60_000) {
+        logger.warn({
+          msg: '[AUTH REFRESH]',
+          sessionFound: true,
+          reason: 'inactivity_timeout',
+          tokenId: existing.id,
+          idleMs,
+          sessionTimeoutMinutes: tenant.sessionTimeoutMinutes,
+        });
         await this.refreshTokenRepository.revokeFamily(existing.familyId, 'inactivity_timeout');
         await auditLogService.record({
           tenantId: user.tenantId,
@@ -198,6 +238,8 @@ export class AuthService {
         throw new UnauthorizedError('Session expired due to inactivity. Please log in again.');
       }
     }
+
+    logger.info({ msg: '[AUTH REFRESH]', sessionFound: true, sessionRevoked: false, sessionExpired: false, reason: 'ok', tokenId: existing.id });
 
     const rawNewToken = generateOpaqueToken();
     const newTokenHash = sha256(rawNewToken);

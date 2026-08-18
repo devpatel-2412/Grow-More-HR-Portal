@@ -4,6 +4,7 @@ import { requirePermission } from '../../shared/middleware/rbac.middleware.js';
 import { validate } from '../../shared/middleware/validate.middleware.js';
 import { PERMISSIONS } from '../../shared/permissions/permissions.js';
 import { asyncHandler } from '../../shared/utils/async-handler.js';
+import { avatarUploadSingle } from '../../shared/middleware/avatar-upload.middleware.js';
 import {
   inviteUserSchema,
   acceptInviteSchema,
@@ -25,6 +26,8 @@ import {
   listInvites,
   resendInvite,
   revokeInvite,
+  uploadUserAvatar,
+  removeUserAvatar,
 } from './user.controller.js';
 
 export const userRouter = Router();
@@ -91,4 +94,20 @@ userRouter.patch(
   requirePermission(PERMISSIONS.USER_STATUS_UPDATE),
   validate({ params: userIdParamSchema, body: updateUserStatusSchema }),
   asyncHandler(updateUserStatus),
+);
+
+// Admin-manages-another-user's-avatar — reuses USER_STATUS_UPDATE (ADMIN/SUPER_ADMIN only, same as
+// the role/status routes above) rather than introducing a new permission for one narrow action.
+userRouter.post(
+  '/:id/avatar',
+  requirePermission(PERMISSIONS.USER_STATUS_UPDATE),
+  validate({ params: userIdParamSchema }),
+  avatarUploadSingle,
+  asyncHandler(uploadUserAvatar),
+);
+userRouter.delete(
+  '/:id/avatar',
+  requirePermission(PERMISSIONS.USER_STATUS_UPDATE),
+  validate({ params: userIdParamSchema }),
+  asyncHandler(removeUserAvatar),
 );

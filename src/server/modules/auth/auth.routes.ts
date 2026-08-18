@@ -3,6 +3,7 @@ import { authenticateAccessToken } from '../../shared/middleware/auth.middleware
 import { validate } from '../../shared/middleware/validate.middleware.js';
 import { asyncHandler } from '../../shared/utils/async-handler.js';
 import { loginLimiter, refreshLimiter, passwordResetLimiter, twoFaVerifyLimiter } from '../../shared/middleware/rate-limit.middleware.js';
+import { avatarUploadSingle } from '../../shared/middleware/avatar-upload.middleware.js';
 import {
   loginSchema,
   twoFactorVerifySchema,
@@ -27,6 +28,8 @@ import {
   beginTwoFactorEnrollment,
   enableTwoFactor,
   disableTwoFactor,
+  uploadMyAvatar,
+  removeMyAvatar,
 } from './auth.controller.js';
 
 export const authRouter = Router();
@@ -60,6 +63,9 @@ authRouter.post(
   validate({ body: passwordChangeSchema }),
   asyncHandler(changePassword),
 );
+
+authRouter.post('/me/avatar', authenticateAccessToken, avatarUploadSingle, asyncHandler(uploadMyAvatar));
+authRouter.delete('/me/avatar', authenticateAccessToken, asyncHandler(removeMyAvatar));
 
 authRouter.post('/2fa/enroll', authenticateAccessToken, asyncHandler(beginTwoFactorEnrollment));
 authRouter.post(

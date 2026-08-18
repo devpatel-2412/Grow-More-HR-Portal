@@ -139,9 +139,23 @@ export class PayrollService {
       unpaidDaysByEmployee.set(leave.employeeId, (unpaidDaysByEmployee.get(leave.employeeId) ?? 0) + days);
     }
 
+    // One tenant-wide query instead of one findEffective() round trip per employee (the previous
+    // form was a genuine N+1 — a 200-employee tenant meant 200 sequential DB calls just to build
+    // this list). findEffectiveForTenant returns every structure effective on/before `end` across
+    // the whole tenant, sorted effectiveFrom desc, so the first row seen per employeeId below is
+    // that employee's currently-effective structure — same result as calling findEffective() per
+    // employee, since a global sort by one field preserves each employee's own relative order too.
+    const allEffectiveStructures = await this.structureRepository.findEffectiveForTenant(tenantId, end);
+    const structureByEmployeeId = new Map<string, (typeof allEffectiveStructures)[number]>();
+    for (const structure of allEffectiveStructures) {
+      if (!structureByEmployeeId.has(structure.employeeId)) {
+        structureByEmployeeId.set(structure.employeeId, structure);
+      }
+    }
+
     const items = [];
     for (const employee of employees) {
-      const structure = await this.structureRepository.findEffective(employee.id, end);
+      const structure = structureByEmployeeId.get(employee.id);
       if (!structure) continue;
 
       const breakdown = calculatePayroll(

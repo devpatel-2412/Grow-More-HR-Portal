@@ -24,6 +24,10 @@ localStorageRouter.get('/:key', async (req, res) => {
   try {
     const stats = await stat(fullPath);
     res.setHeader('Content-Length', stats.size);
+    // The signature+expiry already make this URL unguessable and time-limited — letting the
+    // browser cache the response for that same window (instead of re-fetching identical bytes on
+    // every occurrence of the same file across a session) is safe, not a new exposure.
+    res.setHeader('Cache-Control', 'private, max-age=900');
     createReadStream(fullPath).pipe(res);
   } catch {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found' } });

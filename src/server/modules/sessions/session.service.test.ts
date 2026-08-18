@@ -41,6 +41,7 @@ describe('SessionService.listActiveSessions', () => {
         userId: 'user-1',
         userName: 'Ada Admin',
         userEmail: 'ada@acme.com',
+        avatarUrl: null,
         role: 'ADMIN',
         loginTime: new Date('2026-08-01T10:00:00Z'),
         lastActivity: new Date('2026-08-05T10:00:00Z'),
