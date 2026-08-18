@@ -66,7 +66,11 @@ export function DashboardPage() {
 
       {showAdminDashboard && <AdminKpiDashboard />}
 
-      <div className={showAdminDashboard ? 'grid grid-cols-1 gap-6 md:grid-cols-3' : 'grid grid-cols-1 gap-6 md:grid-cols-2'}>
+      {/* items-start: the "Account" card (avatar + fields + change-password + sessions +
+          recent sign-ins) is naturally much taller than "Today"/"Two-factor authentication" —
+          without this, CSS Grid's default align-items:stretch forces every card in the row to
+          match the tallest one, leaving the shorter cards mostly empty space. */}
+      <div className={showAdminDashboard ? 'grid grid-cols-1 items-start gap-6 md:grid-cols-3' : 'grid grid-cols-1 items-start gap-6 md:grid-cols-2'}>
         {profile && (
           <Card>
             <h3 className="mb-4 text-sm font-bold text-[var(--foreground)]">Today</h3>
