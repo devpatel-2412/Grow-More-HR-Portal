@@ -1,10 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import preloaderVideo from '../../../assets/Enhance_the_video_quality_k.mp4';
+import preloaderVideoDesktop from '../../../assets/Enhance_the_video_quality_k.mp4';
+import preloaderVideoMobile from '../../../assets/small-screen-loader.mp4';
 import { cn } from '../../utils/cn';
 
 const SESSION_KEY = 'grow-more-preloader-shown';
 const FADE_MS = 450;
 const MAX_WAIT_MS = 8000;
+// Same 768px cutoff Tailwind's `md` breakpoint uses elsewhere in the app (e.g. the login page's
+// own banner panel) to split "mobile" from "tablet/desktop" — kept consistent so the preloader
+// switches variants at the same viewport width the rest of the UI already treats as the boundary.
+const DESKTOP_MEDIA_QUERY = '(min-width: 768px)';
+
+function getPreloaderVideoSrc(): string {
+  if (typeof window === 'undefined') return preloaderVideoDesktop;
+  return window.matchMedia(DESKTOP_MEDIA_QUERY).matches ? preloaderVideoDesktop : preloaderVideoMobile;
+}
 
 function shouldShow(): boolean {
   if (typeof window === 'undefined') return false;
@@ -20,12 +30,13 @@ function shouldShow(): boolean {
 
 /**
  * One-time, full-screen brand video splash — shown once per browser session (sessionStorage-gated)
- * and skipped entirely under prefers-reduced-motion. Overlays the app rather than gating its mount,
- * so the router/providers underneath load in parallel and are ready the moment the video ends.
+ * and skipped entirely under prefers-reduced-motion. Plays a dedicated small-screen variant below
+ * the 768px breakpoint and the desktop/tablet variant above it. Overlays the app rather than
+ * gating its mount, so the router/providers underneath load in parallel and are ready the moment
+ * the video ends.
  */
 export function Preloader() {
   const [mounted, setMounted] = useState(shouldShow);
-  const [visible, setVisible] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -39,13 +50,9 @@ export function Preloader() {
     const video = videoRef.current;
     if (!video) return;
     video.setAttribute('fetchpriority', 'low');
-    video.src = preloaderVideo;
-  }, [mounted]);
-
-  useEffect(() => {
-    if (!mounted) return;
-    const raf = requestAnimationFrame(() => setVisible(true));
-    return () => cancelAnimationFrame(raf);
+    // Resolved once, at load time — the preloader plays once through on initial load, so there's
+    // no case where the viewport changes mid-playback that would need a mid-play source swap.
+    video.src = getPreloaderVideoSrc();
   }, [mounted]);
 
   useEffect(() => {
@@ -74,11 +81,15 @@ export function Preloader() {
   if (!mounted) return null;
 
   return (
+    // Opaque from the very first paint — no mount-time fade-in. A fade-in would mean opacity
+    // starts at 0 and ramps up over FADE_MS, and during that ramp the page underneath (e.g. the
+    // login form) is visible through the semi-transparent overlay. Only `leaving` animates, which
+    // fades the overlay OUT once the video has actually finished, revealing the page beneath it.
     <div
       role="presentation"
       aria-hidden="true"
       className={cn('fixed inset-0 z-[9999] flex items-center justify-center bg-[var(--background)] transition-opacity ease-out')}
-      style={{ transitionDuration: `${FADE_MS}ms`, opacity: visible && !leaving ? 1 : 0 }}
+      style={{ transitionDuration: `${FADE_MS}ms`, opacity: leaving ? 0 : 1 }}
     >
       {/* `src` and `fetchpriority` are applied imperatively above (see the useLayoutEffect) —
           not as JSX props — specifically so fetchpriority is guaranteed to be set before src
