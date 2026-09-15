@@ -3,8 +3,20 @@ import path from 'node:path';
 import type { Request, Response, NextFunction } from 'express';
 import { BadRequestError } from '../errors/app-error.js';
 
-const ALLOWED_AVATAR_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const ALLOWED_AVATAR_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+const ALLOWED_AVATAR_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'image/heic-sequence',
+  'image/heif-sequence',
+  // iOS Safari and several Android browsers frequently send a HEIC camera-roll file with no
+  // usable declared type at all (or this generic fallback) — the extension check right below
+  // still has to agree, and processAvatarImage's content-based sniff is the real gate either way.
+  'application/octet-stream',
+]);
+const ALLOWED_AVATAR_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']);
 export const MAX_AVATAR_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
 // Separate from the generic document-upload multer instance (upload.middleware.ts) — that one
@@ -18,7 +30,7 @@ const avatarUpload = multer({
   fileFilter(_req, file, callback) {
     const ext = path.extname(file.originalname).toLowerCase();
     if (!ALLOWED_AVATAR_MIME_TYPES.has(file.mimetype) || !ALLOWED_AVATAR_EXTENSIONS.has(ext)) {
-      callback(new BadRequestError('Only JPG, PNG, and WEBP images are allowed.'));
+      callback(new BadRequestError('Only JPG, PNG, WEBP, HEIC, and HEIF images are allowed.'));
       return;
     }
     callback(null, true);

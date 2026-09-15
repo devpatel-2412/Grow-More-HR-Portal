@@ -49,10 +49,20 @@ describe('processAvatarImage', () => {
 
   it('rejects a real image encoded in a disallowed format even if it decodes cleanly (e.g. TIFF, GIF)', async () => {
     const gifBuffer = await sharp({ create: { width: 100, height: 100, channels: 3, background: 'red' } }).gif().toBuffer();
-    await expect(processAvatarImage(gifBuffer)).rejects.toThrow(/only jpg, png, and webp/i);
+    await expect(processAvatarImage(gifBuffer)).rejects.toThrow(/only jpg, png, webp, heic, and heif/i);
   });
 
   it('rejects an empty buffer', async () => {
     await expect(processAvatarImage(Buffer.alloc(0))).rejects.toThrow(BadRequestError);
+  });
+
+  it('rejects a file whose header is valid but whose pixel data is truncated, as a 400 instead of crashing', async () => {
+    // metadata() only reads the header and succeeds on this; the full decode during the
+    // resize/encode pipeline is what actually fails — this is the exact shape of input (a
+    // partially-uploaded or corrupt real-world photo) that used to escape as an unhandled 500.
+    const full = await makeImage('jpeg', 800, 600);
+    const truncated = full.subarray(0, Math.floor(full.length * 0.5));
+    await expect(processAvatarImage(truncated)).rejects.toThrow(BadRequestError);
+    await expect(processAvatarImage(truncated)).rejects.toThrow(/could not be processed/i);
   });
 });

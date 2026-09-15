@@ -2,7 +2,11 @@ import sharp, { type Metadata } from 'sharp';
 import { BadRequestError } from '../errors/app-error.js';
 
 export const AVATAR_OUTPUT_SIZE = 512;
-const ALLOWED_DECODED_FORMATS = new Set(['jpeg', 'png', 'webp']);
+// sharp/libvips reports both .heic and .heif containers as 'heif' regardless of the original
+// extension — that's the iPhone camera/Photos default format, decoded here via libheif (no
+// separate heic-convert dependency needed) and always re-encoded to webp below, so the browser
+// never has to render a HEIC/HEIF file directly.
+const ALLOWED_DECODED_FORMATS = new Set(['jpeg', 'png', 'webp', 'heif']);
 // Guards against a small-but-decompresses-huge input (a "pixel flood") eating memory/CPU during
 // resize — well above any real camera/phone photo, far below what a crafted file could claim.
 const MAX_INPUT_PIXELS = 40_000_000;
@@ -35,7 +39,7 @@ export async function processAvatarImage(buffer: Buffer): Promise<ProcessedAvata
   }
 
   if (!metadata.format || !ALLOWED_DECODED_FORMATS.has(metadata.format)) {
-    throw new BadRequestError('Only JPG, PNG, and WEBP images are allowed.');
+    throw new BadRequestError('Only JPG, PNG, WEBP, HEIC, and HEIF images are allowed.');
   }
   if (!metadata.width || !metadata.height) {
     throw new BadRequestError('The uploaded file is not a valid image.');
@@ -44,11 +48,21 @@ export async function processAvatarImage(buffer: Buffer): Promise<ProcessedAvata
     throw new BadRequestError('Image dimensions are too large.');
   }
 
-  const outputBuffer = await sharp(buffer)
-    .rotate() // auto-orient from EXIF before cropping, then the pipeline below strips EXIF on output
-    .resize(AVATAR_OUTPUT_SIZE, AVATAR_OUTPUT_SIZE, { fit: 'cover', position: 'attention' })
-    .webp({ quality: 85 })
-    .toBuffer();
+  // `metadata()` only reads the header — it can succeed on a file that is truncated or otherwise
+  // corrupt partway through its actual pixel data (this is the root cause of the 500 this used to
+  // throw: a real-world-truncated upload, or a HEIC variant libheif can't fully decode, passed the
+  // check above and then crashed here uncaught). Any failure at this stage is still a bad *input*,
+  // not a server fault, so it gets the same 400 treatment as every other validation failure above.
+  let outputBuffer: Buffer;
+  try {
+    outputBuffer = await sharp(buffer)
+      .rotate() // auto-orient from EXIF before cropping, then the pipeline below strips EXIF on output
+      .resize(AVATAR_OUTPUT_SIZE, AVATAR_OUTPUT_SIZE, { fit: 'cover', position: 'attention' })
+      .webp({ quality: 85 })
+      .toBuffer();
+  } catch {
+    throw new BadRequestError('The uploaded file could not be processed. Please try a different photo.');
+  }
 
   return { buffer: outputBuffer, mimeType: 'image/webp', fileName: 'avatar.webp' };
 }
